@@ -1,0 +1,9 @@
+anysphere.pyright
+esbenp.prettier-vscode
+ms-ceintl.vscode-language-pack-ja
+ms-python.black-formatter
+ms-python.debugpy
+ms-python.python
+ms-python.vscode-pylance
+qwtel.sqlite-viewer
+ritwickdey.liveserver

@@ -1,0 +1,346 @@
+#root {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.App {
+  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 1rem;
+  color: white;
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.App-main {
+  flex: 1;
+  padding: 1rem;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.App-footer {
+  background-color: #282c34;
+  color: white;
+  padding: 0.25rem;
+  font-size: 0.8rem;
+  height: 25px;
+}
+
+/* 財務モデルエディタ */
+.financial-model-editor {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem;
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: calc(100vh - 60px);
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.25rem;
+  min-height: 50px;
+}
+
+.tab-navigation {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab-navigation button {
+  padding: 0.5rem 1.5rem;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.tab-navigation button.active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+.editor-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* データテーブル */
+.data-table-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.table-actions {
+  margin-bottom: 0;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0;
+}
+
+.table-actions button {
+  padding: 0.6rem 1.2rem;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.table-actions button:hover {
+  background-color: #3672c5;
+}
+
+/* 財務テーブルのスタイル調整 */
+.financial-table {
+  margin-top: 20px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden !important; /* visibleからhiddenに変更 */
+  position: relative;
+  z-index: 1;
+}
+
+/* HandsontableのCell選択のためのスタイル */
+.handsontable .wtHolder {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+.handsontable .htCore td {
+  position: relative !important;
+  cursor: pointer !important;
+  user-select: none;
+}
+
+/* 選択されたセルのスタイル */
+.handsontable .htCore td.current,
+.handsontable .htCore td.area {
+  background-color: rgba(75, 137, 255, 0.2) !important;
+  border: 1px solid rgba(75, 137, 255, 0.5) !important;
+}
+
+/* 削除ボタンのスタイル調整 */
+.delete-account-btn,
+.delete-period-btn {
+  padding: 2px 5px;
+  background-color: #ff4d4f;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 10px;
+  margin-left: 5px;
+  position: relative;
+  z-index: 5; /* 高めのz-indexを設定 */
+}
+
+.delete-account-btn:hover,
+.delete-period-btn:hover {
+  background-color: #ff7875;
+}
+
+/* パラメータパネル */
+.parameter-panel {
+  padding: 1.5rem;
+  background-color: white;
+  border-radius: 8px;
+  margin-top: 1rem;
+  height: calc(100% - 20px);
+  overflow: auto;
+}
+
+.parameter-panel h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.parameter-actions {
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.parameter-actions select {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.parameter-actions button {
+  padding: 0.5rem 1rem;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.parameter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.parameter-item {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1.5rem;
+  background-color: #f9f9f9;
+}
+
+.parameter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.parameter-name {
+  font-weight: bold;
+  font-size: 1.3rem;
+}
+
+.parameter-type {
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.parameter-delete {
+  padding: 0.4rem 0.8rem;
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.parameter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.parameter-description {
+  font-size: 1.1rem;
+  color: #555;
+}
+
+.parameter-value-control {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.parameter-value-control input[type="range"] {
+  flex: 1;
+  height: 8px;
+}
+
+.parameter-value {
+  font-weight: bold;
+  min-width: 50px;
+  text-align: right;
+  font-size: 1.2rem;
+}
+
+.parameter-applies-to {
+  font-size: 1rem;
+  color: #666;
+}
+
+.parameter-applies-to ul {
+  margin: 0.5rem 0 0 1.5rem;
+  padding: 0;
+}
+
+.parameter-applies-to li {
+  margin-bottom: 0.3rem;
+}
+
+.no-parameters {
+  padding: 2rem;
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  font-size: 1.2rem;
+}
+
+/* ローディングとエラー */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.5rem;
+  color: #4a90e2;
+  z-index: 1000;
+}
+
+.error-message {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: #ffebee;
+  color: #d32f2f;
+  border-radius: 4px;
+  border-left: 4px solid #d32f2f;
+  font-size: 1.1rem;
+}
+
+.unsaved-changes-indicator {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: #d32f2f;
+  text-align: right;
+  font-style: italic;
+  height: 20px;
+}
