@@ -780,6 +780,27 @@ export function useFinancialModel(initialModel = null) {
     [setModel]
   );
 
+  // 勘定科目マッピングの更新
+  const updateAccountMapping = useCallback((accountId, mappingData) => {
+    setModel((prevModel) => {
+      const updatedAccounts = prevModel.accounts.map((account) => {
+        if (account.id === accountId) {
+          return {
+            ...account,
+            accountMapping: mappingData,
+          };
+        }
+        return account;
+      });
+
+      return {
+        ...prevModel,
+        accounts: updatedAccounts,
+      };
+    });
+    setIsDirty(true);
+  }, []);
+
   // モデルを返す際にUI用に整形したデータも含める
   return {
     model: { ...model, preparedUI: prepareModelForUI(model) },
@@ -798,6 +819,7 @@ export function useFinancialModel(initialModel = null) {
     removeAccountParameter,
     resetDefaultParameters,
     updateAccount,
+    updateAccountMapping,
   };
 }
 

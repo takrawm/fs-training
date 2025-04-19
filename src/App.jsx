@@ -9,7 +9,7 @@ function App() {
         <h1>FS Sample</h1>
       </header>
       <main className="App-main">
-        <FinancialModelEditor excelUrl="/sample_sales2.xlsx" />
+        <FinancialModelEditor excelFilePath="/sample_sales2.xlsx" />
       </main>
       <footer className="App-footer">
         <p>財務モデリングプロトタイプ © 2025</p>

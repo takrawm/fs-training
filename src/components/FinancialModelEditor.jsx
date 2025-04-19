@@ -1,300 +1,295 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import DataTable from "./DataTable.jsx";
-import { useFinancialModel } from "../hooks/useFinancialModel.js";
-import { useExcelImport } from "../hooks/useExcelImport.js";
+import React, { useState, useEffect } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Tabs,
+  Tab,
+  Button,
+  Spinner,
+} from "react-bootstrap";
+import DataTable from "./DataTable";
+import AccountMappingSettings from "./AccountMappingSettings";
+import ParamSettings from "./ParamSettings";
+import ChartSettings from "./ChartSettings";
+import FinancialSummary from "./FinancialSummary";
+import ButtonGroup from "react-bootstrap/ButtonGroup";
+import { useFinancialModel } from "../hooks/useFinancialModel";
+import { useExcelImport } from "../hooks/useExcelImport";
 
 /**
- * 財務モデルエディタコンポーネント
- * @param {Object} props - コンポーネントプロパティ
- * @param {string} props.excelUrl - インポートするExcelファイルのURL（省略可）
- * @returns {JSX.Element} 財務モデルエディタ
+ * 財務モデルエディターコンポーネント
+ * RawData → マッピング → モデル構築の2ステップデータ処理フローをサポート
  */
+const FinancialModelEditor = ({ excelFilePath }) => {
+  // 受け取ったファイルパスをログ出力
+  console.log("FinancialModelEditor - 受け取ったファイルパス:", excelFilePath);
 
-function FinancialModelEditor({ excelUrl }) {
-  // タブの状態
+  // タブ状態
   const [activeTab, setActiveTab] = useState("data");
-  // パラメータグループの折りたたみ状態を管理（すべてのシートで共有）
-  const [isParamGroupCollapsed, setIsParamGroupCollapsed] = useState(false);
+  const [activeParam, setActiveParam] = useState(null);
+  const [isParamGroupCollapsed, setIsParamGroupCollapsed] = useState({});
 
-  // 財務モデルフックの利用
+  // 処理ステップ管理
+  // 'loading', 'mapping', 'model'
+  const [processStep, setProcessStep] = useState("loading");
+
+  // エラーメッセージ
+  const [errorMessage, setErrorMessage] = useState(null);
+
+  // アカウントマッピング情報
+  const [accountMappings, setAccountMappings] = useState({});
+
+  // 表示モード
+  const [displayMode, setDisplayMode] = useState("table"); // 'table', 'chart'
+
+  // フックの初期化
   const {
     model,
-    setModel,
-    isLoading: modelLoading,
-    error: modelError,
-    isDirty,
-    hfInstance,
-    addAccount,
-    deleteAccount,
-    addPeriod,
-    deletePeriod,
-    updateCellValue,
-    updateAccountParameter,
-    addParameter,
-    deleteParameter,
-    updateAccount,
+    updateModel,
+    recalculateModel,
+    isModelLoading,
+    prepareModelForUI,
   } = useFinancialModel();
 
-  //   Excelインポートフックの利用
   const {
-    isLoading: importLoading,
-    error: importError,
-    importExcelFromUrl,
+    rawData,
+    loading: isExcelLoading,
+    error: excelError,
+    extractRawData,
+    buildModelFromRawData,
   } = useExcelImport();
 
-  //   Excelファイルのインポート
+  // コンポーネントマウント時にExcelデータを読み込む
   useEffect(() => {
-    if (!excelUrl) return;
+    const loadExcelData = async () => {
+      if (!excelFilePath) {
+        console.error("Excelファイルパスが指定されていません");
+        setProcessStep("error");
+        return;
+      }
 
-    const loadExcel = async () => {
+      console.log("Excelファイル読み込み開始:", excelFilePath);
+
       try {
-        const importModel = await importExcelFromUrl(excelUrl);
-        if (importModel) {
-          setModel(importModel);
+        // ExcelからRawDataを抽出
+        const extractedData = await extractRawData(excelFilePath);
+        console.log("抽出されたRawData:", extractedData);
+
+        if (extractedData) {
+          setProcessStep("mapping");
+        } else {
+          console.error("RawDataが正しく抽出されませんでした");
+          setProcessStep("error");
         }
-      } catch (err) {
-        console.error("Excelインポートエラー：", err);
+      } catch (error) {
+        console.error("Excelロードエラー（詳細）:", error);
+        setErrorMessage(error.message || "Excelデータの読み込みに失敗しました");
+        setProcessStep("error");
       }
     };
 
-    loadExcel();
-  }, [excelUrl, importExcelFromUrl, setModel]);
+    loadExcelData();
+  }, [excelFilePath, extractRawData]);
 
-  // パラメータ更新ハンドラー
-  const handleUpdateParameter = React.useCallback(
-    (accountId, parameterUpdates) => {
-      if (parameterUpdates) {
-        // パラメータを更新
-        updateAccountParameter(accountId, parameterUpdates);
+  // マッピング情報を更新
+  const updateMapping = (accountId, mappingInfo) => {
+    setAccountMappings((prevMappings) => ({
+      ...prevMappings,
+      [accountId]: mappingInfo,
+    }));
+  };
+
+  // マッピング完了時の処理
+  const finishMapping = async () => {
+    setProcessStep("building");
+
+    try {
+      // RawDataとマッピング情報からモデルを構築
+      const builtModel = await buildModelFromRawData(rawData, accountMappings);
+
+      if (builtModel) {
+        // モデルを更新
+        updateModel(builtModel);
+        setProcessStep("model");
       } else {
-        // パラメータを削除
-        updateAccountParameter(accountId, null);
+        setProcessStep("error");
       }
-    },
-    [updateAccountParameter]
-  );
+    } catch (error) {
+      console.error("モデル構築エラー:", error);
+      setProcessStep("error");
+    }
+  };
 
-  // パラメータグループの折りたたみトグル
-  const handleToggleParamGroup = useCallback(() => {
-    setIsParamGroupCollapsed((prev) => !prev);
-  }, []);
+  // パラメータ変更ハンドラ
+  const handleParamChange = (groupId, paramId, newValue) => {
+    // モデルのパラメータを更新
+    const updatedModel = { ...model };
+    const groupIndex = updatedModel.paramGroups.findIndex(
+      (g) => g.id === groupId
+    );
 
-  // 期間の実績/計画切り替えハンドラー
-  const handleTogglePeriodActual = useCallback(
-    (periodId) => {
-      const updatedPeriods = model.periods.map((period) => {
-        if (period.id === periodId) {
-          return { ...period, isActual: !period.isActual };
-        }
-        return period;
-      });
-
-      setModel((prev) => ({
-        ...prev,
-        periods: updatedPeriods,
-      }));
-    },
-    [model.periods]
-  );
-
-  // シート別にアカウントをフィルタリングする関数
-  const getSheetAccounts = useCallback(
-    (sheetName) => {
-      if (!model || !model.accounts) return [];
-      // accountsの配列
-      return model.accounts.filter(
-        (account) => account.sheetName === sheetName
+    if (groupIndex >= 0) {
+      const paramIndex = updatedModel.paramGroups[groupIndex].params.findIndex(
+        (p) => p.id === paramId
       );
-    },
-    [model]
-  );
 
-  // シート別モデルを作成する関数
-  const getSheetModel = useCallback(
-    (sheetName) => {
-      if (!model || !model.accounts) return null;
-
-      // シートに属するアカウントのIDリスト
-      const sheetAccountIds = getSheetAccounts(sheetName).map((acc) => acc.id);
-
-      // シート別モデルを作成
-      return {
-        ...model,
-        accounts: getSheetAccounts(sheetName),
-        // シート別のモデルを作成する際に、そのシートに関連する値（セル値）だけをフィルタリング
-        values: model.values.filter((value) =>
-          sheetAccountIds.includes(value.accountId)
-        ),
-        // クロスシート参照用に全アカウントリストを保持
-        allAccounts: model.accounts,
-      };
-    },
-    [model, getSheetAccounts]
-  );
-
-  // ローディング状態（グローバルなローディング状態）
-  const isLoading = modelLoading || importLoading;
-
-  // エラー状態
-  const error = modelError || importError;
-
-  // ローディング中かどうか（実際のUIに表示する用）
-  const isModelInitializing = model?.metadata?.name === "読み込み中...";
-  const shouldShowLoading = isLoading || importLoading || isModelInitializing;
-
-  const handleCellChange = useCallback(
-    ({ type, accountId, ...rest }) => {
-      if (type === "paramValue") {
-        // ... existing code ...
-      } else if (type === "referenceAccount") {
-        // ... existing code ...
-      } else if (type === "cellValue") {
-        // ... existing code ...
-      } else if (type === "paramType") {
-        // ... existing code ...
-      } else if (type === "cashFlowElement") {
-        // キャッシュフロー要素の更新
-        const { cashFlowElement } = rest;
-        updateAccount(accountId, {
-          cashFlowElement,
-        });
+      if (paramIndex >= 0) {
+        updatedModel.paramGroups[groupIndex].params[paramIndex].value =
+          newValue;
+        // モデルを更新して再計算
+        updateModel(updatedModel);
+        recalculateModel();
       }
-    },
-    [model, updateAccount]
-  );
+    }
+  };
 
-  return (
-    <div
-      className="financial-model-editor"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        overflow: "hidden",
-      }}
-    >
-      {shouldShowLoading ? (
-        <div className="loading-overlay">読み込み中...</div>
-      ) : error ? (
-        <div className="error-message">エラーが発生しました：{error}</div>
-      ) : (
+  // パラメータグループの折りたたみハンドラ
+  const handleCollapseParamGroup = (groupId) => {
+    setIsParamGroupCollapsed((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  };
+
+  // タブ変更ハンドラ
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
+
+  // 処理ステップに応じたコンテンツをレンダリング
+  const renderContent = () => {
+    if (processStep === "loading" || isExcelLoading) {
+      return (
+        <div className="text-center p-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+          <p className="mt-3">Excelデータを読み込んでいます...</p>
+        </div>
+      );
+    }
+
+    if (processStep === "error") {
+      return (
+        <div className="alert alert-danger m-5" role="alert">
+          <h4 className="alert-heading">エラーが発生しました</h4>
+          <p>
+            {errorMessage ||
+              excelError ||
+              "Excelデータの読み込みまたは処理中にエラーが発生しました。"}
+          </p>
+        </div>
+      );
+    }
+
+    if (processStep === "mapping") {
+      return (
+        <AccountMappingSettings
+          rawData={rawData}
+          onUpdateMapping={updateMapping}
+          onClose={finishMapping}
+          isInitialMapping={true}
+        />
+      );
+    }
+
+    if (processStep === "building") {
+      return (
+        <div className="text-center p-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Building model...</span>
+          </Spinner>
+          <p className="mt-3">財務モデルを構築しています...</p>
+        </div>
+      );
+    }
+
+    // モデルのレンダリング（タブ形式）
+    if (processStep === "model" && model) {
+      return (
         <>
-          <div className="editor-header">
-            <h2>{model.metadata.name}</h2>
-            <div className="tab-navigation">
-              <button
-                className={activeTab === "data" ? "active" : ""}
-                onClick={() => setActiveTab("data")}
-              >
-                データ
-              </button>
-              <button
-                className={activeTab === "parameters" ? "active" : ""}
-                onClick={() => setActiveTab("parameters")}
-              >
-                パラメータ設定
-              </button>
-            </div>
-          </div>
-
-          <div
-            className="editor-content"
-            style={{
-              // flex-grow: 1; flex-shrink: 1; flex-basis: 0%と同等
-              // flex-grow: 1の部分で、これが「利用可能な空間をどれだけ占めるか」を制御
-              flex: 1,
-              overflow: "auto",
-              display: "flex",
-              flexDirection: "column",
-            }}
+          <Tabs
+            activeKey={activeTab}
+            onSelect={handleTabChange}
+            className="mb-3"
+            fill
           >
-            {activeTab === "data" && (
-              <div
-                // "PL"などのh3タグとDataTableの縦並びを親要素いっぱいに広げつつ、
-                // paddingを15px設ける
-                style={{
-                  padding: "15px",
-                  width: "100%",
-                }}
+            <Tab eventKey="data" title="データ">
+              {model && (
+                <DataTable
+                  model={prepareModelForUI(model)}
+                  isParamGroupCollapsed={isParamGroupCollapsed}
+                  onCollapseParamGroup={handleCollapseParamGroup}
+                />
+              )}
+            </Tab>
+            <Tab eventKey="params" title="パラメータ設定">
+              {model && (
+                <ParamSettings
+                  paramGroups={model.paramGroups}
+                  activeParam={activeParam}
+                  setActiveParam={setActiveParam}
+                  onParamChange={handleParamChange}
+                />
+              )}
+            </Tab>
+            <Tab eventKey="charts" title="チャート設定">
+              {model && <ChartSettings model={model} />}
+            </Tab>
+            <Tab eventKey="summary" title="財務サマリー">
+              {model && <FinancialSummary model={model} />}
+            </Tab>
+          </Tabs>
+
+          <div className="mt-3">
+            <ButtonGroup className="mr-2">
+              <Button
+                variant={
+                  displayMode === "table" ? "primary" : "outline-primary"
+                }
+                onClick={() => setDisplayMode("table")}
               >
-                {["PL", "BS", "CAPEX", "CS"].map((sheetName, index, array) => {
-                  const sheetModel = getSheetModel(sheetName);
+                テーブル表示
+              </Button>
+              <Button
+                variant={
+                  displayMode === "chart" ? "primary" : "outline-primary"
+                }
+                onClick={() => setDisplayMode("chart")}
+              >
+                チャート表示
+              </Button>
+            </ButtonGroup>
 
-                  // シートを表示すべきかどうかの条件チェック
-                  const shouldRenderSheet =
-                    sheetModel &&
-                    sheetModel.accounts.length > 0 &&
-                    (model.sheets?.includes(sheetName) ||
-                      // モデルにsheetsプロパティが存在しないときは
-                      // "PL"のみレンダリングする
-                      (!model.sheets && sheetName === "PL"));
-
-                  // 条件を満たさなければnullを返す
-                  // Reactはnullをレンダリングしない）
-                  if (!shouldRenderSheet) return null;
-
-                  // 条件を満たす場合はシートコンポーネントを返す
-                  return (
-                    <div
-                      key={sheetName}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        border: "1px solid #ddd",
-                        borderRadius: "5px",
-                        overflow: "hidden",
-                        // 最後以外の要素には下に30pxの余白を設けるための処理
-                        marginBottom: index < array.length - 1 ? "30px" : 0,
-                      }}
-                    >
-                      <h3
-                        style={{
-                          margin: 0,
-                          padding: "8px 15px",
-                          backgroundColor: "#f5f5f5",
-                          borderBottom: "1px solid #ddd",
-                        }}
-                      >
-                        {sheetName}
-                      </h3>
-                      <div style={{ height: "400px" }}>
-                        <DataTable
-                          model={sheetModel}
-                          onCellChange={handleCellChange}
-                          onAddAccount={addAccount}
-                          onDeleteAccount={deleteAccount}
-                          onAddPeriod={addPeriod}
-                          onDeletePeriod={deletePeriod}
-                          hfInstance={hfInstance}
-                          onUpdateParameter={handleUpdateParameter}
-                          onTogglePeriodActual={handleTogglePeriodActual}
-                          isParamGroupCollapsed={isParamGroupCollapsed}
-                          onToggleParamGroup={handleToggleParamGroup}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {activeTab === "parameters" && (
-              <div className="parameters-tab">
-                <h3>パラメータ設定</h3>
-                <p>パラメータ設定画面は開発中です。</p>
-              </div>
-            )}
+            <Button
+              variant="outline-secondary"
+              className="ml-3"
+              onClick={() => {
+                setAccountMappings({});
+                setProcessStep("mapping");
+              }}
+            >
+              マッピング再設定
+            </Button>
           </div>
         </>
-      )}
+      );
+    }
 
-      {isDirty && (
-        <div className="unsaved-changes-indicator">
-          * 保存されていない変更があります
-        </div>
-      )}
-    </div>
+    return null;
+  };
+
+  return (
+    <Container fluid className="financial-model-editor">
+      <Row>
+        <Col>
+          <h1 className="mb-4">財務モデルエディター</h1>
+          {renderContent()}
+        </Col>
+      </Row>
+    </Container>
   );
-}
+};
 
 export default FinancialModelEditor;

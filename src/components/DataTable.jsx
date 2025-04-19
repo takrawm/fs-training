@@ -85,11 +85,56 @@ function DataTable({
     // preparedUIからデータを取得
     const { preparedAccounts, preparedValues } = model.preparedUI;
 
+    // 集約科目マッピング情報を管理するためのマップ
+    const aggregatedValues = {};
+
     // 各勘定科目の行データを作成
     sortedAccounts.forEach((account) => {
       // preparedUIから対応するアカウントを探す
       const preparedAccount =
         preparedAccounts.find((a) => a.id === account.id) || account;
+
+      // 勘定科目のマッピング情報を取得
+      const mapping = account.accountMapping;
+
+      // マッピングがあり、集約科目に変換する場合
+      if (mapping && !mapping.useOriginal && mapping.aggregatedAccount) {
+        // 集約科目のデータを初期化
+        if (!aggregatedValues[mapping.aggregatedAccount]) {
+          aggregatedValues[mapping.aggregatedAccount] = {
+            id: `agg-${mapping.aggregatedAccount.replace(/\s+/g, "-")}`, // 一意のIDを生成
+            code: `AGG-${Object.keys(aggregatedValues).length + 1}`,
+            name: mapping.aggregatedAccount,
+            accountType: mapping.financialCategory || account.accountType,
+            paramType: null,
+            paramValue: null,
+            referenceAccount: null,
+            isAggregated: true, // 集約科目であることを示すフラグ
+            cashflowType: null,
+            // 期間ごとの値を初期化
+            periodValues: sortedPeriods.reduce((acc, period) => {
+              acc[period.id] = 0;
+              return acc;
+            }, {}),
+          };
+        }
+
+        // 集約科目に値を加算
+        sortedPeriods.forEach((period) => {
+          const value = preparedValues.find(
+            (v) => v.accountId === account.id && v.periodId === period.id
+          );
+
+          if (value) {
+            aggregatedValues[mapping.aggregatedAccount].periodValues[
+              period.id
+            ] += value.value;
+          }
+        });
+
+        // このアカウントは集約科目に変換されるので、個別の行は作成しない
+        return;
+      }
 
       // パラメータタイプを取得
       const paramType = preparedAccount.parameter?.type;
@@ -230,6 +275,74 @@ function DataTable({
         // 比率行をテーブルデータに追加
         result.push(ratioRow);
       }
+    });
+
+    // 集約科目の行をテーブルデータに追加
+    Object.values(aggregatedValues).forEach((aggAccount) => {
+      const row = {
+        id: aggAccount.id,
+        code: aggAccount.code,
+        name: aggAccount.name,
+        accountType: aggAccount.accountType,
+        paramType: aggAccount.paramType,
+        paramValue: aggAccount.paramValue,
+        referenceAccount: aggAccount.referenceAccount,
+        isAggregated: true, // 集約科目であることを示すフラグ
+        cashflowType: aggAccount.cashflowType,
+      };
+
+      // 期間ごとの値を設定
+      sortedPeriods.forEach((period) => {
+        const value = aggAccount.periodValues[period.id] || 0;
+        row[period.id] = value;
+        row[`${period.id}_display`] = Math.round(value);
+      });
+
+      // 行をテーブルデータに追加
+      result.push(row);
+
+      // 集約科目の前年度比の行を作成
+      const yoyRow = {
+        id: `${aggAccount.id}-yoy`,
+        code: "",
+        name: "前年度比 (%)",
+        accountType: aggAccount.accountType,
+        paramType: null,
+        paramValue: null,
+        referenceAccount: null,
+        isYoY: true,
+        cashflowType: null,
+      };
+
+      // 前年度比を計算して各期間のデータを設定
+      sortedPeriods.forEach((period, periodIndex) => {
+        // 最初の期間は前年比を計算できないのでN/A
+        if (periodIndex === 0) {
+          yoyRow[period.id] = "N/A";
+          return;
+        }
+
+        // 前年の期間を取得
+        const prevPeriod = sortedPeriods[periodIndex - 1];
+
+        // 今年と前年の値を取得
+        const currentValue = row[period.id];
+        const prevValue = row[prevPeriod.id];
+
+        // 前年の値が0または空の場合はN/A、それ以外は前年度比を計算
+        if (prevValue === 0 || prevValue === null || prevValue === undefined) {
+          yoyRow[period.id] = "N/A";
+        } else {
+          // 前年度比を計算（小数点以下1桁まで表示）
+          const yoyPercentage = ((currentValue / prevValue - 1) * 100).toFixed(
+            1
+          );
+          yoyRow[period.id] = `${yoyPercentage}%`;
+        }
+      });
+
+      // 前年度比の行をテーブルデータに追加
+      result.push(yoyRow);
     });
 
     return result;
