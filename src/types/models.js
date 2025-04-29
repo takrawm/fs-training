@@ -106,7 +106,7 @@ export const AccountType = {
 
   EQUITY: "EQUITY", // 純資産/資本
   EQUITY_TOTAL: "EQUITY_TOTAL", // 純資産合計
-  LI_EQ_TOTAL: "LI_EQ_TOTAL", // 負債・純資産合計
+  LI_EQ_TOTAL: "LI_EQ_TOTAL", // 負債及び純資産合計
 
   // CAPEXアカウント
   INVESTMENT: "INVESTMENT", // 設備投資

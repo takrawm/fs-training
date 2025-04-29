@@ -674,7 +674,7 @@ export function calculateSummaryValues(model) {
       }
     }
 
-    // BS用の計算：負債・純資産合計 = 負債合計 + 純資産合計
+    // BS用の計算：負債及び純資産合計 = 負債合計 + 純資産合計
     const liabilityTotal = periodValues.find((v) =>
       accounts.find(
         (a) =>
@@ -691,7 +691,7 @@ export function calculateSummaryValues(model) {
     if (liabilityTotal && equityTotal) {
       const liEqTotalValue = liabilityTotal.value + equityTotal.value;
 
-      // 既存の負債・純資産合計の値を探す
+      // 既存の負債及び純資産合計の値を探す
       const existingLiEqTotal = periodValues.find((v) =>
         accounts.find(
           (a) =>

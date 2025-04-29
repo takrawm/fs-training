@@ -1,0 +1,309 @@
+/* FinancialModelEditor.css */
+.financial-model-editor {
+  width: 100%;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.editor-header {
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.editor-content {
+  position: relative;
+  width: 100%;
+}
+
+/* ローディング表示 */
+.loading-container {
+  text-align: center;
+  padding: 2rem;
+  width: 100%;
+}
+
+.spinner {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #007bff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  margin-top: 1rem;
+  color: #666;
+}
+
+/* エラー表示 */
+.error-container {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 1.25rem;
+  border-radius: 0.25rem;
+  margin: 2rem 0;
+}
+
+.error-heading {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* タブ関連のスタイル */
+.tabs-container {
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.tabs-nav {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-bottom: 1px solid #dee2e6;
+  width: 100%;
+}
+
+.tab-item {
+  margin-bottom: -1px;
+}
+
+.tab-link {
+  display: block;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  color: #495057;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-top-left-radius: 0.25rem;
+  border-top-right-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.tab-link:hover {
+  border-color: #e9ecef #e9ecef #dee2e6;
+}
+
+.tab-link.active {
+  color: #007bff;
+  background-color: #fff;
+  border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.tab-content {
+  padding: 1rem 0;
+  width: 100%;
+}
+
+.tab-pane {
+  display: none;
+  width: 100%;
+}
+
+.tab-pane.active {
+  display: block;
+  width: 100%;
+}
+
+/* ボタングループ */
+.button-toolbar {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.button-group {
+  display: inline-flex;
+}
+
+/* ボタンスタイル */
+.btn {
+  display: inline-block;
+  font-weight: 400;
+  color: #212529;
+  text-align: center;
+  vertical-align: middle;
+  cursor: pointer;
+  user-select: none;
+  background-color: transparent;
+  border: 1px solid transparent;
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  border-radius: 0.25rem;
+  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out;
+}
+
+.btn-primary {
+  color: #fff;
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-primary:hover {
+  background-color: #0069d9;
+  border-color: #0062cc;
+}
+
+.btn-outline-primary {
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-outline-primary:hover {
+  color: #fff;
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-outline-secondary {
+  color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+  color: #fff;
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+/* その他のユーティリティクラス */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.m-5 {
+  margin: 3rem;
+}
+
+.mt-3 {
+  margin-top: 1rem;
+}
+
+.ml-3 {
+  margin-left: 1rem;
+}
+
+/* コンポーネントフルワイド用のスタイル */
+.full-width-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* テーブル関連のスタイル */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* リスト表示を横いっぱいに */
+.list-container {
+  width: 100%;
+}
+
+/* フォーム要素をフルワイドに */
+.form-container {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* スクロール可能な横幅いっぱいのコンテナ */
+.scrollable-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* 必要に応じて全体の余白を修正 */
+body,
+html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Handsontable関連のスタイル */
+.hot {
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+
+.handsontable-wrapper {
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+.handsontable-wrapper .handsontable {
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+.handsontable .htDimmed {
+  color: #333 !important;
+}
+
+.account-mapping-settings {
+  padding: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.mapping-table-container {
+  position: relative;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Handsontable選択スタイルを修正 */
+.handsontable .ht_master .wtHolder {
+  overflow: auto !important;
+}
+
+.handsontable .ht_clone_top {
+  z-index: 101 !important;
+}
+
+.handsontable .ht_clone_left {
+  z-index: 102 !important;
+}
+
+.handsontable .ht_clone_top_left_corner {
+  z-index: 103 !important;
+}
+
+.handsontable .current {
+  background-color: #e6f7ff !important;
+}
+
+.handsontable .area {
+  background-color: #e6f7ff !important;
+}

@@ -1,631 +1,595 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { HotTable } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
 
+import {
+  DEFAULT_SHEET_TYPES,
+  MODEL_ACCOUNTS,
+  SUMMARY_ACCOUNTS,
+} from "../utils/constants";
+import PeriodSelector from "./PeriodSelector";
+
 // Handsontableのすべてのモジュールを登録
 registerAllModules();
 
-// 集約科目リスト
-const AGGREGATED_ACCOUNTS = [
-  "売上高1",
-  "売上高2",
-  "売上原価1",
-  "売上原価2",
-  "人件費",
-  "広告宣伝費",
-  "物件費",
-  "償却費1",
-  "償却費2",
-  "その他販管費",
-  "現預金",
-  "売掛金",
-  "棚卸資産",
-  "その他流動資産",
-  "償却資産1",
-  "償却資産2",
-  "その他固定資産",
-  "買掛金",
-  "支払手形",
-  "その他流動負債",
-  "長期借入金",
-  "その他固定負債",
-  "資本金等",
-  "利益剰余金等",
+// シートタイプの選択肢
+const SHEET_TYPES = ["PL", "BS", "CF", "CAPEX", "集約科目"];
+
+// 親科目（集計科目）の選択肢
+const PARENT_ACCOUNTS = [
+  "",
+  "売上高合計",
+  "売上原価合計",
+  "販管費合計",
+  "流動資産合計",
+  "有形固定資産合計",
+  "無形固定資産合計",
+  "流動負債合計",
+  "固定負債合計",
+  "設備投資合計",
 ];
 
-// 財務カテゴリーリスト（表示用とDB用の値を分けて管理）
-const FINANCIAL_CATEGORIES = {
-  PL: [
-    { value: "sales", label: "売上高" },
-    { value: "cogs", label: "売上原価" },
-    { value: "sga", label: "販管費" },
-  ],
-  BS: [
-    { value: "current_assets", label: "流動資産" },
-    { value: "fixed_assets", label: "固定資産" },
-    { value: "current_liabilities", label: "流動負債" },
-    { value: "fixed_liabilities", label: "固定負債" },
-    { value: "equity", label: "純資産" },
-  ],
-};
-
-// 表示用のラベルから値を取得するヘルパー関数
-const getCategoryValueFromLabel = (sheetName, label) => {
-  const category = FINANCIAL_CATEGORIES[sheetName]?.find(
-    (c) => c.label === label
-  );
-  return category ? category.value : "";
-};
-
-// 値からラベルを取得するヘルパー関数
-const getCategoryLabelFromValue = (sheetName, value) => {
-  const category = FINANCIAL_CATEGORIES[sheetName]?.find(
-    (c) => c.value === value
-  );
-  return category ? category.label : "";
-};
+// パラメータタイプの選択肢
+const PARAMETER_TYPES = ["NONE", "GROWTH_RATE", "PERCENTAGE", "PROPORTIONATE"];
+// パラメータタイプの選択肢
+const RELATION_TYPES = ["NONE", "PP&E", "RETAINED_EARNINGS"];
 
 const AccountMappingSettings = ({
   model,
-  rawData,
+  flattenedData,
   onUpdateMapping,
   onClose,
   isInitialMapping = false,
 }) => {
-  // 現在のステップ（1: 科目マッピング、2: 財務区分設定）
-  const [currentStep, setCurrentStep] = useState(1);
-
   // マッピングデータ
   const [mappingData, setMappingData] = useState([]);
+  // 3段階の表示モード (0: モデル勘定科目設定, 1: パラメータ設定, 2: 集計結果確認)
+  const [step, setStep] = useState(0);
+  // フラット化済みデータをもとにした行情報
+  const flattenedRows = flattenedData?.dataRows || [];
 
-  // 集約済みのアカウントデータ（ステップ2用）
-  const [aggregatedAccounts, setAggregatedAccounts] = useState([]);
+  // 財務モデルを構成するアカウント
+  const [accounts, setAccounts] = useState([]);
 
-  // データからマッピングデータを初期化
+  // 集約マップを保持する状態を追加
+  const [aggregatedMap, setAggregatedMap] = useState({});
+
+  // パラメータデータの準備
+  const [paramData, setParamData] = useState([]);
+
+  // 表示用のaggregatedValue
+  const [aggregatedValue, setAggregatedValue] = useState([]);
+
+  // 開発中画面の表示フラグ
+  const [showDevelopmentMessage, setShowDevelopmentMessage] = useState(false);
+
+  // 期間情報をstateで保持
+  const [periods, setPeriods] = useState([]);
+
+  // 初期マッピングデータをデフォルトのシートタイプでセット
   useEffect(() => {
-    if (!model) return;
-
-    // rawDataから直接初期化する場合（初期マッピングフロー）
-    if (isInitialMapping && rawData) {
-      const initialMappingData = [];
-      // 全シートのアカウントを結合
-      Object.entries(rawData.sheets).forEach(([sheetName, accounts]) => {
-        accounts.forEach((account) => {
-          initialMappingData.push({
-            id: account.id,
-            code: account.code,
-            name: account.name,
-            accountType: "",
-            sheetName: sheetName,
-            useOriginal: true,
-            aggregatedAccount: "",
-            financialCategory: "",
-            // 期間ごとの値も保持
-            periodValues: account.periodValues,
-          });
-        });
-      });
-      setMappingData(initialMappingData);
-    }
-    // modelから初期化する場合（既存のモデルからのマッピング編集）
-    else if (model.accounts) {
-      const initialMappingData = model.accounts.map((account) => {
+    if (mappingData.length === 0 && flattenedRows.length > 0) {
+      const initial = flattenedRows.map((row, idx) => {
+        const name = row[0]?.toString().trim();
         return {
-          id: account.id,
-          code: account.code,
-          name: account.name,
-          accountType: account.accountType,
-          sheetName: account.sheetName || "PL",
-          useOriginal: account.accountMapping?.useOriginal ?? true,
-          aggregatedAccount: account.accountMapping?.aggregatedAccount || "",
-          financialCategory: account.accountMapping?.financialCategory || "",
+          id: `row-${idx}`,
+          originalAccount: name,
+          modelAccount: name,
         };
       });
-      setMappingData(initialMappingData);
+      setMappingData(initial);
     }
-  }, [model, rawData, isInitialMapping]);
+    console.log("flattenedRows: ", flattenedRows);
+  }, [flattenedRows]);
 
-  // 集約済みアカウントを計算
+  // テーブル再描画
+  const hotTableRef = useRef(null);
   useEffect(() => {
-    if (mappingData.length === 0) return;
+    if (hotTableRef.current?.hotInstance) {
+      requestAnimationFrame(() => {
+        if (hotTableRef.current?.hotInstance) {
+          hotTableRef.current.hotInstance.render();
+          hotTableRef.current.hotInstance.refreshDimensions();
+        }
+      });
+    }
+  }, [mappingData, step, aggregatedValue]);
 
-    // そのまま使用するアカウントと、集約科目のリストを作成
-    const originalAccounts = mappingData
-      .filter((acc) => acc.useOriginal)
-      .map((acc) => ({
-        id: acc.id,
-        name: acc.name,
-        code: acc.code,
-        sheetName: acc.sheetName,
-        financialCategory: acc.financialCategory,
-        // 表示用のラベルを計算
-        financialCategoryLabel: getCategoryLabelFromValue(
-          acc.sheetName,
-          acc.financialCategory
-        ),
-      }));
-
-    // 集約科目のリストを作成 (重複を削除)
-    const uniqueAggregatedAccounts = [
-      ...new Set(
-        mappingData
-          .filter((acc) => !acc.useOriginal && acc.aggregatedAccount)
-          .map((acc) => acc.aggregatedAccount)
-      ),
-    ].map((name) => {
-      const sourceAccount = mappingData.find(
-        (acc) => !acc.useOriginal && acc.aggregatedAccount === name
-      );
-      const sheetName = sourceAccount?.sheetName || "PL";
-      return {
-        id: `agg-${name.replace(/\s+/g, "-")}`,
-        name,
-        code: `AGG-${name}`,
-        sheetName,
-        financialCategory: sourceAccount?.financialCategory || "",
-        // 表示用のラベルを計算
-        financialCategoryLabel: getCategoryLabelFromValue(
-          sheetName,
-          sourceAccount?.financialCategory
-        ),
-      };
-    });
-
-    // 両方を結合して表示順に並べ替え
-    setAggregatedAccounts([...originalAccounts, ...uniqueAggregatedAccounts]);
-  }, [mappingData]);
-
-  // ステップ1のテーブルカラム定義
-  const mappingColumns = useMemo(
+  // 列定義 - モデル勘定科目設定用（ステップ0用）
+  const columns = useMemo(
     () => [
-      { data: "code", title: "コード", readOnly: true, width: 80 },
-      { data: "name", title: "元の勘定科目", readOnly: true, width: 180 },
       {
-        data: "useOriginal",
-        title: "マッピング方法",
-        type: "dropdown",
-        source: ["そのまま使用", "集約科目に変換"],
-        width: 150,
-        // ドロップダウンの値を変換
-        renderer: function (
-          instance,
-          td,
-          row,
-          col,
-          prop,
-          value,
-          cellProperties
-        ) {
-          td.innerHTML = value ? "そのまま使用" : "集約科目に変換";
-          return td;
-        },
+        data: "originalAccount",
+        title: "元の勘定科目",
+        readOnly: true,
+        width: 200,
       },
       {
-        data: "aggregatedAccount",
-        title: "集約科目",
+        data: "modelAccount",
+        title: "モデル勘定科目",
         type: "dropdown",
-        source: AGGREGATED_ACCOUNTS,
-        width: 150,
-        // useOriginalがfalseの場合のみ編集可能
-        readOnly: function (source, row, col, prop) {
-          return mappingData[row]?.useOriginal === true;
+        width: 200,
+        source(query, process) {
+          const rowIdx = this.row;
+          const original = mappingData[rowIdx]?.originalAccount;
+          const options = [original, ...MODEL_ACCOUNTS].filter(
+            (v, i, a) => v && a.indexOf(v) === i
+          );
+          process(options);
         },
       },
     ],
     [mappingData]
   );
 
-  // ステップ2のテーブルカラム定義
-  const categoryColumns = useMemo(
+  // 列定義 - パラメータ設定用（ステップ1用）
+  const paramColumns = useMemo(
     () => [
-      { data: "code", title: "コード", readOnly: true, width: 80 },
-      { data: "name", title: "勘定科目", readOnly: true, width: 180 },
       {
-        data: "sheetName",
-        title: "シート区分",
-        type: "dropdown",
-        source: ["PL", "BS"],
-        width: 100,
+        data: "accountName",
+        title: "モデル勘定科目",
+        readOnly: true,
+        width: 150,
       },
       {
-        data: "financialCategoryLabel",
-        title: "財務区分",
+        data: "parentAccount",
+        title: "親科目",
         type: "dropdown",
-        source: function (query, process) {
-          const row = this.row;
-          const sheetName = aggregatedAccounts[row]?.sheetName || "PL";
-          return process(
-            FINANCIAL_CATEGORIES[sheetName].map((cat) => cat.label)
-          );
-        },
+        source: PARENT_ACCOUNTS,
+        width: 150,
+      },
+      {
+        data: "parameterType",
+        title: "パラメータタイプ",
+        type: "dropdown",
+        source: PARAMETER_TYPES,
+        width: 150,
+      },
+      {
+        data: "isParameterReference",
+        title: "被参照科目",
+        type: "dropdown",
+        source: [true, false],
+        width: 150,
+      },
+      {
+        data: "relationType",
+        title: "リレーション",
+        type: "dropdown",
+        source: RELATION_TYPES,
         width: 150,
       },
     ],
-    [aggregatedAccounts]
+    []
   );
 
-  // マッピング変更時の処理関数
-  const handleMappingChange = (changes, source) => {
-    if (source === "edit" && changes) {
-      // 変更を適用
-      changes.forEach(([row, prop, oldValue, newValue]) => {
-        // 値が実際に変更された場合のみ処理
-        if (oldValue !== newValue) {
-          const updatedMappingData = [...mappingData];
+  // table データ変更ハンドラ
+  const handleChange = useCallback(
+    (changes) => {
+      if (!changes) return;
+      const newData = [...mappingData];
+      changes.forEach(([r, prop, , newVal]) => {
+        if (newVal != null) newData[r][prop] = newVal;
+      });
+      setMappingData(newData);
+    },
+    [mappingData]
+  );
 
-          // useOriginalの値を適切に変換
-          if (prop === "useOriginal") {
-            newValue = newValue === "そのまま使用";
-          }
-
-          updatedMappingData[row][prop] = newValue;
-
-          // マッピング方法が「そのまま使用」に変更された場合、集約科目をクリア
-          if (prop === "useOriginal" && newValue === true) {
-            updatedMappingData[row].aggregatedAccount = "";
-          }
-
-          setMappingData(updatedMappingData);
-
-          // 親コンポーネントに変更を通知（初期マッピング時のみ）
-          if (isInitialMapping) {
-            const account = updatedMappingData[row];
-            const mappingInfo = {
-              useOriginal: account.useOriginal,
-              aggregatedAccount: account.aggregatedAccount,
-              financialCategory: account.financialCategory,
-              sheetName: account.sheetName,
-            };
-
-            onUpdateMapping(account.id, mappingInfo);
-          }
+  // パラメータ変更ハンドラ
+  const handleParamChange = useCallback(
+    (changes) => {
+      if (!changes) return;
+      const newParamData = [...paramData];
+      changes.forEach(([r, prop, , newVal]) => {
+        if (newVal != null) {
+          newParamData[r] = { ...newParamData[r], [prop]: newVal };
         }
       });
-    }
-  };
+      setParamData(newParamData);
 
-  // 財務区分変更時の処理関数
-  const handleCategoryChange = (changes, source) => {
-    if (source === "edit" && changes) {
-      // 変更を適用
-      changes.forEach(([row, prop, oldValue, newValue]) => {
-        if (oldValue !== newValue) {
-          const updatedAggregatedAccounts = [...aggregatedAccounts];
-
-          // 財務区分のラベルが変更された場合、内部値も更新
-          if (prop === "financialCategoryLabel") {
-            const sheetName = updatedAggregatedAccounts[row].sheetName;
-            const categoryValue = getCategoryValueFromLabel(
-              sheetName,
-              newValue
-            );
-            updatedAggregatedAccounts[row].financialCategory = categoryValue;
-            updatedAggregatedAccounts[row].financialCategoryLabel = newValue;
-          } else {
-            updatedAggregatedAccounts[row][prop] = newValue;
-
-            // シート区分が変更された場合、財務区分をリセット
-            if (prop === "sheetName") {
-              updatedAggregatedAccounts[row].financialCategory = "";
-              updatedAggregatedAccounts[row].financialCategoryLabel = "";
-            }
-          }
-
-          setAggregatedAccounts(updatedAggregatedAccounts);
-
-          // 変更をmappingDataに反映
-          if (prop === "financialCategoryLabel" || prop === "sheetName") {
-            const accountName = updatedAggregatedAccounts[row].name;
-            const newCategory =
-              updatedAggregatedAccounts[row].financialCategory;
-            const newSheetName = updatedAggregatedAccounts[row].sheetName;
-
-            // 通常の科目の場合
-            if (!accountName.startsWith("AGG-")) {
-              // 元の科目の場合
-              const targetIndex = mappingData.findIndex(
-                (item) => item.id === updatedAggregatedAccounts[row].id
-              );
-
-              if (targetIndex !== -1) {
-                const newMappingData = [...mappingData];
-                newMappingData[targetIndex].financialCategory = newCategory;
-                newMappingData[targetIndex].sheetName = newSheetName;
-                setMappingData(newMappingData);
-
-                // 親コンポーネントに変更を通知（初期マッピング時のみ）
-                if (isInitialMapping) {
-                  const account = newMappingData[targetIndex];
-                  const mappingInfo = {
-                    useOriginal: account.useOriginal,
-                    aggregatedAccount: account.aggregatedAccount,
-                    financialCategory: account.financialCategory,
-                    sheetName: account.sheetName,
-                  };
-
-                  onUpdateMapping(account.id, mappingInfo);
-                }
-              }
-            } else {
-              // 集約科目の場合
-              // 関連するすべてのマッピングを更新
-              const updatedMappingData = mappingData.map((item) => {
-                if (
-                  !item.useOriginal &&
-                  item.aggregatedAccount === accountName.replace("AGG-", "")
-                ) {
-                  const updatedItem = {
-                    ...item,
-                    financialCategory: newCategory,
-                    sheetName: newSheetName,
-                  };
-
-                  // 親コンポーネントに変更を通知（初期マッピング時のみ）
-                  if (isInitialMapping) {
-                    const mappingInfo = {
-                      useOriginal: updatedItem.useOriginal,
-                      aggregatedAccount: updatedItem.aggregatedAccount,
-                      financialCategory: updatedItem.financialCategory,
-                      sheetName: updatedItem.sheetName,
-                    };
-
-                    onUpdateMapping(updatedItem.id, mappingInfo);
-                  }
-
-                  return updatedItem;
-                }
-                return item;
-              });
-              setMappingData(updatedMappingData);
-            }
-          }
-        }
-      });
-    }
-  };
-
-  // 次のステップへ進む
-  const handleNextStep = () => {
-    setCurrentStep(2);
-  };
-
-  // 前のステップに戻る
-  const handlePrevStep = () => {
-    setCurrentStep(1);
-  };
-
-  // 保存ボタンのハンドラ
-  const handleSave = () => {
-    // 全てのマッピング情報を保存（初期マッピング時は既に更新済み）
-    if (!isInitialMapping) {
-      mappingData.forEach((account) => {
-        const mappingInfo = {
-          useOriginal: account.useOriginal,
-          aggregatedAccount: account.aggregatedAccount,
-          financialCategory: account.financialCategory,
-          sheetName: account.sheetName,
+      // aggregatedAccountsを更新
+      const updatedAccounts = accounts.map((account, index) => {
+        const paramData = newParamData[index] || {};
+        return {
+          ...account,
+          parentAccount: paramData.parentAccount || account.parentAccount,
+          parameterType: paramData.parameterType || account.parameterType,
+          isParameterReference:
+            paramData.isParameterReference ?? account.isParameterReference,
+          relationType: paramData.relationType || account.relationType,
         };
-
-        onUpdateMapping(account.id, mappingInfo);
       });
-    }
+      setAccounts(updatedAccounts);
 
-    // 閉じる
-    onClose();
+      // 変更後のaggregatedAccountsをコンソールに表示
+      console.log("Updated aggregatedAccounts:", updatedAccounts);
+    },
+    [accounts, paramData]
+  );
+
+  // 確定ボタンハンドラ
+  const handleSave = () => {
+    if (step === 0) {
+      // モデル勘定科目設定完了：第一段階ではidとaccountNameのみを設定
+      // 同じモデル勘定科目を持つ項目を集約し、数値も合算する
+
+      // 集計用のマップを作成
+      const newAggregatedMap = {};
+
+      flattenedRows.forEach((row, idx) => {
+        // 各行のモデル勘定科目を取得（設定されていない場合は元の科目名を使用）
+        const key = mappingData[idx]?.modelAccount || row[0];
+        if (!key) return; // キーが空の場合はスキップ
+
+        // 先頭要素（科目名）を除いた数値部分を抜き出し、文字列や null を数値にキャスト、空値は 0 に変換
+        const values = row.slice(1).map((v) => Number(v) || 0);
+
+        if (!newAggregatedMap[key]) {
+          // 初めて出現した科目の場合
+          // DEFAULT_SHEET_TYPESから該当科目のマッピング情報を取得
+          const defaultMapping = DEFAULT_SHEET_TYPES[key] || {
+            sheetType: "",
+            parentAccount: "",
+            parameterType: "NONE",
+            relationType: "NONE",
+          };
+
+          newAggregatedMap[key] = {
+            id: `account-${Object.keys(newAggregatedMap).length}`,
+            accountName: key,
+            // DEFAULT_SHEET_TYPESの情報を反映
+            sheetType: defaultMapping.sheetType || "",
+            parentAccount: defaultMapping.parentAccount || "",
+            parameterType: defaultMapping.parameterType || "",
+            isParameterReference: false,
+            relationType: defaultMapping.relationType || "",
+            values: [...values],
+          };
+        } else {
+          // 既に同じ科目が存在する場合、値を合算
+          newAggregatedMap[key].values = newAggregatedMap[key].values.map(
+            (sum, i) => sum + (values[i] || 0)
+          );
+        }
+      });
+
+      // aggregatedMapを状態として保存
+      setAggregatedMap(newAggregatedMap);
+
+      console.log("aggregatedMap:", newAggregatedMap);
+
+      // 集計結果を配列に変換
+      const aggregatedAccounts = Object.values(newAggregatedMap).map(
+        ({ values, ...rest }) => rest
+      );
+
+      // 集計結果を表示用に変換
+      const aggregatedValue = aggregatedAccounts.map((item) => [
+        item.accountName,
+        ...(newAggregatedMap[item.accountName]?.values || []),
+      ]);
+
+      setAccounts(aggregatedAccounts);
+
+      setStep(1);
+    } else if (step === 1) {
+      // パラメータ設定完了：集計確認へ
+      // 1. 最新のaccountsをベースにfinalAccountsを生成
+
+      // 2. parentAccountが""のaccountを除外し、残りのcalculationTypeをnullに設定
+      const filteredAccounts = accounts
+        .filter((account) => account.parentAccount !== "")
+        .map((account) => ({
+          ...account,
+          calculationType: null,
+        }));
+
+      // 親科目ごとのプレフィックスマップを作成
+      const prefixMap = {};
+      Object.entries(SUMMARY_ACCOUNTS).forEach(([key, account]) => {
+        // prefixプロパティを使用
+        prefixMap[account.accountName] = account.prefix;
+      });
+
+      // 親科目ごとのカウンタを初期化
+      const counterMap = {};
+
+      // 親科目別に子アカウントにプレフィックス + カウンタのorderを設定
+      const accountsWithOrder = filteredAccounts.map((account) => {
+        const parentAccount = account.parentAccount;
+        if (!parentAccount) return account; // 親科目がない場合はそのまま
+
+        // 親科目のプレフィックスを取得
+        const prefix = prefixMap[parentAccount];
+        if (!prefix) return account; // プレフィックスがない場合はそのまま
+
+        // 親科目ごとのカウンタを更新
+        counterMap[parentAccount] = (counterMap[parentAccount] || 0) + 1;
+
+        // orderを設定: プレフィックス + カウンタ (例: A1, A2, ...)
+        return {
+          ...account,
+          order: `${prefix}${counterMap[parentAccount]}`,
+        };
+      });
+
+      // 3. SUMMARY_ACCOUNTSを追加し、orderでソート
+      const finalAccounts = [...accountsWithOrder];
+      Object.values(SUMMARY_ACCOUNTS).forEach((summaryAccount) => {
+        finalAccounts.push({
+          ...summaryAccount,
+          order: summaryAccount.order,
+        });
+      });
+
+      // orderでソート
+      finalAccounts.sort((a, b) => {
+        if (!a.order) return 1;
+        if (!b.order) return -1;
+        if (a.order < b.order) return -1;
+        if (a.order > b.order) return 1;
+        return 0;
+      });
+
+      // periodの作成 (state更新用にnewPeriodsを使用)
+      const newPeriods = [];
+      if (flattenedData?.headerRow && flattenedData.headerRow.length > 0) {
+        flattenedData.headerRow.forEach((year, index) => {
+          const currentYear = new Date().getFullYear();
+          const isActual = Number(year) <= currentYear;
+          newPeriods.push({
+            id: `p-${year}`,
+            year,
+            isActual,
+            isFromExcel: true,
+            order: index + 1,
+          });
+        });
+      }
+      // periods state に保存
+      setPeriods(newPeriods);
+      console.log("Periods:", newPeriods);
+      // 状態を更新
+      setAccounts(finalAccounts);
+
+      // 勘定科目と年度に紐づくvaluesを作成
+      const accountValues = [];
+
+      // 通常アカウントのvalueを追加（保存されているaggregatedMapを使用）
+      Object.entries(aggregatedMap).forEach(([accountName, account]) => {
+        // 列ごとの値を処理
+        account.values.forEach((value, index) => {
+          if (index >= newPeriods.length) return; // 期間数を超える場合はスキップ
+
+          accountValues.push({
+            accountId: account.id,
+            periodId: newPeriods[index].id,
+            value: value,
+            isCalculated: false,
+          });
+        });
+      });
+
+      // SUMMARY_ACCOUNTSのvalueを作成
+      // 親子関係のマップを作成
+      const parentChildMap = {};
+      finalAccounts.forEach((account) => {
+        if (account.parentAccount) {
+          parentChildMap[account.parentAccount] =
+            parentChildMap[account.parentAccount] || [];
+          parentChildMap[account.parentAccount].push(account.id);
+        }
+      });
+
+      // SUMMARY_ACCOUNTSの各科目について計算
+      Object.values(SUMMARY_ACCOUNTS).forEach((summaryAccount) => {
+        // 各期間についてSUMMARY_ACCOUNTの値を計算
+        newPeriods.forEach((period, periodIndex) => {
+          let sumValue = 0;
+          const childAccounts =
+            parentChildMap[summaryAccount.accountName] || [];
+
+          // 子アカウントの値を合計
+          childAccounts.forEach((childId) => {
+            const childValue = accountValues.find(
+              (v) => v.accountId === childId && v.periodId === period.id
+            );
+            if (childValue) {
+              sumValue += childValue.value;
+            }
+          });
+
+          // SUMMARY_ACCOUNTの値を追加
+          accountValues.push({
+            accountId: summaryAccount.id,
+            periodId: period.id,
+            value: sumValue,
+            isCalculated: true,
+          });
+        });
+      });
+
+      console.log("Final accounts:", finalAccounts);
+      console.log("Periods:", newPeriods);
+      console.log("Account Values:", accountValues);
+
+      // 集計結果を表示用に変換（整数部分のみ表示）
+      const aggregatedValueForDisplay = finalAccounts.map((account) => {
+        const valuesRow = newPeriods.map((p) => {
+          const v = accountValues.find(
+            (av) => av.accountId === account.id && av.periodId === p.id
+          );
+          const raw = v ? v.value : 0;
+          return Math.trunc(raw);
+        });
+        return [account.accountName, ...valuesRow];
+      });
+
+      setAggregatedValue(aggregatedValueForDisplay);
+      setShowDevelopmentMessage(false);
+      setStep(2);
+    } else {
+      // 完了ボタンが押された時は開発中の画面を表示
+      setShowDevelopmentMessage(true);
+    }
   };
+
+  // 集計結果表示用の列定義を periods state で生成
+  const resultColumns = useMemo(() => {
+    if (periods.length === 0) return [];
+
+    // 最初の列は科目名として設定し、残りを期間(year)として設定
+    return [
+      { data: 0, title: "勘定科目", readOnly: true, width: 200 },
+      ...periods.map((p, idx) => ({
+        data: idx + 1,
+        title: p.year.toString(),
+        readOnly: true,
+        width: 100,
+        type: "numeric",
+        numericFormat: { pattern: "0,0", culture: "ja-JP" },
+      })),
+    ];
+  }, [periods]);
 
   return (
     <div className="account-mapping-settings">
-      <h2>勘定科目マッピング設定</h2>
-
-      {currentStep === 1 ? (
+      <h2>
+        {step === 0
+          ? "勘定科目マッピング設定"
+          : step === 1
+          ? "パラメータ・関連設定"
+          : showDevelopmentMessage
+          ? "開発情報"
+          : "集計結果確認"}
+      </h2>
+      {step === 0 ? (
         <>
           <div
-            className="step-indicator"
-            style={{
-              display: "flex",
-              marginBottom: "20px",
-              marginTop: "20px",
-              borderBottom: "2px solid #eee",
-              paddingBottom: "10px",
-            }}
-          >
-            <span
-              className="step active"
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#1890ff",
-                color: "white",
-                borderRadius: "5px",
-                marginRight: "20px",
-                fontWeight: "bold",
-              }}
-            >
-              ステップ1: 勘定科目マッピング
-            </span>
-            <span
-              className="step"
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#f0f0f0",
-                borderRadius: "5px",
-                color: "#666",
-              }}
-            >
-              ステップ2: 財務区分設定
-            </span>
-          </div>
-
-          <p
-            className="step-description"
-            style={{
-              fontSize: "16px",
-              marginBottom: "20px",
-              backgroundColor: "#f9f9f9",
-              padding: "15px",
-              borderRadius: "5px",
-              borderLeft: "4px solid #1890ff",
-            }}
-          >
-            個々の勘定科目について、そのまま使用するか集約科目にマッピングするかを選択してください。
-          </p>
-
-          <div
             className="mapping-table-container"
-            style={{ height: "450px", width: "100%" }}
+            style={{ height: "70vh", width: "100%", overflow: "auto" }}
           >
             <HotTable
+              ref={hotTableRef}
               data={mappingData}
-              columns={mappingColumns}
-              rowHeaders={true}
-              colHeaders={true}
-              height="100%"
+              columns={columns}
+              rowHeaders
+              colHeaders
               width="100%"
-              licenseKey="non-commercial-and-evaluation"
-              afterChange={handleMappingChange}
+              height="100%"
+              manualColumnResize
+              autoColumnSize
               stretchH="all"
-              contextMenu={false}
+              licenseKey="non-commercial-and-evaluation"
+              afterChange={(changes, source) => {
+                if (source === "edit") handleChange(changes);
+              }}
             />
           </div>
-
-          <div className="mapping-buttons" style={{ marginTop: "20px" }}>
-            <button
-              onClick={handleNextStep}
-              className="btn-primary"
-              style={{
-                backgroundColor: "#1890ff",
-                color: "white",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "16px",
+        </>
+      ) : step === 1 ? (
+        <div className="dual-table-container">
+          {/* パラメータ設定テーブル */}
+          <div
+            className="mapping-table-container"
+            style={{
+              height: "70vh",
+              width: "100%",
+              overflow: "auto",
+              marginBottom: 15,
+            }}
+          >
+            <h3>パラメータ設定</h3>
+            <HotTable
+              ref={hotTableRef}
+              data={accounts}
+              columns={paramColumns}
+              rowHeaders={true}
+              colHeaders={true}
+              width="100%"
+              height="100%"
+              manualColumnResize
+              autoColumnSize
+              stretchH="all"
+              licenseKey="non-commercial-and-evaluation"
+              afterChange={(changes, source) => {
+                if (source === "edit") handleParamChange(changes);
               }}
-            >
-              次へ
-            </button>
-            <button
-              onClick={onClose}
-              className="btn-secondary"
-              style={{
-                marginLeft: "10px",
-                backgroundColor: "#f0f0f0",
-                border: "1px solid #d9d9d9",
-                padding: "10px 20px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "16px",
-              }}
-            >
-              キャンセル
-            </button>
+            />
+          </div>
+        </div>
+      ) : showDevelopmentMessage ? (
+        <>
+          <div
+            className="mapping-table-container"
+            style={{
+              height: "70vh",
+              width: "100%",
+              overflow: "auto",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <h3>開発中です</h3>
           </div>
         </>
       ) : (
         <>
           <div
-            className="step-indicator"
-            style={{
-              display: "flex",
-              marginBottom: "20px",
-              marginTop: "20px",
-              borderBottom: "2px solid #eee",
-              paddingBottom: "10px",
-            }}
-          >
-            <span
-              className="step"
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#f0f0f0",
-                borderRadius: "5px",
-                marginRight: "20px",
-                color: "#666",
-              }}
-            >
-              ステップ1: 勘定科目マッピング
-            </span>
-            <span
-              className="step active"
-              style={{
-                padding: "10px 20px",
-                backgroundColor: "#1890ff",
-                color: "white",
-                borderRadius: "5px",
-                fontWeight: "bold",
-              }}
-            >
-              ステップ2: 財務区分設定
-            </span>
-          </div>
-
-          <p
-            className="step-description"
-            style={{
-              fontSize: "16px",
-              marginBottom: "20px",
-              backgroundColor: "#f9f9f9",
-              padding: "15px",
-              borderRadius: "5px",
-              borderLeft: "4px solid #1890ff",
-            }}
-          >
-            各勘定科目が財務諸表のどの項目に該当するかを指定してください。
-          </p>
-
-          <div
             className="mapping-table-container"
-            style={{ height: "450px", width: "100%" }}
+            style={{ height: "70vh", width: "100%", overflow: "auto" }}
           >
+            <h3>集計結果</h3>
             <HotTable
-              data={aggregatedAccounts}
-              columns={categoryColumns}
+              ref={hotTableRef}
+              data={aggregatedValue}
+              columns={resultColumns}
               rowHeaders={true}
               colHeaders={true}
-              height="100%"
               width="100%"
-              licenseKey="non-commercial-and-evaluation"
-              afterChange={handleCategoryChange}
+              height="100%"
+              manualColumnResize
+              autoColumnSize
               stretchH="all"
-              contextMenu={false}
+              licenseKey="non-commercial-and-evaluation"
+              readOnly={true}
             />
-          </div>
-
-          <div className="mapping-buttons" style={{ marginTop: "20px" }}>
-            <button
-              onClick={handlePrevStep}
-              className="btn-secondary"
-              style={{
-                backgroundColor: "#f0f0f0",
-                border: "1px solid #d9d9d9",
-                padding: "10px 20px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "16px",
-              }}
-            >
-              戻る
-            </button>
-            <button
-              onClick={handleSave}
-              className="btn-primary"
-              style={{
-                marginLeft: "10px",
-                backgroundColor: "#1890ff",
-                color: "white",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "16px",
-              }}
-            >
-              {isInitialMapping ? "財務諸表を生成" : "保存"}
-            </button>
           </div>
         </>
       )}
+      <div className="mapping-buttons" style={{ marginTop: 20 }}>
+        <button
+          onClick={handleSave}
+          className="btn-primary"
+          style={{ marginRight: 10 }}
+        >
+          {step === 2 && !showDevelopmentMessage
+            ? "完了"
+            : step === 2 && showDevelopmentMessage
+            ? "閉じる"
+            : "次へ"}
+        </button>
+        <button
+          onClick={() => {
+            if (step === 0) onClose();
+            else if (showDevelopmentMessage) {
+              setShowDevelopmentMessage(false);
+            } else setStep(step - 1);
+          }}
+          className="btn-secondary"
+        >
+          {step === 0 ? "キャンセル" : "戻る"}
+        </button>
+      </div>
     </div>
   );
 };

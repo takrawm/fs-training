@@ -21,82 +21,18 @@ import {
 // import { fileURLToPath } from "url";
 
 /**
- * ExcelファイルからRawDataを抽出する
- * @param {ArrayBuffer} fileData - Excelファイルのデータ
- * @returns {Object} - シートごとのRawData
+ * useExcelImport から取得した excelData を rawData 形式に変換する
+ * @param {Object} excelData - useExcelImport から返された Excel データ
+ * @returns {Object} - モデル構築用の rawData
  */
-export function extractRawDataFromExcel(fileData) {
-  const workbook = XLSX.read(fileData, { type: "array" });
+export function convertExcelDataToRawData(excelData) {
+  console.log("Excel データを rawData 形式に変換開始");
 
-  // 必要なシート名の配列
-  const requiredSheets = ["PL", "BS", "CAPEX", "CS"];
-
-  // 各シートのデータを格納するオブジェクト
-  const sheetDataMap = {};
-
-  // 各シートのデータを読み込む
-  requiredSheets.forEach((sheetName) => {
-    if (workbook.SheetNames.includes(sheetName)) {
-      const sheet = workbook.Sheets[sheetName];
-
-      // sheet["!ref"]は、シートの有効範囲を示す文字列（例："A1:G100"）
-      if (sheet["!ref"]) {
-        const range = XLSX.utils.decode_range(sheet["!ref"]);
-
-        // 最終行から逆方向に空でない行を探す
-        let lastRow = range.e.r;
-        let foundNonEmpty = false;
-
-        while (lastRow >= 0 && !foundNonEmpty) {
-          for (let col = range.s.c; col <= range.e.c; col++) {
-            const cellAddress = XLSX.utils.encode_cell({ r: lastRow, c: col });
-            if (
-              sheet[cellAddress] &&
-              sheet[cellAddress].v !== undefined &&
-              sheet[cellAddress].v !== null &&
-              sheet[cellAddress].v !== ""
-            ) {
-              foundNonEmpty = true;
-              break;
-            }
-          }
-
-          if (!foundNonEmpty) {
-            lastRow--;
-          }
-        }
-
-        if (lastRow >= 0) {
-          range.e.r = lastRow;
-          sheet["!ref"] = XLSX.utils.encode_range(range);
-        }
-      }
-
-      // 空行をスキップし、空セルをnullに設定
-      const jsonData = XLSX.utils.sheet_to_json(sheet, {
-        header: 1,
-        defval: null,
-        blankrows: false,
-      });
-
-      if (jsonData && jsonData.length >= 2) {
-        sheetDataMap[sheetName] = jsonData;
-      }
-    }
-  });
-
-  // 少なくとも1つのシートが存在することを確認
-  if (Object.keys(sheetDataMap).length === 0) {
-    throw new Error("有効なデータが見つかりません");
-  }
-
-  console.log("Raw sheetDataMap: ", sheetDataMap);
-
-  // 参照用にPLシートのデータを取得（期間情報などを取得するため）
-  const plSheetData = sheetDataMap["PL"] || Object.values(sheetDataMap)[0];
-
-  // ヘッダー行（年度）の取得
+  // PLシートまたは最初のシートからヘッダー行（年度）を取得
+  const plSheetData = excelData["PL"] || Object.values(excelData)[0];
   const headerRow = plSheetData[0];
+
+  // 年度情報を抽出
   const years = headerRow.slice(2).map((year) => {
     return typeof year === "number" ? year : parseInt(year, 10);
   });
@@ -113,7 +49,7 @@ export function extractRawDataFromExcel(fileData) {
   };
 
   // 各シートのデータを処理
-  Object.entries(sheetDataMap).forEach(([sheetName, jsonData]) => {
+  Object.entries(excelData).forEach(([sheetName, jsonData]) => {
     const headerRow = jsonData[0];
     const dataRows = jsonData.slice(1);
 
@@ -148,6 +84,7 @@ export function extractRawDataFromExcel(fileData) {
     });
   });
 
+  console.log("RawData 変換完了");
   return rawData;
 }
 
@@ -363,25 +300,54 @@ export function buildModelFromRawData(rawData, accountMappings) {
 }
 
 /**
- * 既存の関数は残しておく（後方互換性のため）
- * @param {ArrayBuffer} fileData
- * @returns {import('../types/models.js').FinancialModel}
+ * useExcelImport からのデータを使用して財務モデルを構築する
+ * @param {Object} excelData - useExcelImport.js から取得した Excel データまたは既存の rawData
+ * @param {Object} mappings - アカウントマッピング情報
+ * @returns {Object} 財務モデル
  */
-export function buildModelFromExcel(fileData) {
-  const rawData = extractRawDataFromExcel(fileData);
+export function buildModelFromExcel(excelData, mappings) {
+  console.log("buildModelFromExcel処理開始");
+  let rawData;
 
-  // 全てのアカウントにデフォルトのマッピングを設定
-  const defaultMappings = {};
-  Object.entries(rawData.sheets).forEach(([sheetName, accounts]) => {
-    accounts.forEach((account) => {
-      defaultMappings[account.id] = {
-        useOriginal: true,
-        aggregatedAccount: "",
-        financialCategory: "",
-        sheetName: sheetName,
-      };
+  // useExcelImport からの excelData か確認
+  if (
+    excelData &&
+    typeof excelData === "object" &&
+    (excelData["PL"] || excelData["BS"]) &&
+    !excelData.hasOwnProperty("sheets")
+  ) {
+    console.log("useExcelImport からのデータを変換します");
+    rawData = convertExcelDataToRawData(excelData);
+  } else {
+    // すでに rawData 形式の場合はそのまま使用
+    console.log("提供されたデータは rawData 形式として処理します");
+    rawData = excelData;
+  }
+
+  // rawData が適切な形式かチェック
+  if (!rawData || !rawData.sheets || !rawData.periods) {
+    console.error(
+      "無効なデータ形式です。useExcelImport からの excelData または正しい rawData 形式のデータが必要です。"
+    );
+    throw new Error("無効なデータ形式です");
+  }
+
+  // マッピング情報がない場合はデフォルト設定
+  if (!mappings) {
+    const defaultMappings = {};
+    Object.entries(rawData.sheets).forEach(([sheetName, accounts]) => {
+      accounts.forEach((account) => {
+        defaultMappings[account.id] = {
+          useOriginal: true,
+          aggregatedAccount: "",
+          financialCategory: "",
+          sheetName: sheetName,
+        };
+      });
     });
-  });
 
-  return buildModelFromRawData(rawData, defaultMappings);
+    return buildModelFromRawData(rawData, defaultMappings);
+  }
+
+  return buildModelFromRawData(rawData, mappings);
 }

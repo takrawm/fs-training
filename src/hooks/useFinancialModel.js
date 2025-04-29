@@ -115,9 +115,6 @@ export function prepareModelForUI(model) {
     displayValue: Math.round(value.value), // 表示用に丸めた値
   }));
 
-  console.log("preparedAccounts:", preparedAccounts);
-  console.log("preparedValues:", preparedValues);
-
   return {
     ...model,
     preparedAccounts,

@@ -1,21 +1,12 @@
 import React, { useState, useEffect } from "react";
-import {
-  Container,
-  Row,
-  Col,
-  Tabs,
-  Tab,
-  Button,
-  Spinner,
-} from "react-bootstrap";
 import DataTable from "./DataTable";
 import AccountMappingSettings from "./AccountMappingSettings";
 import ParamSettings from "./ParamSettings";
 import ChartSettings from "./ChartSettings";
 import FinancialSummary from "./FinancialSummary";
-import ButtonGroup from "react-bootstrap/ButtonGroup";
 import { useFinancialModel } from "../hooks/useFinancialModel";
 import { useExcelImport } from "../hooks/useExcelImport";
+import "../styles/FinancialModelEditor.css";
 
 /**
  * 財務モデルエディターコンポーネント
@@ -52,39 +43,28 @@ const FinancialModelEditor = ({ excelFilePath }) => {
     prepareModelForUI,
   } = useFinancialModel();
 
+  // Excelデータの読み込みと処理を管理するフック
+  // ファイルの取得と変換はuseExcelImportが担当し、データの解析と処理はdataTransform.jsが担当
   const {
-    rawData,
-    loading: isExcelLoading,
+    rawData, // excelData（シートごとの2次元配列）
+    flattenedData, // フラット化済みデータ（{ headerRow, dataRows }）
+    loading: isExcelLoading, // loadingをisExcelLoadingとして使用
     error: excelError,
-    extractRawData,
-    buildModelFromRawData,
+    extractRawData, // ファイル読み込みとRawData抽出
+    buildModelFromRawData, // RawDataとマッピングからモデル構築
   } = useExcelImport();
 
   // コンポーネントマウント時にExcelデータを読み込む
   useEffect(() => {
     const loadExcelData = async () => {
-      if (!excelFilePath) {
-        console.error("Excelファイルパスが指定されていません");
-        setProcessStep("error");
-        return;
-      }
-
-      console.log("Excelファイル読み込み開始:", excelFilePath);
-
       try {
+        console.log("Excel読み込み処理を開始します:", excelFilePath);
         // ExcelからRawDataを抽出
         const extractedData = await extractRawData(excelFilePath);
-        console.log("抽出されたRawData:", extractedData);
-
-        if (extractedData) {
-          setProcessStep("mapping");
-        } else {
-          console.error("RawDataが正しく抽出されませんでした");
-          setProcessStep("error");
-        }
+        setProcessStep("mapping");
       } catch (error) {
-        console.error("Excelロードエラー（詳細）:", error);
-        setErrorMessage(error.message || "Excelデータの読み込みに失敗しました");
+        console.error("Excel読み込みエラー:", error);
+        setErrorMessage(error.message);
         setProcessStep("error");
       }
     };
@@ -93,30 +73,28 @@ const FinancialModelEditor = ({ excelFilePath }) => {
   }, [excelFilePath, extractRawData]);
 
   // マッピング情報を更新
-  const updateMapping = (accountId, mappingInfo) => {
+  const updateMapping = (sheetType, sheetAccounts) => {
+    console.log(`シート「${sheetType}」のマッピング情報を更新:`, sheetAccounts);
     setAccountMappings((prevMappings) => ({
       ...prevMappings,
-      [accountId]: mappingInfo,
+      [sheetType]: sheetAccounts,
     }));
   };
 
   // マッピング完了時の処理
   const finishMapping = async () => {
     setProcessStep("building");
+    console.log("マッピング完了 - 財務モデルの構築を開始します");
+    console.log("アカウントマッピング:", accountMappings);
 
     try {
-      // RawDataとマッピング情報からモデルを構築
+      // マッピング情報とExcelデータからモデルを構築
       const builtModel = await buildModelFromRawData(rawData, accountMappings);
-
-      if (builtModel) {
-        // モデルを更新
-        updateModel(builtModel);
-        setProcessStep("model");
-      } else {
-        setProcessStep("error");
-      }
+      updateModel(builtModel);
+      setProcessStep("model");
     } catch (error) {
       console.error("モデル構築エラー:", error);
+      setErrorMessage(error.message);
       setProcessStep("error");
     }
   };
@@ -159,136 +137,208 @@ const FinancialModelEditor = ({ excelFilePath }) => {
 
   // 処理ステップに応じたコンテンツをレンダリング
   const renderContent = () => {
-    if (processStep === "loading" || isExcelLoading) {
+    // ローディング中はローディング表示を優先
+    if (isExcelLoading) {
       return (
-        <div className="text-center p-5">
-          <Spinner animation="border" role="status">
+        <div className="loading-container">
+          <div className="spinner" role="status">
             <span className="visually-hidden">Loading...</span>
-          </Spinner>
-          <p className="mt-3">Excelデータを読み込んでいます...</p>
-        </div>
-      );
-    }
-
-    if (processStep === "error") {
-      return (
-        <div className="alert alert-danger m-5" role="alert">
-          <h4 className="alert-heading">エラーが発生しました</h4>
-          <p>
-            {errorMessage ||
-              excelError ||
-              "Excelデータの読み込みまたは処理中にエラーが発生しました。"}
-          </p>
-        </div>
-      );
-    }
-
-    if (processStep === "mapping") {
-      return (
-        <AccountMappingSettings
-          rawData={rawData}
-          onUpdateMapping={updateMapping}
-          onClose={finishMapping}
-          isInitialMapping={true}
-        />
-      );
-    }
-
-    if (processStep === "building") {
-      return (
-        <div className="text-center p-5">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Building model...</span>
-          </Spinner>
-          <p className="mt-3">財務モデルを構築しています...</p>
-        </div>
-      );
-    }
-
-    // モデルのレンダリング（タブ形式）
-    if (processStep === "model" && model) {
-      return (
-        <>
-          <Tabs
-            activeKey={activeTab}
-            onSelect={handleTabChange}
-            className="mb-3"
-            fill
-          >
-            <Tab eventKey="data" title="データ">
-              {model && (
-                <DataTable
-                  model={prepareModelForUI(model)}
-                  isParamGroupCollapsed={isParamGroupCollapsed}
-                  onCollapseParamGroup={handleCollapseParamGroup}
-                />
-              )}
-            </Tab>
-            <Tab eventKey="params" title="パラメータ設定">
-              {model && (
-                <ParamSettings
-                  paramGroups={model.paramGroups}
-                  activeParam={activeParam}
-                  setActiveParam={setActiveParam}
-                  onParamChange={handleParamChange}
-                />
-              )}
-            </Tab>
-            <Tab eventKey="charts" title="チャート設定">
-              {model && <ChartSettings model={model} />}
-            </Tab>
-            <Tab eventKey="summary" title="財務サマリー">
-              {model && <FinancialSummary model={model} />}
-            </Tab>
-          </Tabs>
-
-          <div className="mt-3">
-            <ButtonGroup className="mr-2">
-              <Button
-                variant={
-                  displayMode === "table" ? "primary" : "outline-primary"
-                }
-                onClick={() => setDisplayMode("table")}
-              >
-                テーブル表示
-              </Button>
-              <Button
-                variant={
-                  displayMode === "chart" ? "primary" : "outline-primary"
-                }
-                onClick={() => setDisplayMode("chart")}
-              >
-                チャート表示
-              </Button>
-            </ButtonGroup>
-
-            <Button
-              variant="outline-secondary"
-              className="ml-3"
-              onClick={() => {
-                setAccountMappings({});
-                setProcessStep("mapping");
-              }}
-            >
-              マッピング再設定
-            </Button>
           </div>
-        </>
+          <p className="loading-text">Excelデータを読み込んでいます...</p>
+        </div>
       );
     }
 
-    return null;
+    // processStepに基づいてコンテンツを切り替え
+    switch (processStep) {
+      case "loading":
+        return (
+          <div className="loading-container">
+            <div className="spinner" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="loading-text">Excelデータを読み込んでいます...</p>
+          </div>
+        );
+
+      case "error":
+        return (
+          <div className="error-container">
+            <h4 className="error-heading">エラーが発生しました</h4>
+            <p>
+              {errorMessage ||
+                excelError ||
+                "Excelデータの読み込みまたは処理中にエラーが発生しました。"}
+            </p>
+          </div>
+        );
+
+      case "mapping":
+        console.log("マッピングステップのフラットデータ:", flattenedData);
+        return (
+          <AccountMappingSettings
+            model={null}
+            flattenedData={flattenedData}
+            onUpdateMapping={updateMapping}
+            onClose={finishMapping}
+            isInitialMapping={true}
+          />
+        );
+
+      case "building":
+        return (
+          <div className="loading-container">
+            <div className="spinner" role="status">
+              <span className="visually-hidden">Building model...</span>
+            </div>
+            <p className="loading-text">財務モデルを構築しています...</p>
+          </div>
+        );
+
+      case "model":
+        if (!model) {
+          return null;
+        }
+        return (
+          <>
+            <div className="tabs-container">
+              <ul className="tabs-nav">
+                <li className="tab-item">
+                  <button
+                    className={`tab-link ${
+                      activeTab === "data" ? "active" : ""
+                    }`}
+                    onClick={() => handleTabChange("data")}
+                  >
+                    データ
+                  </button>
+                </li>
+                <li className="tab-item">
+                  <button
+                    className={`tab-link ${
+                      activeTab === "params" ? "active" : ""
+                    }`}
+                    onClick={() => handleTabChange("params")}
+                  >
+                    パラメータ設定
+                  </button>
+                </li>
+                <li className="tab-item">
+                  <button
+                    className={`tab-link ${
+                      activeTab === "charts" ? "active" : ""
+                    }`}
+                    onClick={() => handleTabChange("charts")}
+                  >
+                    チャート設定
+                  </button>
+                </li>
+                <li className="tab-item">
+                  <button
+                    className={`tab-link ${
+                      activeTab === "summary" ? "active" : ""
+                    }`}
+                    onClick={() => handleTabChange("summary")}
+                  >
+                    財務サマリー
+                  </button>
+                </li>
+              </ul>
+
+              <div className="tab-content">
+                <div
+                  className={`tab-pane ${activeTab === "data" ? "active" : ""}`}
+                >
+                  {activeTab === "data" && (
+                    <DataTable
+                      model={prepareModelForUI(model)}
+                      isParamGroupCollapsed={isParamGroupCollapsed}
+                      onCollapseParamGroup={handleCollapseParamGroup}
+                    />
+                  )}
+                </div>
+                <div
+                  className={`tab-pane ${
+                    activeTab === "params" ? "active" : ""
+                  }`}
+                >
+                  {activeTab === "params" && (
+                    <ParamSettings
+                      paramGroups={model.paramGroups}
+                      activeParam={activeParam}
+                      setActiveParam={setActiveParam}
+                      onParamChange={handleParamChange}
+                    />
+                  )}
+                </div>
+                <div
+                  className={`tab-pane ${
+                    activeTab === "charts" ? "active" : ""
+                  }`}
+                >
+                  {activeTab === "charts" && <ChartSettings model={model} />}
+                </div>
+                <div
+                  className={`tab-pane ${
+                    activeTab === "summary" ? "active" : ""
+                  }`}
+                >
+                  {activeTab === "summary" && (
+                    <FinancialSummary model={model} />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="button-toolbar">
+              <div className="button-group">
+                <button
+                  className={`btn ${
+                    displayMode === "table"
+                      ? "btn-primary"
+                      : "btn-outline-primary"
+                  }`}
+                  onClick={() => setDisplayMode("table")}
+                >
+                  テーブル表示
+                </button>
+                <button
+                  className={`btn ${
+                    displayMode === "chart"
+                      ? "btn-primary"
+                      : "btn-outline-primary"
+                  }`}
+                  onClick={() => setDisplayMode("chart")}
+                >
+                  チャート表示
+                </button>
+              </div>
+
+              <button
+                className="btn btn-outline-secondary ml-3"
+                onClick={() => {
+                  setAccountMappings({});
+                  setProcessStep("mapping");
+                }}
+              >
+                マッピング再設定
+              </button>
+            </div>
+          </>
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
-    <Container fluid className="financial-model-editor">
-      <Row>
-        <Col>
-          <h1 className="mb-4">財務モデルエディター</h1>
-          {renderContent()}
-        </Col>
-      </Row>
-    </Container>
+    <div className="financial-model-editor full-width-container">
+      <div className="editor-header">
+        <h1>財務モデルエディター</h1>
+      </div>
+      <div className="editor-content">{renderContent()}</div>
+    </div>
   );
 };
 
