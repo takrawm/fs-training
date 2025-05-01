@@ -39,7 +39,21 @@ const PARENT_ACCOUNTS = [
 // パラメータタイプの選択肢
 const PARAMETER_TYPES = ["NONE", "GROWTH_RATE", "PERCENTAGE", "PROPORTIONATE"];
 // パラメータタイプの選択肢
-const RELATION_TYPES = ["NONE", "PP&E", "RETAINED_EARNINGS"];
+
+// リレーションタイプの定義
+const RELATIONS = {
+  NONE: null,
+  PPE: {
+    asset: "fixedAsset",
+    investment: "investment",
+    depreciation: "depreciation",
+  },
+  RETAINED_EARNINGS: {
+    asset: "retained",
+    profit: "profit_loss",
+    dividend: "dividend",
+  },
+};
 
 const AccountMappingSettings = ({
   model,
@@ -160,10 +174,36 @@ const AccountMappingSettings = ({
         width: 150,
       },
       {
-        data: "relationType",
-        title: "リレーション",
+        data: "relation.type",
+        title: "リレーションタイプ",
         type: "dropdown",
-        source: RELATION_TYPES,
+        source: Object.keys(RELATIONS),
+        width: 150,
+      },
+      {
+        data: "relation.subType",
+        title: "リレーション詳細",
+        type: "dropdown",
+        source: function (query, process) {
+          const row = this.row;
+          const relationType = this.instance.getDataAtRowProp(
+            row,
+            "relation.type"
+          );
+
+          if (!relationType || relationType === "NONE") {
+            process([]);
+            return;
+          }
+
+          // 選択された関連タイプに基づいてサブタイプのリストを生成
+          const relation = RELATIONS[relationType];
+          if (relation && typeof relation === "object") {
+            process(Object.keys(relation));
+          } else {
+            process([]);
+          }
+        },
         width: 150,
       },
     ],
@@ -191,6 +231,26 @@ const AccountMappingSettings = ({
       changes.forEach(([r, prop, , newVal]) => {
         if (newVal != null) {
           newParamData[r] = { ...newParamData[r], [prop]: newVal };
+
+          // relation.typeまたはrelation.subTypeが変更された場合、relation全体を更新
+          if (prop === "relation.type" || prop === "relation.subType") {
+            const currentData = newParamData[r];
+            // relationがまだない場合は初期化
+            if (!currentData.relation) {
+              currentData.relation = { type: "NONE", subType: null };
+            }
+
+            // 値を設定
+            if (prop === "relation.type") {
+              currentData.relation.type = newVal || "NONE";
+              // typeがNONEの場合はsubTypeをnullにリセット
+              if (newVal === "NONE" || !newVal) {
+                currentData.relation.subType = null;
+              }
+            } else if (prop === "relation.subType") {
+              currentData.relation.subType = newVal;
+            }
+          }
         }
       });
       setParamData(newParamData);
@@ -204,7 +264,7 @@ const AccountMappingSettings = ({
           parameterType: paramData.parameterType || account.parameterType,
           isParameterReference:
             paramData.isParameterReference ?? account.isParameterReference,
-          relationType: paramData.relationType || account.relationType,
+          relation: paramData.relation || account.relation,
         };
       });
       setAccounts(updatedAccounts);
@@ -239,7 +299,7 @@ const AccountMappingSettings = ({
             sheetType: "",
             parentAccount: "",
             parameterType: "NONE",
-            relationType: "NONE",
+            relation: { type: "NONE", subType: null },
           };
 
           newAggregatedMap[key] = {
@@ -250,7 +310,10 @@ const AccountMappingSettings = ({
             parentAccount: defaultMapping.parentAccount || "",
             parameterType: defaultMapping.parameterType || "",
             isParameterReference: false,
-            relationType: defaultMapping.relationType || "",
+            relation: {
+              type: defaultMapping.relation.type,
+              subType: defaultMapping.relation.subType,
+            },
             values: [...values],
           };
         } else {
@@ -268,7 +331,19 @@ const AccountMappingSettings = ({
 
       // 集計結果を配列に変換
       const aggregatedAccounts = Object.values(newAggregatedMap).map(
-        ({ values, ...rest }) => rest
+        ({ values, ...rest }) => {
+          const account = { ...rest };
+
+          // relationの値がない場合は初期化
+          if (!account.relation) {
+            account.relation = { type: "NONE", subType: null };
+          } else if (typeof account.relation !== "object") {
+            // 古い形式から新しい形式に変換
+            account.relation = { type: "NONE", subType: null };
+          }
+
+          return account;
+        }
       );
 
       // 集計結果を表示用に変換
@@ -475,7 +550,7 @@ const AccountMappingSettings = ({
         <>
           <div
             className="mapping-table-container"
-            style={{ height: "70vh", width: "100%", overflow: "auto" }}
+            style={{ height: "60vh", width: "100%", overflow: "auto" }}
           >
             <HotTable
               ref={hotTableRef}
@@ -501,7 +576,7 @@ const AccountMappingSettings = ({
           <div
             className="mapping-table-container"
             style={{
-              height: "70vh",
+              height: "60vh",
               width: "100%",
               overflow: "auto",
               marginBottom: 15,
@@ -531,7 +606,7 @@ const AccountMappingSettings = ({
           <div
             className="mapping-table-container"
             style={{
-              height: "70vh",
+              height: "60vh",
               width: "100%",
               overflow: "auto",
               display: "flex",
@@ -546,7 +621,7 @@ const AccountMappingSettings = ({
         <>
           <div
             className="mapping-table-container"
-            style={{ height: "70vh", width: "100%", overflow: "auto" }}
+            style={{ height: "60vh", width: "100%", overflow: "auto" }}
           >
             <h3>集計結果</h3>
             <HotTable
