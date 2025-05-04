@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import DataTable from "./DataTable";
 import AccountMappingSettings from "./AccountMappingSettings";
-import ParamSettings from "./ParamSettings";
-import ChartSettings from "./ChartSettings";
-import FinancialSummary from "./FinancialSummary";
 import { useFinancialModel } from "../hooks/useFinancialModel";
 import { useExcelImport } from "../hooks/useExcelImport";
 import "../styles/FinancialModelEditor.css";
@@ -223,106 +220,58 @@ const FinancialModelEditor = ({ excelFilePath }) => {
                     パラメータ設定
                   </button>
                 </li>
-                <li className="tab-item">
-                  <button
-                    className={`tab-link ${
-                      activeTab === "charts" ? "active" : ""
-                    }`}
-                    onClick={() => handleTabChange("charts")}
-                  >
-                    チャート設定
-                  </button>
-                </li>
-                <li className="tab-item">
-                  <button
-                    className={`tab-link ${
-                      activeTab === "summary" ? "active" : ""
-                    }`}
-                    onClick={() => handleTabChange("summary")}
-                  >
-                    財務サマリー
-                  </button>
-                </li>
               </ul>
 
               <div className="tab-content">
                 <div
                   className={`tab-pane ${activeTab === "data" ? "active" : ""}`}
                 >
-                  {activeTab === "data" && (
-                    <DataTable
-                      model={prepareModelForUI(model)}
-                      isParamGroupCollapsed={isParamGroupCollapsed}
-                      onCollapseParamGroup={handleCollapseParamGroup}
-                    />
-                  )}
+                  {/* データビュー */}
+                  <div className="table-view">
+                    <div className="view-controls">
+                      <div className="button-group">
+                        <button
+                          className={`btn ${
+                            displayMode === "table" ? "active" : ""
+                          }`}
+                          onClick={() => setDisplayMode("table")}
+                        >
+                          テーブル
+                        </button>
+                        <button
+                          className={`btn ${
+                            displayMode === "card" ? "active" : ""
+                          }`}
+                          onClick={() => setDisplayMode("card")}
+                        >
+                          カード
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="dataview-container">
+                      {model && (
+                        <DataTable
+                          model={model}
+                          onParamChange={handleParamChange}
+                          viewMode={displayMode}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
+
                 <div
                   className={`tab-pane ${
                     activeTab === "params" ? "active" : ""
                   }`}
                 >
-                  {activeTab === "params" && (
-                    <ParamSettings
-                      paramGroups={model.paramGroups}
-                      activeParam={activeParam}
-                      setActiveParam={setActiveParam}
-                      onParamChange={handleParamChange}
-                    />
-                  )}
-                </div>
-                <div
-                  className={`tab-pane ${
-                    activeTab === "charts" ? "active" : ""
-                  }`}
-                >
-                  {activeTab === "charts" && <ChartSettings model={model} />}
-                </div>
-                <div
-                  className={`tab-pane ${
-                    activeTab === "summary" ? "active" : ""
-                  }`}
-                >
-                  {activeTab === "summary" && (
-                    <FinancialSummary model={model} />
-                  )}
+                  {/* パラメータ関連コンテンツのプレースホルダー */}
+                  <div className="params-container">
+                    <p>パラメータ設定画面は開発中です</p>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="button-toolbar">
-              <div className="button-group">
-                <button
-                  className={`btn ${
-                    displayMode === "table"
-                      ? "btn-primary"
-                      : "btn-outline-primary"
-                  }`}
-                  onClick={() => setDisplayMode("table")}
-                >
-                  テーブル表示
-                </button>
-                <button
-                  className={`btn ${
-                    displayMode === "chart"
-                      ? "btn-primary"
-                      : "btn-outline-primary"
-                  }`}
-                  onClick={() => setDisplayMode("chart")}
-                >
-                  チャート表示
-                </button>
-              </div>
-
-              <button
-                className="btn btn-outline-secondary ml-3"
-                onClick={() => {
-                  setAccountMappings({});
-                  setProcessStep("mapping");
-                }}
-              >
-                マッピング再設定
-              </button>
             </div>
           </>
         );
@@ -333,11 +282,8 @@ const FinancialModelEditor = ({ excelFilePath }) => {
   };
 
   return (
-    <div className="financial-model-editor full-width-container">
-      <div className="editor-header">
-        <h1>財務モデルエディター</h1>
-      </div>
-      <div className="editor-content">{renderContent()}</div>
+    <div className="financial-model-editor">
+      <div className="editor-container">{renderContent()}</div>
     </div>
   );
 };

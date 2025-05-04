@@ -1,8 +1,6 @@
 import * as XLSX from "xlsx";
 import { AccountType, ParameterType } from "../types/models.js";
 import {
-  ACCOUNT_MAPPING,
-  SHEET_ACCOUNT_MAPPING,
   SHEET_CASHFLOW_MAPPING,
   DEFAULT_PARAMETER_VALUES,
   SUMMARY_ACCOUNTS,
@@ -140,25 +138,15 @@ export function buildModelFromRawData(rawData, accountMappings) {
       // マッピングタイプによってアカウントの扱いを決定
       if (mapping.useOriginal) {
         // オリジナルアカウントをそのまま使用
-        const accountMapping = SHEET_ACCOUNT_MAPPING[sheetName]?.[
-          rawAccount.code
-        ] ||
-          ACCOUNT_MAPPING[rawAccount.code] || {
-            accountType: AccountType.OTHER,
-            parameter: null,
-          };
-
         const account = {
           id: rawAccount.id,
           code: rawAccount.code,
           name: rawAccount.name,
           parentId: null,
-          accountType: mapping.financialCategory || accountMapping.accountType,
+          accountType: mapping.financialCategory || AccountType.OTHER,
           order: accountCount + 1,
-          aggregateMethod: accountMapping.aggregateMethod || "NONE",
-          parameter: accountMapping.parameter
-            ? { ...accountMapping.parameter }
-            : null,
+          aggregateMethod: "NONE",
+          parameter: null,
           sheetName: mapping.sheetName || sheetName,
           cashflowType:
             SHEET_CASHFLOW_MAPPING[sheetName]?.[rawAccount.name] || "N/A",

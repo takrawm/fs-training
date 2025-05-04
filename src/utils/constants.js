@@ -33,280 +33,6 @@ const baseParameter = {
   isEditable: true,
 };
 
-// シートごとの勘定科目マッピング
-export const SHEET_ACCOUNT_MAPPING = {
-  PL: {
-    売上高: {
-      ...baseMapping,
-      accountType: AccountType.REVENUE,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.GROWTH_RATE,
-      },
-    },
-    売上高合計: {
-      ...baseMapping,
-      accountType: AccountType.REVENUE_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    売上原価: {
-      ...baseMapping,
-      accountType: AccountType.COGS,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.PERCENTAGE,
-      },
-    },
-    売上原価合計: {
-      ...baseMapping,
-      accountType: AccountType.COGS_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    売上総利益: {
-      ...baseMapping,
-      accountType: AccountType.GROSS_MARGIN,
-      aggregateMethod: "FORMULA",
-    },
-    販管費: {
-      ...baseMapping,
-      accountType: AccountType.SGA,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.PERCENTAGE,
-      },
-    },
-    販管費合計: {
-      ...baseMapping,
-      accountType: AccountType.SGA_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    営業利益: {
-      ...baseMapping,
-      accountType: AccountType.OPERATING_PROFIT,
-      aggregateMethod: "FORMULA",
-    },
-  },
-  BS: {
-    流動資産: {
-      ...baseMapping,
-      accountType: AccountType.CURRENT_ASSET,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.PROPORTIONATE,
-      },
-    },
-    流動資産合計: {
-      ...baseMapping,
-      accountType: AccountType.CUR_ASSET_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    有形固定資産: {
-      ...baseMapping,
-      accountType: AccountType.FIXED_ASSET,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.OTHER,
-      },
-    },
-    無形固定資産: {
-      ...baseMapping,
-      accountType: AccountType.FIXED_ASSET,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.OTHER,
-      },
-    },
-    固定資産: {
-      ...baseMapping,
-      accountType: AccountType.FIXED_ASSET,
-    },
-    固定資産合計: {
-      ...baseMapping,
-      accountType: AccountType.FIX_ASSET_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    資産合計: {
-      ...baseMapping,
-      accountType: AccountType.ASSET_TOTAL,
-      aggregateMethod: "FORMULA",
-    },
-    流動負債: {
-      ...baseMapping,
-      accountType: AccountType.CURRENT_LIABILITY,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.PROPORTIONATE,
-      },
-    },
-    流動負債合計: {
-      ...baseMapping,
-      accountType: AccountType.CUR_LIABILITY_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    固定負債: {
-      ...baseMapping,
-      accountType: AccountType.FIXED_LIABILITY,
-    },
-    固定負債合計: {
-      ...baseMapping,
-      accountType: AccountType.FIX_LIABILITY_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    負債合計: {
-      ...baseMapping,
-      accountType: AccountType.LIABILITY_TOTAL,
-      aggregateMethod: "FORMULA",
-    },
-    資本金: {
-      ...baseMapping,
-      accountType: AccountType.EQUITY,
-    },
-    利益剰余金: {
-      ...baseMapping,
-      accountType: AccountType.EQUITY,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.OTHER,
-      },
-    },
-    純資産: {
-      ...baseMapping,
-      accountType: AccountType.EQUITY,
-    },
-    純資産合計: {
-      ...baseMapping,
-      accountType: AccountType.EQUITY_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    負債及び純資産合計: {
-      ...baseMapping,
-      accountType: AccountType.LI_EQ_TOTAL,
-      aggregateMethod: "FORMULA",
-    },
-    チェック: {
-      ...baseMapping,
-      accountType: AccountType.OTHER,
-    },
-  },
-  CAPEX: {
-    設備投資: {
-      ...baseMapping,
-      accountType: AccountType.CAPEX,
-      parameter: {
-        ...baseParameter,
-        type: ParameterType.PROPORTIONATE,
-        referenceAccountId: "rev-total",
-      },
-    },
-    設備投資合計: {
-      ...baseMapping,
-      accountType: AccountType.CAPEX_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-  },
-  CS: {
-    営業CF: {
-      ...baseMapping,
-      accountType: AccountType.OPE_CF,
-    },
-    営業CF合計: {
-      ...baseMapping,
-      accountType: AccountType.OPE_CF_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    投資CF: {
-      ...baseMapping,
-      accountType: AccountType.INV_CF,
-    },
-    投資CF合計: {
-      ...baseMapping,
-      accountType: AccountType.INV_CF_TOTAL,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-    現預金増減: {
-      ...baseMapping,
-      accountType: AccountType.CHANGE_CASH,
-      aggregateMethod: "CHILDREN_SUM",
-    },
-  },
-};
-
-// キャッシュフロー計算用のマッピング
-export const SHEET_CASHFLOW_MAPPING = {
-  PL: {
-    // 収益・費用科目（デフォルトはPROFIT）
-    営業利益: CashflowType.PROFIT,
-    売上高: CashflowType.PROFIT,
-    売上高合計: CashflowType.N_A, // SUMMARY_ACCOUNTSは全てN/Aに設定
-    売上原価: CashflowType.PROFIT,
-    売上原価合計: CashflowType.N_A,
-    売上総利益: CashflowType.N_A,
-    販管費: CashflowType.PROFIT,
-    販管費合計: CashflowType.N_A,
-    営業利益: CashflowType.N_A,
-    // 特殊科目
-    減価償却費: CashflowType.DEPRECIATION,
-    無形固定資産償却費: CashflowType.AMORTIZATION,
-  },
-
-  BS: {
-    // 流動資産
-    現預金: CashflowType.CASH,
-    売掛金: CashflowType.WC_ASSET,
-    棚卸資産: CashflowType.WC_ASSET,
-    流動資産合計: CashflowType.N_A,
-
-    // 固定資産
-    有形固定資産: CashflowType.TNG_ASSET,
-    無形固定資産: CashflowType.INTNG_ASSET,
-    固定資産合計: CashflowType.N_A,
-    資産合計: CashflowType.N_A,
-
-    // 流動負債
-    買掛金: CashflowType.WC_LIABILITY,
-    支払手形: CashflowType.WC_LIABILITY,
-    流動負債合計: CashflowType.N_A,
-
-    // 固定負債
-    長期借入金: CashflowType.LOAN,
-    社債: CashflowType.OTHER_DEBT,
-    固定負債合計: CashflowType.N_A,
-    負債合計: CashflowType.N_A,
-
-    // 純資産
-    資本金: CashflowType.CAPITAL_STOCK,
-    利益剰余金: CashflowType.RETAINED_EARNINGS,
-    純資産合計: CashflowType.N_A,
-    負債及び純資産合計: CashflowType.N_A,
-  },
-
-  CAPEX: {
-    有形資産投資: CashflowType.TNG_INVESTMENT,
-    無形資産投資: CashflowType.INTNG_INVESTMENT,
-    設備投資合計: CashflowType.N_A,
-  },
-
-  CS: {
-    // CSシートの全アカウントはN/A
-    営業CF: CashflowType.N_A,
-    営業CF合計: CashflowType.N_A,
-    投資CF: CashflowType.N_A,
-    投資CF合計: CashflowType.N_A,
-    現預金増減: CashflowType.N_A,
-  },
-};
-
-// 後方互換性のために残す
-export const ACCOUNT_MAPPING = SHEET_ACCOUNT_MAPPING.PL;
-
-// 初期の被参照科目リスト
-export const INITIAL_REFERENCE_ACCOUNTS = [
-  "rev-total", // 売上高合計
-  "labour-cost", // 労務費
-  "personnel-expenses", // 人件費
-  "tng-investment", // 有形資産投資
-];
-
 // 集計用勘定科目の定義
 export const SUMMARY_ACCOUNTS = {
   // PLアカウント
@@ -345,6 +71,9 @@ export const SUMMARY_ACCOUNTS = {
     order: "C99",
     prefix: "C",
     relation: { type: "NONE", subType: null },
+    dependencies: {
+      depends_on: ["rev-total", "cogs-total"],
+    },
   },
   販管費合計: {
     id: "sga-total",
@@ -369,14 +98,17 @@ export const SUMMARY_ACCOUNTS = {
     order: "E99",
     prefix: "E",
     relation: { type: "RETAINED_EARNINGS", subType: "profit" },
+    dependencies: {
+      depends_on: ["gross-profit", "sga-total"],
+    },
   },
 
-  // BSアカウント
+  // BSアカウント - 親子関係の階層構造を明確化
   流動資産合計: {
     id: "current-asset-total",
     accountName: "流動資産合計",
     sheetType: "BS",
-    parentAccount: null,
+    parentAccount: "資産合計", // 資産合計の子科目
     calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
@@ -388,7 +120,7 @@ export const SUMMARY_ACCOUNTS = {
     id: "fixed-asset-total",
     accountName: "固定資産合計",
     sheetType: "BS",
-    parentAccount: null,
+    parentAccount: "資産合計", // 資産合計の子科目
     calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
@@ -400,8 +132,8 @@ export const SUMMARY_ACCOUNTS = {
     id: "asset-total",
     accountName: "資産合計",
     sheetType: "BS",
-    parentAccount: null,
-    calculationType: "ACCOUNT_CALC",
+    parentAccount: null, // トップレベル科目
+    calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
     order: "H99",
@@ -412,7 +144,7 @@ export const SUMMARY_ACCOUNTS = {
     id: "current-liability-total",
     accountName: "流動負債合計",
     sheetType: "BS",
-    parentAccount: null,
+    parentAccount: "負債合計", // 負債合計の子科目
     calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
@@ -424,7 +156,7 @@ export const SUMMARY_ACCOUNTS = {
     id: "fixed-liability-total",
     accountName: "固定負債合計",
     sheetType: "BS",
-    parentAccount: null,
+    parentAccount: "負債合計", // 負債合計の子科目
     calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
@@ -436,36 +168,72 @@ export const SUMMARY_ACCOUNTS = {
     id: "liability-total",
     accountName: "負債合計",
     sheetType: "BS",
-    parentAccount: null,
-    calculationType: "ACCOUNT_CALC",
+    parentAccount: "負債及び純資産合計", // 負債及び純資産合計の子科目
+    calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
     order: "K99",
     prefix: "K",
     relation: { type: "NONE", subType: null },
   },
+  資本金: {
+    id: "equity",
+    accountName: "資本金",
+    sheetType: "BS",
+    parentAccount: "純資産合計",
+    calculationType: "CHILDREN_SUM",
+    parameterType: "PROPORTIONATE",
+    isReferenceAccount: false,
+    order: "L99",
+    prefix: "L",
+    relation: { type: "NONE", subType: null },
+  },
+  利益剰余金: {
+    id: "retained-earnings",
+    accountName: "利益剰余金",
+    sheetType: "BS",
+    parentAccount: "純資産合計",
+    calculationType: "CHILDREN_SUM",
+    parameterType: "PROPORTIONATE",
+    isReferenceAccount: false,
+    order: "M99",
+    prefix: "M",
+    relation: { type: "RETAINED_EARNINGS", subType: "asset" },
+  },
   純資産合計: {
     id: "equity-total",
     accountName: "純資産合計",
     sheetType: "BS",
-    parentAccount: null,
+    parentAccount: "負債及び純資産合計", // 負債及び純資産合計の子科目
     calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
-    order: "L99",
-    prefix: "L",
+    order: "N99",
+    prefix: "N",
     relation: { type: "NONE", subType: null },
   },
   負債及び純資産合計: {
     id: "li-eq-total",
     accountName: "負債及び純資産合計",
     sheetType: "BS",
-    parentAccount: null,
-    calculationType: "ACCOUNT_CALC",
+    parentAccount: null, // トップレベル科目
+    calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
-    order: "M99",
-    prefix: "M",
+    order: "O99",
+    prefix: "O",
+    relation: { type: "NONE", subType: null },
+  },
+  チェック: {
+    id: "check",
+    accountName: "チェック",
+    sheetType: "BS",
+    parentAccount: null,
+    calculationType: "CHILDREN_SUM",
+    parameterType: "OTHER",
+    isReferenceAccount: false,
+    order: "P99",
+    prefix: "P",
     relation: { type: "NONE", subType: null },
   },
 
@@ -478,8 +246,8 @@ export const SUMMARY_ACCOUNTS = {
     calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
-    order: "N99",
-    prefix: "N",
+    order: "Q99",
+    prefix: "Q",
     relation: { type: "NONE", subType: null },
   },
 
@@ -492,8 +260,8 @@ export const SUMMARY_ACCOUNTS = {
     calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
-    order: "O99",
-    prefix: "O",
+    order: "R99",
+    prefix: "R",
     relation: { type: "NONE", subType: null },
   },
   投資CF合計: {
@@ -504,20 +272,10 @@ export const SUMMARY_ACCOUNTS = {
     calculationType: "CHILDREN_SUM",
     parameterType: null,
     isReferenceAccount: false,
-    order: "P99",
-    prefix: "P",
+    order: "S99",
+    prefix: "S",
     relation: { type: "NONE", subType: null },
   },
-  // 現預金増減: {
-  //   id: "change-cash",
-  //   accountName: "現預金増減",
-  //   sheetType: "CF",
-  //   parentAccount: null,
-  //   calculationType: "CHILDREN_SUM",
-  //   parameterType: null,
-  //   isReferenceAccount: false,
-  //   order: "Q99",
-  // },
 };
 
 // 勘定科目デフォルトシートタイプマッピング

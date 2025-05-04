@@ -14,10 +14,7 @@ import {
   loadModelToHyperFormula,
   updateModelFromCalculations,
 } from "../utils/formulaEngine.js";
-import {
-  ACCOUNT_MAPPING,
-  DEFAULT_PARAMETER_VALUES,
-} from "../utils/constants.js";
+import { DEFAULT_PARAMETER_VALUES } from "../utils/constants.js";
 import { AccountType, ParameterType } from "../types/models.js";
 import * as XLSX from "xlsx";
 
