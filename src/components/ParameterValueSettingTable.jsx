@@ -32,7 +32,7 @@ const ParameterValueSettingTable = ({
     }, [accounts]);
 
   // 被参照科目のリスト（ドロップダウン用）
-  const referenceOptions = useMemo(() => {
+  const referenceAccountNames = useMemo(() => {
     return referenceAccounts.map((account) => account.accountName);
   }, [referenceAccounts]);
 
@@ -41,53 +41,67 @@ const ParameterValueSettingTable = ({
   useEffect(() => {
     let hasUpdates = false;
     const updatedAccounts = [...accounts].map((account) => {
-      // 既にパラメータが設定されている場合はスキップ
-      if (account.parameter) return account;
-
       // パラメータタイプに応じてデフォルト値を設定
       if (account.parameterType === "GROWTH_RATE") {
-        hasUpdates = true;
-        return {
-          ...account,
-          parameter: {
-            growthRate: 0.1, // デフォルト10%成長
-            referenceAccountName: null,
-            referenceAccountId: null,
-          },
-        };
+        // 既存のパラメータを保持しつつ、必要なプロパティを設定
+        const parameter = account.parameter || {};
+        if (!parameter.growthRate) {
+          hasUpdates = true;
+          return {
+            ...account,
+            parameter: {
+              ...parameter,
+              growthRate: 0.1, // デフォルト10%成長
+              referenceAccountName: parameter.referenceAccountName || null,
+              referenceAccountId: parameter.referenceAccountId || null,
+            },
+          };
+        }
       } else if (account.parameterType === "PERCENTAGE") {
         // 被参照科目があれば最初のものを使用
         const defaultRef =
-          referenceOptions.length > 0 ? referenceOptions[0] : null;
+          referenceAccountNames.length > 0 ? referenceAccountNames[0] : null;
         const referenceAccount = referenceAccounts.find(
           (a) => a.accountName === defaultRef
         );
 
-        hasUpdates = true;
-        return {
-          ...account,
-          parameter: {
-            percentage: 0.3, // デフォルト30%
-            referenceAccountName: defaultRef,
-            referenceAccountId: referenceAccount?.id || null,
-          },
-        };
+        // 既存のパラメータを保持しつつ、必要なプロパティを設定
+        const parameter = account.parameter || {};
+        if (!parameter.percentage || !parameter.referenceAccountName) {
+          hasUpdates = true;
+          return {
+            ...account,
+            parameter: {
+              ...parameter,
+              percentage: parameter.percentage || 0.3, // デフォルト30%
+              referenceAccountName:
+                parameter.referenceAccountName || defaultRef,
+              referenceAccountId:
+                parameter.referenceAccountId || referenceAccount?.id || null,
+            },
+          };
+        }
       } else if (account.parameterType === "PROPORTIONATE") {
         // 被参照科目があれば最初のものを使用
         const defaultRef =
-          referenceOptions.length > 0 ? referenceOptions[0] : null;
+          referenceAccountNames.length > 0 ? referenceAccountNames[0] : null;
         const referenceAccount = referenceAccounts.find(
           (a) => a.accountName === defaultRef
         );
 
-        hasUpdates = true;
-        return {
-          ...account,
-          parameter: {
-            referenceAccountName: defaultRef,
-            referenceAccountId: referenceAccount?.id || null,
-          },
-        };
+        // 既存のパラメータを保持しつつ、必要なプロパティを設定
+        const parameter = account.parameter || {};
+        if (!parameter.referenceAccountName) {
+          hasUpdates = true;
+          return {
+            ...account,
+            parameter: {
+              ...parameter,
+              referenceAccountName: defaultRef,
+              referenceAccountId: referenceAccount?.id || null,
+            },
+          };
+        }
       }
 
       return account;
@@ -98,7 +112,7 @@ const ParameterValueSettingTable = ({
       console.log("テーブル初期表示時のデフォルト値設定:", updatedAccounts);
       onChange(updatedAccounts);
     }
-  }, [accounts, referenceAccounts, referenceOptions, onChange]);
+  }, [accounts, referenceAccounts, referenceAccountNames, onChange]);
 
   // 成長率設定テーブルの設定
   const growthRateSettings = useMemo(() => {
@@ -136,7 +150,7 @@ const ParameterValueSettingTable = ({
 
     const data = percentageAccounts.map((account) => [
       account.accountName,
-      account.parameter?.referenceAccountName || referenceOptions[0] || "",
+      account.parameter?.referenceAccountName || referenceAccountNames[0] || "",
       account.parameter?.percentage
         ? Math.round(account.parameter.percentage * 100 * 100) / 100 // 小数から%に変換（小数点2桁）
         : 30, // デフォルト30%
@@ -149,7 +163,7 @@ const ParameterValueSettingTable = ({
         { type: "text", readOnly: true },
         {
           type: "dropdown",
-          source: referenceOptions,
+          source: referenceAccountNames,
         },
         {
           type: "numeric",
@@ -163,7 +177,7 @@ const ParameterValueSettingTable = ({
       stretchH: "all",
       licenseKey: "non-commercial-and-evaluation",
     };
-  }, [percentageAccounts, referenceOptions]);
+  }, [percentageAccounts, referenceAccountNames]);
 
   // 比例関係設定テーブルの設定
   const proportionateSettings = useMemo(() => {
@@ -171,7 +185,7 @@ const ParameterValueSettingTable = ({
 
     const data = proportionateAccounts.map((account) => [
       account.accountName,
-      account.parameter?.referenceAccountName || referenceOptions[0] || "",
+      account.parameter?.referenceAccountName || referenceAccountNames[0] || "",
     ]);
 
     return {
@@ -181,7 +195,7 @@ const ParameterValueSettingTable = ({
         { type: "text", readOnly: true },
         {
           type: "dropdown",
-          source: referenceOptions,
+          source: referenceAccountNames,
         },
       ],
       width: "100%",
@@ -189,7 +203,7 @@ const ParameterValueSettingTable = ({
       stretchH: "all",
       licenseKey: "non-commercial-and-evaluation",
     };
-  }, [proportionateAccounts, referenceOptions]);
+  }, [proportionateAccounts, referenceAccountNames]);
 
   // 成長率設定の変更ハンドラ
   const handleGrowthRateChange = (changes) => {
@@ -351,7 +365,7 @@ const ParameterValueSettingTable = ({
           </div>
         </>
       )}
-
+      image.png
       {percentageSettings && (
         <>
           <h3>比率設定</h3>
@@ -363,7 +377,6 @@ const ParameterValueSettingTable = ({
           </div>
         </>
       )}
-
       {proportionateSettings && (
         <>
           <h3>連動設定</h3>

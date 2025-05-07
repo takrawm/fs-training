@@ -21,9 +21,9 @@ import * as XLSX from "xlsx";
 /**
  * モデルデータをUI用に整形する
  * @param {import('../types/models.js').FinancialModel} model - 財務モデル
- * @returns {import('../types/models.js').FinancialModel} UI用に整形されたモデルデータ。preparedUIプロパティにpreparedAccounts（計算済みパラメータ値と参照科目名を含む）とpreparedValues（表示用に整形された値）を含む
+ * @returns {import('../types/models.js').FinancialModel} 整形されたモデルデータ
  */
-export function prepareModelForUI(model) {
+function prepareModelForUI(model) {
   // modelオブジェクト自体又はaccounts/values/periodsプロパティが存在するかどうか
   // 初期ロード時などでモデルがまだ完全に構築されていないときは、
   // エラーをスローする代わりに、入力をそのまま返す「フェイルセーフ」アプローチ
@@ -31,92 +31,7 @@ export function prepareModelForUI(model) {
     return model;
   }
 
-  // デフォルトの参照科目名を取得するヘルパー関数（DataTable.jsxから移植）
-  const getDefaultReferenceName = (accounts) => {
-    // 最初に売上高合計を探す
-    const revenueTotal = accounts.find(
-      (a) => a.accountType === AccountType.REVENUE_TOTAL
-    );
-
-    if (revenueTotal) return revenueTotal.name;
-
-    // 売上高合計が見つからない場合、代替参照として他の主要指標を探す
-    const alternativeRef = accounts.find(
-      (a) =>
-        a.accountType === AccountType.ASSET_TOTAL ||
-        a.accountType === AccountType.OPERATING_PROFIT ||
-        a.accountType === AccountType.LI_EQ_TOTAL
-    );
-
-    return alternativeRef ? alternativeRef.name : "-";
-  };
-
-  // 参照科目の名前を取得する関数（DataTable.jsxから移植）
-  const getReferenceAccountName = (account, accounts) => {
-    // クロスシート参照のため、allAccountsが存在する場合はそちらを優先
-    const allAccounts = model.allAccounts || accounts;
-
-    // 以下の3パターンを想定
-    // 1. account.parameterが存在しない（nullまたはundefined）
-    // 2. account.parameterは存在するがreferenceAccountIdプロパティがない
-    // 3. account.parameter.referenceAccountIdが存在するが値がnull、undefined、""（空文字列）、0、falseなどの場合
-    if (!account.parameter?.referenceAccountId) {
-      return getDefaultReferenceName(allAccounts);
-    }
-
-    // account.parameter.referenceAccountIdが存在する場合、該当するaccountを取得
-    const refAccount = allAccounts.find(
-      (a) => a.id === account.parameter.referenceAccountId
-    );
-    return refAccount ? refAccount.name : getDefaultReferenceName(allAccounts);
-  };
-
-  const preparedAccounts = model.accounts.map((account) => {
-    // nullで初期化することで、account.parameter && account.parameter.type
-    // がundefinedのままになる
-    let paramValue = null;
-    // パラメータ値がない場合はデフォルト値を適用
-    if (account.parameter && account.parameter.type) {
-      paramValue =
-        account.parameter.value ??
-        // DEFAULT_PARAMETER_VALUES["GROWTH_RATE"]に格納されたデフォルト値が入る
-        DEFAULT_PARAMETER_VALUES[account.parameter.type] ??
-        0;
-    }
-
-    // 参照科目名を必ず計算（すべての科目に対して）
-    let referenceAccountName = null;
-
-    // 参照科目IDが明示的に設定されている場合、または特定のパラメータタイプの場合に参照科目名を計算
-    if (
-      account.parameter?.referenceAccountId ||
-      account.parameter?.type === ParameterType.PERCENTAGE ||
-      account.parameter?.type === ParameterType.PROPORTIONATE
-    ) {
-      referenceAccountName = getReferenceAccountName(account, model.accounts);
-    }
-
-    // 元のmodel.accounts配列をmapメソッドでループし、
-    // パラメータ値を計算・適用（computedParamValue）& 参照科目の名前を計算・適用（referenceAccountName）
-    // model.preparedUI.preparedAccountsとして利用可能
-    return {
-      ...account,
-      computedParamValue: paramValue,
-      referenceAccountName: referenceAccountName,
-    };
-  });
-
-  // 値の表示用フォーマットを事前に計算 → 数値データの丸め処理（displayValue: Math.round(value.value)）
-  const preparedValues = model.values.map((value) => ({
-    ...value,
-    displayValue: Math.round(value.value), // 表示用に丸めた値
-  }));
-
-  return {
-    ...model,
-    preparedAccounts,
-    preparedValues,
-  };
+  return model;
 }
 
 /**
@@ -797,7 +712,7 @@ export function useFinancialModel(initialModel = null) {
 
   // モデルを返す際にUI用に整形したデータも含める
   return {
-    model: { ...model, preparedUI: prepareModelForUI(model) },
+    model,
     setModel: setFinancialModel,
     isLoading,
     error,

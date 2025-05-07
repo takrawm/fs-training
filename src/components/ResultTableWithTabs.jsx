@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import { HotTable } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
-import { getFilteredDataByTab } from "../utils/accountMappingModel";
+import { getFilteredDataByTab } from "../display/financialDisplay";
 
 // Handsontableのすべてのモジュールを登録
 registerAllModules();

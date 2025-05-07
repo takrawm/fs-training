@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { HotTable } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
@@ -17,18 +11,16 @@ import {
   createInitialMappingData,
   createAggregatedMap,
   createAggregatedAccounts,
-  createAggregatedValue,
   createFinalAccounts,
   createPeriods,
-  createAccountValues,
-  createAggregatedValueForDisplay,
-  getInitialSheetData,
-} from "../utils/accountMappingModel";
+} from "../models/account";
 import {
   createFinancialModel,
+  createAccountValues,
   createDisplayDataFromModel,
   addNewPeriodToModel,
-} from "../utils/financialCalculations";
+} from "../models/financialModel";
+import { createAggregatedValueForDisplay } from "../display/financialDisplay";
 
 // Handsontableのすべてのモジュールを登録
 registerAllModules();
@@ -37,44 +29,32 @@ registerAllModules();
  * 勘定科目マッピング設定コンポーネント
  * マルチステップでデータのマッピング、パラメータ設定、結果表示を行います
  */
-const AccountMappingSettings = ({
-  model,
-  flattenedData,
-  onUpdateMapping,
-  onClose,
-  isInitialMapping = false,
-}) => {
+const FinancialModelBuilder = ({ model, flattenedData }) => {
   // ステップ状態
   const [step, setStep] = useState(0);
   // フラット化済みデータをもとにした行情報
   const flattenedRows = flattenedData?.dataRows || [];
-
   // マッピングデータ
   const [mappingData, setMappingData] = useState([]);
   // 財務モデルを構成するアカウント
   const [accounts, setAccounts] = useState([]);
-  // 集約マップを保持する状態
-  const [aggregatedMap, setAggregatedMap] = useState({});
   // 表示用の集計値
   const [aggregatedValue, setAggregatedValue] = useState([]);
   // 期間情報
   const [periods, setPeriods] = useState([]);
-  // アカウント値
-  const [accountValues, setAccountValues] = useState([]);
   // 財務モデル
   const [financialModel, setFinancialModel] = useState(null);
-  // 開発中画面の表示フラグ
-  const [showDevelopmentMessage, setShowDevelopmentMessage] = useState(false);
 
   // 初期マッピングデータをセット
   useEffect(() => {
     if (mappingData.length === 0 && flattenedRows.length > 0) {
-      const initial = createInitialMappingData(flattenedRows);
-      setMappingData(initial);
+      const initialMappingData = createInitialMappingData(flattenedRows);
+      console.log("initialMappingData: ", initialMappingData);
+      setMappingData(initialMappingData);
     }
   }, [flattenedRows, mappingData.length]);
 
-  // 被参照科目の取得
+  // 被参照科目の取得（パラメータ値設定の際に渡される）
   const referenceAccounts = useMemo(() => {
     return accounts.filter((account) => account.isParameterReference);
   }, [accounts]);
@@ -106,9 +86,11 @@ const AccountMappingSettings = ({
           const updateNestedObjectProperty = (obj, path, value) => {
             if (path.includes(".")) {
               const [head, ...rest] = path.split(".");
+              // プロパティが存在しない場合には空オブジェクトを作ってネストしていく
               if (!obj[head]) obj[head] = {};
               updateNestedObjectProperty(obj[head], rest.join("."), value);
             } else {
+              // 選択されたプロパティ
               obj[path] = value;
             }
           };
@@ -150,12 +132,6 @@ const AccountMappingSettings = ({
     // アカウント配列を更新
     setAccounts(updatedAccounts);
     console.log("パラメータ値が更新されました:", updatedAccounts);
-
-    // パラメータ設定されているアカウントをログ出力（デバッグ用）
-    const accountsWithParams = updatedAccounts.filter(
-      (account) => account.parameter
-    );
-    console.log("パラメータ設定済みアカウント:", accountsWithParams);
   }, []);
 
   // リレーション設定更新ハンドラ
@@ -163,12 +139,6 @@ const AccountMappingSettings = ({
     // アカウント配列を更新
     setAccounts(updatedAccounts);
     console.log("リレーション設定が更新されました:", updatedAccounts);
-
-    // リレーション設定されているアカウントをログ出力（デバッグ用）
-    const accountsWithRelations = updatedAccounts.filter(
-      (account) => account.relation && account.relation.type !== "NONE"
-    );
-    console.log("リレーション設定済みアカウント:", accountsWithRelations);
   }, []);
 
   // 期間追加ハンドラ
@@ -184,7 +154,6 @@ const AccountMappingSettings = ({
     // 各状態を更新
     setAccounts(updatedModel.accounts);
     setPeriods(updatedModel.periods);
-    setAccountValues(updatedModel.values);
 
     // 表示用データを更新
     const displayData = createDisplayDataFromModel(updatedModel);
@@ -203,7 +172,7 @@ const AccountMappingSettings = ({
       case 3:
         return "リレーション設定";
       case 4:
-        return showDevelopmentMessage ? "開発情報" : "集計結果確認";
+        return "集計結果確認";
       default:
         return "";
     }
@@ -213,20 +182,13 @@ const AccountMappingSettings = ({
   const handleSave = () => {
     if (step === 0) {
       // ステップ0：マッピング完了 → パラメータ分類設定へ
-
       // 集計マップを作成
       const newAggregatedMap = createAggregatedMap(flattenedRows, mappingData);
-      setAggregatedMap(newAggregatedMap);
+      console.log("newAggregatedMap: ", newAggregatedMap);
 
       // 集計アカウントを作成
       const aggregatedAccounts = createAggregatedAccounts(newAggregatedMap);
-
-      // 表示用集計値を作成
-      const aggValue = createAggregatedValue(
-        aggregatedAccounts,
-        newAggregatedMap
-      );
-      setAggregatedValue(aggValue);
+      console.log("aggregatedAccounts: ", aggregatedAccounts);
 
       // アカウントリストを設定
       setAccounts(aggregatedAccounts);
@@ -241,106 +203,27 @@ const AccountMappingSettings = ({
     } else if (step === 2) {
       // ステップ2：パラメータ値設定完了 → リレーション設定へ
       console.log("ステップ2完了時のアカウント:", accounts);
-
-      // パラメータ値が未設定のアカウントにデフォルト値を設定する
-      const updatedAccounts = [...accounts].map((account) => {
-        // パラメータタイプに応じてデフォルト値を設定
-        if (account.parameterType && !account.parameter) {
-          switch (account.parameterType) {
-            case "GROWTH_RATE":
-              return {
-                ...account,
-                parameter: {
-                  growthRate: 0.1, // デフォルト10%成長
-                  referenceAccountName: null,
-                  referenceAccountId: null,
-                },
-              };
-            case "PERCENTAGE":
-              // 被参照科目があれば最初のものを使用
-              const defaultRefAccount =
-                referenceAccounts.length > 0 ? referenceAccounts[0] : null;
-              return {
-                ...account,
-                parameter: {
-                  percentage: 0.3, // デフォルト30%
-                  referenceAccountName: defaultRefAccount?.accountName || null,
-                  referenceAccountId: defaultRefAccount?.id || null,
-                },
-              };
-            case "PROPORTIONATE":
-              // 被参照科目があれば最初のものを使用
-              const defaultPropRefAccount =
-                referenceAccounts.length > 0 ? referenceAccounts[0] : null;
-              return {
-                ...account,
-                parameter: {
-                  referenceAccountName:
-                    defaultPropRefAccount?.accountName || null,
-                  referenceAccountId: defaultPropRefAccount?.id || null,
-                },
-              };
-            default:
-              return account;
-          }
-        }
-        return account;
-      });
-
-      console.log("デフォルト値反映後のアカウント:", updatedAccounts);
-
-      // 更新されたアカウントを設定
-      setAccounts(updatedAccounts);
-
       // 次のステップ（リレーション設定）へ
       setStep(3);
     } else if (step === 3) {
-      // ステップ3：リレーション設定完了 → 結果表示へ
-      console.log("ステップ3（リレーション設定）完了時のアカウント:", accounts);
-
-      // パラメータ設定されているアカウントをログ出力（デバッグ用）
-      const accountsWithParams = accounts.filter(
-        (account) => account.parameter
-      );
-      console.log("パラメータ設定済みアカウント:", accountsWithParams);
-
-      // リレーション設定されているアカウントをログ出力
-      const accountsWithRelations = accounts.filter(
-        (account) => account.relation && account.relation.type !== "NONE"
-      );
-      console.log("リレーション設定済みアカウント:", accountsWithRelations);
-
       // 最終的なアカウントリストを作成
       const finalAccounts = createFinalAccounts(accounts);
       console.log("最終アカウント:", finalAccounts);
-
-      // パラメータとリレーションが設定されているfinalAccountsを確認
-      const finalAccountsWithParams = finalAccounts.filter(
-        (account) => account.parameter
-      );
-      const finalAccountsWithRelations = finalAccounts.filter(
-        (account) => account.relation && account.relation.type !== "NONE"
-      );
-      console.log(
-        "パラメータが設定されているfinalAccounts:",
-        finalAccountsWithParams
-      );
-      console.log(
-        "リレーションが設定されているfinalAccounts:",
-        finalAccountsWithRelations
-      );
 
       // 期間情報を作成
       const newPeriods = createPeriods(flattenedData);
       setPeriods(newPeriods);
 
+      // 集計マップを作成
+      const newAggregatedMap = createAggregatedMap(flattenedRows, mappingData);
+      console.log("newAggregatedMap: ", newAggregatedMap);
+
       // アカウント値を作成
       const newAccountValues = createAccountValues(
-        aggregatedMap,
+        newAggregatedMap,
         newPeriods,
         finalAccounts
       );
-      setAccountValues(newAccountValues);
 
       // 統合された財務モデルを作成
       const newFinancialModel = createFinancialModel(
@@ -350,11 +233,25 @@ const AccountMappingSettings = ({
       );
       setFinancialModel(newFinancialModel);
 
-      // 表示用最終集計値を作成
+      // 財務モデルをコンソールに出力
+      console.log("=== リレーション設定完了後の財務モデル ===");
+      console.log("財務モデル:", newFinancialModel);
+      console.log("アカウント数:", newFinancialModel.accounts.length);
+      console.log("期間数:", newFinancialModel.periods.length);
+      console.log("値の数:", newFinancialModel.values.length);
+      console.log(
+        "リレーション設定のあるアカウント:",
+        newFinancialModel.accounts.filter(
+          (a) => a.relation && a.relation.type !== "NONE"
+        ).length
+      );
+      console.log("=== 財務モデルのログ終了 ===");
+
+      // 表示用最終集計値を作成（財務モデルから直接使用）
       const aggregatedValueForDisplay = createAggregatedValueForDisplay(
-        finalAccounts,
-        newPeriods,
-        newAccountValues
+        newFinancialModel.accounts,
+        newFinancialModel.periods,
+        newFinancialModel.values
       );
 
       // 集計値を更新
@@ -364,14 +261,8 @@ const AccountMappingSettings = ({
       setAccounts(finalAccounts);
       console.log("finalAccounts:", finalAccounts);
 
-      // 開発中フラグをリセット
-      setShowDevelopmentMessage(false);
-
       // 次のステップへ
       setStep(4);
-    } else {
-      // 完了ボタンが押された時は開発中の画面を表示
-      setShowDevelopmentMessage(true);
     }
   };
 
@@ -379,84 +270,64 @@ const AccountMappingSettings = ({
     <div className="account-mapping-settings">
       <h2>{getStepTitle()}</h2>
 
-      {step === 0 ? (
-        // ステップ0：勘定科目マッピング設定
-        <AccountMappingTable
-          data={mappingData}
-          onChange={handleMappingChange}
-        />
-      ) : step === 1 ? (
-        // ステップ1：パラメータ分類設定
-        <ParameterSettingTable data={accounts} onChange={handleParamChange} />
-      ) : step === 2 ? (
-        // ステップ2：パラメータ値設定
-        <ParameterValueSettingTable
-          accounts={accounts}
-          referenceAccounts={referenceAccounts}
-          onChange={handleParameterValueChange}
-        />
-      ) : step === 3 ? (
-        // ステップ3：リレーション設定
-        <RelationSettingTable
-          accounts={accounts}
-          onChange={handleRelationChange}
-        />
-      ) : showDevelopmentMessage ? (
-        // 開発中メッセージ
-        <div
-          className="mapping-table-container"
-          style={{
-            height: "60vh",
-            width: "100%",
-            overflow: "auto",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <h3>開発中です</h3>
-        </div>
-      ) : (
-        // ステップ4：集計結果確認（タブ付きテーブル）と期間追加ボタン
-        <div>
-          <div style={{ marginBottom: "10px" }}>
-            <button
-              onClick={handleAddPeriod}
-              className="btn-secondary"
-              style={{ marginRight: "10px" }}
-            >
-              期間を追加
-            </button>
-          </div>
-          <ResultTableWithTabs
-            aggregatedValue={aggregatedValue}
-            accounts={accounts}
-            periods={periods}
+      {/* テーブルコンテンツエリア */}
+      <div className="table-content-area">
+        {step === 0 ? (
+          // ステップ0：勘定科目マッピング設定
+          <AccountMappingTable
+            data={mappingData}
+            onChange={handleMappingChange}
           />
-        </div>
-      )}
+        ) : step === 1 ? (
+          // ステップ1：パラメータ分類設定
+          <ParameterSettingTable data={accounts} onChange={handleParamChange} />
+        ) : step === 2 ? (
+          // ステップ2：パラメータ値設定
+          <ParameterValueSettingTable
+            accounts={accounts}
+            referenceAccounts={referenceAccounts}
+            onChange={handleParameterValueChange}
+          />
+        ) : step === 3 ? (
+          // ステップ3：リレーション設定
+          <RelationSettingTable
+            accounts={accounts}
+            onChange={handleRelationChange}
+          />
+        ) : (
+          // ステップ4：集計結果確認（タブ付きテーブル）と期間追加ボタン
+          <div>
+            <div style={{ marginBottom: "10px" }}>
+              <button
+                onClick={handleAddPeriod}
+                className="btn-secondary"
+                style={{ marginRight: "10px" }}
+              >
+                期間を追加
+              </button>
+            </div>
+            <ResultTableWithTabs
+              aggregatedValue={aggregatedValue}
+              accounts={accounts}
+              periods={periods}
+            />
+          </div>
+        )}
+      </div>
 
       {/* ボタンエリア */}
-      <div className="mapping-buttons" style={{ marginTop: 20 }}>
+      <div className="mapping-buttons">
         <button
           onClick={handleSave}
           className="btn-primary"
           style={{ marginRight: 10 }}
         >
-          {step === 4 && !showDevelopmentMessage
-            ? "完了"
-            : step === 4 && showDevelopmentMessage
-            ? "閉じる"
-            : "次へ"}
+          {step === 4 ? "完了" : "次へ"}
         </button>
         <button
-          onClick={() => {
-            if (step === 0) onClose();
-            else if (showDevelopmentMessage) {
-              setShowDevelopmentMessage(false);
-            } else setStep(step - 1);
-          }}
+          onClick={() => setStep(step - 1)}
           className="btn-secondary"
+          disabled={step === 0}
         >
           {step === 0 ? "キャンセル" : "戻る"}
         </button>
@@ -465,4 +336,4 @@ const AccountMappingSettings = ({
   );
 };
 
-export default AccountMappingSettings;
+export default FinancialModelBuilder;

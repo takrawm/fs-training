@@ -9,19 +9,17 @@ import * as XLSX from "xlsx";
 export function useExcelImport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [rawData, setRawData] = useState(null);
   const [flattenedData, setFlattenedData] = useState(null);
 
   /**
    * Excelファイルを読み込み、シンプルなデータ構造で返す
    * @param {string} filePath - Excelファイルのパス
-   * @returns {Promise<Object>} 読み込んだExcelデータ
    */
-  const extractRawData = useCallback(async (filePath) => {
+  const readRawData = useCallback(async (filePath) => {
     setLoading(true);
     setError(null);
 
-    console.log("Excel読み込み処理開始:", filePath);
+    console.log("readRawDataを呼び出し:", filePath);
 
     try {
       // ファイルを読み込む
@@ -36,14 +34,13 @@ export function useExcelImport() {
 
       // シンプルなデータ構造でExcelデータを読み込む
       const excelData = parseExcelData(data);
-      setRawData(excelData);
 
       // シートデータをフラットな2次元配列に変換
       const flattened = flattenSheetDataToArray(excelData);
+      console.log("flattened:", flattened);
       setFlattenedData(flattened);
 
       setLoading(false);
-      return excelData;
     } catch (err) {
       console.error("Excelデータの抽出エラー:", err);
       setError(err.message);
@@ -171,11 +168,9 @@ export function useExcelImport() {
   }
 
   return {
-    rawData,
-    flattenedData,
     loading,
     error,
-    extractRawData,
-    setRawData,
+    flattenedData,
+    readRawData,
   };
 }

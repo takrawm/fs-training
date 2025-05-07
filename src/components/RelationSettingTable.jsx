@@ -10,12 +10,6 @@ import "handsontable/dist/handsontable.full.min.css";
  * @returns {JSX.Element}
  */
 const RelationSettingTable = ({ accounts, onChange }) => {
-  // テーブルデータ用のステート
-  const [ppeTableData, setPpeTableData] = useState([]);
-  const [retainedEarningsTableData, setRetainedEarningsTableData] = useState(
-    []
-  );
-
   // リレーションタイプ別にアカウントをグループ化
   const { ppeAccounts, retainedEarningsAccounts } = useMemo(() => {
     // PP&E（有形固定資産）関連のアカウント
@@ -99,91 +93,68 @@ const RelationSettingTable = ({ accounts, onChange }) => {
     return account ? account.accountName : "";
   };
 
-  // テーブルデータの初期化
-  useEffect(() => {
-    // PPE資産科目テーブルデータの初期化
-    if (assetAccounts.length > 0) {
-      const data = assetAccounts.map((account) => {
-        return [account.accountName, "", ""];
-      });
-      setPpeTableData(data);
-      console.log("PPEテーブルデータ初期化:", data);
-    }
-
-    // 利益剰余金資産科目テーブルデータの初期化
-    if (retainedEarningsAssetAccounts.length > 0) {
-      const data = retainedEarningsAssetAccounts.map((account) => {
-        return [account.accountName, ""];
-      });
-      setRetainedEarningsTableData(data);
-      console.log("利益剰余金テーブルデータ初期化:", data);
-    }
-  }, []);
-
   // PP&E設定テーブルの設定
   const ppeSettings = useMemo(() => {
     if (assetAccounts.length === 0) return null;
 
+    const data = assetAccounts.map((account) => [
+      account.accountName,
+      account.relation?.investmentAccount || "",
+      account.relation?.depreciationAccount || "",
+    ]);
+
     return {
-      data: ppeTableData,
+      data,
       colHeaders: ["資産科目", "投資科目", "減価償却科目"],
       columns: [
         { type: "text", readOnly: true },
         {
           type: "dropdown",
           source: investmentOptions,
-          // trimDropdown: false,
         },
         {
           type: "dropdown",
           source: depreciationOptions,
-          trimDropdown: false,
         },
       ],
       width: "100%",
-      height: Math.min(400, 50 + ppeTableData.length * 50),
+      height: Math.min(400, 50 + data.length * 50),
       stretchH: "all",
       licenseKey: "non-commercial-and-evaluation",
     };
-  }, [assetAccounts, investmentOptions, depreciationOptions, ppeTableData]);
+  }, [assetAccounts, investmentOptions, depreciationOptions]);
 
   // 利益剰余金設定テーブルの設定
   const retainedEarningsSettings = useMemo(() => {
     if (retainedEarningsAssetAccounts.length === 0) return null;
 
+    const data = retainedEarningsAssetAccounts.map((account) => [
+      account.accountName,
+      account.relation?.profitAccount || "",
+    ]);
+
     return {
-      data: retainedEarningsTableData,
+      data,
       colHeaders: ["利益剰余金科目", "利益科目"],
       columns: [
         { type: "text", readOnly: true },
         {
           type: "dropdown",
           source: profitOptions,
-          trimDropdown: false,
         },
       ],
       width: "100%",
-      height: Math.min(400, 50 + retainedEarningsTableData.length * 50),
+      height: Math.min(400, 50 + data.length * 50),
       stretchH: "all",
       licenseKey: "non-commercial-and-evaluation",
     };
-  }, [retainedEarningsAssetAccounts, profitOptions, retainedEarningsTableData]);
+  }, [retainedEarningsAssetAccounts, profitOptions]);
 
   // PP&E設定の変更ハンドラ
   const handlePpeChange = (changes, source) => {
     if (!changes || !Array.isArray(changes) || source === "loadData") return;
 
     try {
-      // テーブル表示用のデータを更新
-      const updatedTableData = [...ppeTableData];
-      changes.forEach(([rowIndex, columnIndex, oldValue, newValue]) => {
-        // テーブルデータを更新
-        if (rowIndex >= 0 && rowIndex < updatedTableData.length) {
-          updatedTableData[rowIndex][columnIndex] = newValue;
-        }
-      });
-      setPpeTableData(updatedTableData);
-
       // アカウントデータを更新
       const updatedAccounts = [...accounts];
 
@@ -206,12 +177,8 @@ const RelationSettingTable = ({ accounts, onChange }) => {
         if (accountIndex === -1 || accountIndex >= updatedAccounts.length)
           return;
 
-        // 既存のrelationプロパティを保持または新規作成
-        const relation = {
-          ...(updatedAccounts[accountIndex].relation || {}),
-          type: "PPE",
-          subType: "asset",
-        };
+        // 既存のrelationプロパティを保持
+        const relation = updatedAccounts[accountIndex].relation || {};
 
         if (columnIndex === 1) {
           // 投資科目設定 - 名前からIDを取得
@@ -260,16 +227,6 @@ const RelationSettingTable = ({ accounts, onChange }) => {
     if (!changes || !Array.isArray(changes) || source === "loadData") return;
 
     try {
-      // テーブル表示用のデータを更新
-      const updatedTableData = [...retainedEarningsTableData];
-      changes.forEach(([rowIndex, columnIndex, oldValue, newValue]) => {
-        // テーブルデータを更新
-        if (rowIndex >= 0 && rowIndex < updatedTableData.length) {
-          updatedTableData[rowIndex][columnIndex] = newValue;
-        }
-      });
-      setRetainedEarningsTableData(updatedTableData);
-
       // アカウントデータを更新
       const updatedAccounts = [...accounts];
 
@@ -293,12 +250,8 @@ const RelationSettingTable = ({ accounts, onChange }) => {
         if (accountIndex === -1 || accountIndex >= updatedAccounts.length)
           return;
 
-        // 既存のrelationプロパティを保持または新規作成
-        const relation = {
-          ...(updatedAccounts[accountIndex].relation || {}),
-          type: "RETAINED_EARNINGS",
-          subType: "asset",
-        };
+        // 既存のrelationプロパティを保持
+        const relation = updatedAccounts[accountIndex].relation || {};
 
         // 利益科目設定 - 名前からIDを取得
         const profitAccountId = getAccountIdByName(newValue, profitAccounts);

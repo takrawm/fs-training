@@ -1,5 +1,5 @@
 import React from "react";
-import FinancialModelEditor from "./components/FinancialModelEditor.jsx";
+import FinancialModelWorkspace from "./components/FinancialModelWorkspace.jsx";
 import "./App.css";
 
 function App() {
@@ -9,7 +9,7 @@ function App() {
         <h1>FS Sample</h1>
       </header>
       <main className="App-main">
-        <FinancialModelEditor excelFilePath="/sample_sales2.xlsx" />
+        <FinancialModelWorkspace excelFilePath="/sample_sales2.xlsx" />
       </main>
       <footer className="App-footer">
         <p>財務モデリングプロトタイプ © 2025</p>

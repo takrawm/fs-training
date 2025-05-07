@@ -1,5 +1,5 @@
-/* FinancialModelEditor.css */
-.financial-model-editor {
+/* FinancialModelWorkspace.css */
+.financial-model-workspace {
   width: 100%;
   padding: 0 20px;
   box-sizing: border-box;
@@ -13,6 +13,9 @@
 .editor-content {
   position: relative;
   width: 100%;
+  height: calc(100vh - 100px); /* ヘッダーとタブの高さを考慮 */
+  display: flex;
+  flex-direction: column;
 }
 
 /* ローディング表示 */
@@ -63,7 +66,10 @@
 
 /* タブ関連のスタイル */
 .tabs-container {
-  margin-bottom: 2rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   width: 100%;
 }
 
@@ -74,6 +80,7 @@
   margin: 0;
   border-bottom: 1px solid #dee2e6;
   width: 100%;
+  background: #fff;
 }
 
 .tab-item {
@@ -103,18 +110,23 @@
 }
 
 .tab-content {
-  padding: 1rem 0;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   width: 100%;
 }
 
 .tab-pane {
   display: none;
   width: 100%;
+  height: 100%;
 }
 
 .tab-pane.active {
   display: block;
   width: 100%;
+  height: 100%;
 }
 
 /* ボタングループ */
@@ -275,6 +287,73 @@ html {
   max-width: 100%;
   box-sizing: border-box;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* テーブルコンテンツエリア */
+.table-content-area {
+  flex: 1;
+  overflow: auto;
+  margin-bottom: 20px;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* ボタンエリア */
+.mapping-buttons {
+  padding: 20px 0;
+  background: #fff;
+  border-top: 1px solid #dee2e6;
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Handsontableコンテナのスタイル調整 */
+.hot-table-container {
+  margin-bottom: 20px;
+  max-height: calc(100vh - 300px);
+  overflow: auto;
+}
+
+.hot-table-container:last-child {
+  margin-bottom: 0;
+}
+
+/* テーブルヘッダーのスタイル */
+.table-content-area h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* スクロールバーのスタイル */
+.table-content-area::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-content-area::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-content-area::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.table-content-area::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 .mapping-table-container {

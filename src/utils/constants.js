@@ -17,21 +17,13 @@ export const DEFAULT_PARAMETER_VALUES = {
   [ParameterType.OTHER]: null, // 特殊計算用
 };
 
-// 基本マッピング構造の定義
-const baseMapping = {
-  accountType: null,
-  parameter: null,
-  aggregateMethod: "NONE",
-};
-
-// 基本パラメータ構造の定義
-const baseParameter = {
-  type: null,
-  value: null,
-  referenceAccountId: null,
-  periodIds: [],
-  isEditable: true,
-};
+// 参照科目IDのリスト
+export const INITIAL_REFERENCE_ACCOUNTS = [
+  "rev-total", // 売上高合計
+  "asset-total", // 資産合計
+  "op-profit", // 営業利益
+  "li-eq-total", // 負債及び純資産合計
+];
 
 // 集計用勘定科目の定義
 export const SUMMARY_ACCOUNTS = {
@@ -43,7 +35,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: true,
+    isParameterReference: true,
     order: "A99",
     prefix: "A",
     relation: { type: "NONE", subType: null },
@@ -55,7 +47,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "B99",
     prefix: "B",
     relation: { type: "NONE", subType: null },
@@ -67,7 +59,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "ACCOUNT_CALC",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "C99",
     prefix: "C",
     relation: { type: "NONE", subType: null },
@@ -82,7 +74,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "D99",
     prefix: "D",
     relation: { type: "NONE", subType: null },
@@ -94,7 +86,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "ACCOUNT_CALC",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "E99",
     prefix: "E",
     relation: { type: "RETAINED_EARNINGS", subType: "profit" },
@@ -108,10 +100,10 @@ export const SUMMARY_ACCOUNTS = {
     id: "current-asset-total",
     accountName: "流動資産合計",
     sheetType: "BS",
-    parentAccount: "資産合計", // 資産合計の子科目
+    parentAccount: "資産合計",
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "F99",
     prefix: "F",
     relation: { type: "NONE", subType: null },
@@ -120,10 +112,10 @@ export const SUMMARY_ACCOUNTS = {
     id: "fixed-asset-total",
     accountName: "固定資産合計",
     sheetType: "BS",
-    parentAccount: "資産合計", // 資産合計の子科目
+    parentAccount: "資産合計",
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "G99",
     prefix: "G",
     relation: { type: "NONE", subType: null },
@@ -132,10 +124,10 @@ export const SUMMARY_ACCOUNTS = {
     id: "asset-total",
     accountName: "資産合計",
     sheetType: "BS",
-    parentAccount: null, // トップレベル科目
+    parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "H99",
     prefix: "H",
     relation: { type: "NONE", subType: null },
@@ -144,10 +136,10 @@ export const SUMMARY_ACCOUNTS = {
     id: "current-liability-total",
     accountName: "流動負債合計",
     sheetType: "BS",
-    parentAccount: "負債合計", // 負債合計の子科目
+    parentAccount: "負債合計",
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "I99",
     prefix: "I",
     relation: { type: "NONE", subType: null },
@@ -156,10 +148,10 @@ export const SUMMARY_ACCOUNTS = {
     id: "fixed-liability-total",
     accountName: "固定負債合計",
     sheetType: "BS",
-    parentAccount: "負債合計", // 負債合計の子科目
+    parentAccount: "負債合計",
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "J99",
     prefix: "J",
     relation: { type: "NONE", subType: null },
@@ -168,10 +160,10 @@ export const SUMMARY_ACCOUNTS = {
     id: "liability-total",
     accountName: "負債合計",
     sheetType: "BS",
-    parentAccount: "負債及び純資産合計", // 負債及び純資産合計の子科目
+    parentAccount: "負債及び純資産合計",
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "K99",
     prefix: "K",
     relation: { type: "NONE", subType: null },
@@ -183,7 +175,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: "純資産合計",
     calculationType: "CHILDREN_SUM",
     parameterType: "PROPORTIONATE",
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "L99",
     prefix: "L",
     relation: { type: "NONE", subType: null },
@@ -195,7 +187,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: "純資産合計",
     calculationType: "CHILDREN_SUM",
     parameterType: "PROPORTIONATE",
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "M99",
     prefix: "M",
     relation: { type: "RETAINED_EARNINGS", subType: "asset" },
@@ -204,10 +196,10 @@ export const SUMMARY_ACCOUNTS = {
     id: "equity-total",
     accountName: "純資産合計",
     sheetType: "BS",
-    parentAccount: "負債及び純資産合計", // 負債及び純資産合計の子科目
+    parentAccount: "負債及び純資産合計",
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "N99",
     prefix: "N",
     relation: { type: "NONE", subType: null },
@@ -216,10 +208,10 @@ export const SUMMARY_ACCOUNTS = {
     id: "li-eq-total",
     accountName: "負債及び純資産合計",
     sheetType: "BS",
-    parentAccount: null, // トップレベル科目
+    parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "O99",
     prefix: "O",
     relation: { type: "NONE", subType: null },
@@ -231,7 +223,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: "OTHER",
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "P99",
     prefix: "P",
     relation: { type: "NONE", subType: null },
@@ -245,7 +237,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "Q99",
     prefix: "Q",
     relation: { type: "NONE", subType: null },
@@ -259,7 +251,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "R99",
     prefix: "R",
     relation: { type: "NONE", subType: null },
@@ -271,7 +263,7 @@ export const SUMMARY_ACCOUNTS = {
     parentAccount: null,
     calculationType: "CHILDREN_SUM",
     parameterType: null,
-    isReferenceAccount: false,
+    isParameterReference: false,
     order: "S99",
     prefix: "S",
     relation: { type: "NONE", subType: null },
