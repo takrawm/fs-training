@@ -57,10 +57,7 @@ const AccountMappingTable = ({ data, onChange }) => {
   };
 
   return (
-    <div
-      className="mapping-table-container"
-      style={{ height: "60vh", width: "100%", overflow: "auto" }}
-    >
+    <div className="hot-table-container">
       <HotTable
         ref={hotTableRef}
         data={data}

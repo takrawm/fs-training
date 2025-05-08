@@ -97,15 +97,11 @@ const FinancialModelWorkspace = ({ excelFilePath }) => {
         </ul>
 
         <div className="tab-content">
-          {activeTab === "data" && (
-            <div className="dataview-container">
-              {model && (
-                <FinancialModelBuilder
-                  model={model}
-                  flattenedData={flattenedData}
-                />
-              )}
-            </div>
+          {activeTab === "data" && model && (
+            <FinancialModelBuilder
+              model={model}
+              flattenedData={flattenedData}
+            />
           )}
 
           {activeTab === "params" && (
@@ -118,11 +114,7 @@ const FinancialModelWorkspace = ({ excelFilePath }) => {
     );
   };
 
-  return (
-    <div className="financial-model-editor">
-      <div className="editor-container">{renderContent()}</div>
-    </div>
-  );
+  return <div className="financial-model-workspace">{renderContent()}</div>;
 };
 
 export default FinancialModelWorkspace;

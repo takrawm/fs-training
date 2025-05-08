@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import * as XLSX from "xlsx";
+import { TARGET_SHEETS } from "../utils/constants";
 
 /**
  * Excelファイルのインポートと処理を管理するシンプルなカスタムフック
@@ -64,7 +65,7 @@ export function useExcelImport() {
       const excelData = {};
 
       // 対象シートのみ処理
-      const targetSheets = ["PL", "BS", "CAPEX", "CS"];
+      const targetSheets = TARGET_SHEETS;
 
       // 各シートのデータを読み込む
       workbook.SheetNames.forEach((sheetName) => {

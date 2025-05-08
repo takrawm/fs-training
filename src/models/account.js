@@ -91,25 +91,10 @@ export const createAggregatedAccounts = (aggregatedMap) => {
 export const createFinalAccounts = (accounts) => {
   const filteredAccounts = accounts
     .filter((account) => account.parentAccount !== "")
-    .map((account) => {
-      if (account.parameter) {
-        console.log(
-          `アカウント「${account.accountName}」のパラメータ設定:`,
-          account.parameter
-        );
-      }
-
-      return {
-        ...account,
-        calculationType: null,
-        parameter: account.parameter || null,
-      };
-    });
-
-  const filteredWithParams = filteredAccounts.filter(
-    (account) => account.parameter
-  );
-  console.log("フィルタリング後パラメータ付きアカウント:", filteredWithParams);
+    .map((account) => ({
+      ...account,
+      calculationType: null,
+    }));
 
   const prefixMap = {};
   Object.entries(SUMMARY_ACCOUNTS).forEach(([key, account]) => {
@@ -133,11 +118,6 @@ export const createFinalAccounts = (accounts) => {
     };
   });
 
-  const orderedWithParams = accountsWithOrder.filter(
-    (account) => account.parameter
-  );
-  console.log("順序付与後パラメータ付きアカウント:", orderedWithParams);
-
   const finalAccounts = [...accountsWithOrder];
   Object.values(SUMMARY_ACCOUNTS).forEach((summaryAccount) => {
     finalAccounts.push({
@@ -154,9 +134,6 @@ export const createFinalAccounts = (accounts) => {
     if (a.order > b.order) return 1;
     return 0;
   });
-
-  const finalWithParams = finalAccounts.filter((account) => account.parameter);
-  console.log("最終的なパラメータ付きアカウント:", finalWithParams);
 
   return finalAccounts;
 };

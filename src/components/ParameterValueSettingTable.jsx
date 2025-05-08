@@ -121,20 +121,21 @@ const ParameterValueSettingTable = ({
     const data = growthRateAccounts.map((account) => [
       account.accountName,
       account.parameter?.growthRate
-        ? Math.round(account.parameter.growthRate * 100 * 100) / 100 // 小数から%に変換して表示（小数点2桁）
-        : 10, // デフォルト10%
+        ? Math.round(account.parameter.growthRate * 100 * 100) / 100
+        : 10,
     ]);
 
     return {
       data,
       colHeaders: ["勘定科目", "成長率 (%)"],
       columns: [
-        { type: "text", readOnly: true },
+        { type: "text", readOnly: true, width: 200 },
         {
           type: "numeric",
           numericFormat: {
             pattern: "0.00",
           },
+          width: 150,
         },
       ],
       width: "100%",
@@ -152,24 +153,26 @@ const ParameterValueSettingTable = ({
       account.accountName,
       account.parameter?.referenceAccountName || referenceAccountNames[0] || "",
       account.parameter?.percentage
-        ? Math.round(account.parameter.percentage * 100 * 100) / 100 // 小数から%に変換（小数点2桁）
-        : 30, // デフォルト30%
+        ? Math.round(account.parameter.percentage * 100 * 100) / 100
+        : 30,
     ]);
 
     return {
       data,
       colHeaders: ["勘定科目", "参照科目", "比率 (%)"],
       columns: [
-        { type: "text", readOnly: true },
+        { type: "text", readOnly: true, width: 200 },
         {
           type: "dropdown",
           source: referenceAccountNames,
+          width: 200,
         },
         {
           type: "numeric",
           numericFormat: {
             pattern: "0.00",
           },
+          width: 150,
         },
       ],
       width: "100%",
@@ -192,10 +195,11 @@ const ParameterValueSettingTable = ({
       data,
       colHeaders: ["勘定科目", "連動参照科目"],
       columns: [
-        { type: "text", readOnly: true },
+        { type: "text", readOnly: true, width: 200 },
         {
           type: "dropdown",
           source: referenceAccountNames,
+          width: 200,
         },
       ],
       width: "100%",
@@ -365,7 +369,6 @@ const ParameterValueSettingTable = ({
           </div>
         </>
       )}
-      image.png
       {percentageSettings && (
         <>
           <h3>比率設定</h3>

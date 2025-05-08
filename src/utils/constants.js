@@ -1,5 +1,8 @@
 import { AccountType, ParameterType, CashflowType } from "../types/models.js";
 
+// 対象シートの定義
+export const TARGET_SHEETS = ["PL", "BS", "CAPEX", "CS"];
+
 // パラメータのデフォルト値
 export const DEFAULT_PARAMETER_VALUES = {
   // export const ParameterType = {

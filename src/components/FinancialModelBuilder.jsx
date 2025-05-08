@@ -3,6 +3,7 @@ import { HotTable } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
 import AccountMappingTable from "./AccountMappingTable";
+import ParentAccountSettingTable from "./ParentAccountSettingTable";
 import ParameterSettingTable from "./ParameterSettingTable";
 import ParameterValueSettingTable from "./ParameterValueSettingTable";
 import RelationSettingTable from "./RelationSettingTable";
@@ -21,6 +22,7 @@ import {
   addNewPeriodToModel,
 } from "../models/financialModel";
 import { createAggregatedValueForDisplay } from "../display/financialDisplay";
+import "../styles/FinancialModelBuilder.css";
 
 // Handsontableのすべてのモジュールを登録
 registerAllModules();
@@ -71,6 +73,13 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
     },
     [mappingData]
   );
+
+  // 親科目設定更新ハンドラ
+  const handleParentAccountChange = useCallback((updatedAccounts) => {
+    // アカウント配列を更新
+    setAccounts(updatedAccounts);
+    console.log("親科目設定が更新されました:", updatedAccounts);
+  }, []);
 
   // パラメータ変更ハンドラ
   const handleParamChange = useCallback(
@@ -166,12 +175,14 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       case 0:
         return "勘定科目マッピング設定";
       case 1:
-        return "パラメータ分類設定";
+        return "親科目設定";
       case 2:
-        return "パラメータ値設定";
+        return "パラメータ分類設定";
       case 3:
-        return "リレーション設定";
+        return "パラメータ値設定";
       case 4:
+        return "リレーション設定";
+      case 5:
         return "集計結果確認";
       default:
         return "";
@@ -181,7 +192,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
   // 確定ボタンハンドラ
   const handleSave = () => {
     if (step === 0) {
-      // ステップ0：マッピング完了 → パラメータ分類設定へ
+      // ステップ0：マッピング完了 → 親科目設定へ
       // 集計マップを作成
       const newAggregatedMap = createAggregatedMap(flattenedRows, mappingData);
       console.log("newAggregatedMap: ", newAggregatedMap);
@@ -196,16 +207,22 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       // 次のステップへ
       setStep(1);
     } else if (step === 1) {
-      // ステップ1：パラメータ分類設定完了 → パラメータ値設定へ
+      // ステップ1：親科目設定完了 → パラメータ分類設定へ
       console.log("ステップ1完了時のアカウント:", accounts);
       // 次のステップへ進むだけ
       setStep(2);
     } else if (step === 2) {
-      // ステップ2：パラメータ値設定完了 → リレーション設定へ
+      // ステップ2：パラメータ分類設定完了 → パラメータ値設定へ
       console.log("ステップ2完了時のアカウント:", accounts);
-      // 次のステップ（リレーション設定）へ
+      // 次のステップへ進むだけ
       setStep(3);
     } else if (step === 3) {
+      // ステップ3：パラメータ値設定完了 → リレーション設定へ
+      console.log("ステップ3完了時のアカウント:", accounts);
+      // 次のステップへ進むだけ
+      setStep(4);
+    } else if (step === 4) {
+      // ステップ4：リレーション設定完了 → 集計結果確認へ
       // 最終的なアカウントリストを作成
       const finalAccounts = createFinalAccounts(accounts);
       console.log("最終アカウント:", finalAccounts);
@@ -262,13 +279,16 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       console.log("finalAccounts:", finalAccounts);
 
       // 次のステップへ
-      setStep(4);
+      setStep(5);
     }
   };
 
   return (
-    <div className="account-mapping-settings">
-      <h2>{getStepTitle()}</h2>
+    <>
+      {/* タイトルエリア */}
+      <div className="table-title-area">
+        <h2>{getStepTitle()}</h2>
+      </div>
 
       {/* テーブルコンテンツエリア */}
       <div className="table-content-area">
@@ -279,23 +299,29 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
             onChange={handleMappingChange}
           />
         ) : step === 1 ? (
-          // ステップ1：パラメータ分類設定
-          <ParameterSettingTable data={accounts} onChange={handleParamChange} />
+          // ステップ1：親科目設定
+          <ParentAccountSettingTable
+            data={accounts}
+            onChange={handleParentAccountChange}
+          />
         ) : step === 2 ? (
-          // ステップ2：パラメータ値設定
+          // ステップ2：パラメータ分類設定
+          <ParameterSettingTable data={accounts} onChange={handleParamChange} />
+        ) : step === 3 ? (
+          // ステップ3：パラメータ値設定
           <ParameterValueSettingTable
             accounts={accounts}
             referenceAccounts={referenceAccounts}
             onChange={handleParameterValueChange}
           />
-        ) : step === 3 ? (
-          // ステップ3：リレーション設定
+        ) : step === 4 ? (
+          // ステップ4：リレーション設定
           <RelationSettingTable
             accounts={accounts}
             onChange={handleRelationChange}
           />
         ) : (
-          // ステップ4：集計結果確認（タブ付きテーブル）と期間追加ボタン
+          // ステップ5：集計結果確認（タブ付きテーブル）と期間追加ボタン
           <div>
             <div style={{ marginBottom: "10px" }}>
               <button
@@ -316,13 +342,9 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       </div>
 
       {/* ボタンエリア */}
-      <div className="mapping-buttons">
-        <button
-          onClick={handleSave}
-          className="btn-primary"
-          style={{ marginRight: 10 }}
-        >
-          {step === 4 ? "完了" : "次へ"}
+      <div className="table-button-area">
+        <button onClick={handleSave} className="btn-primary">
+          {step === 5 ? "完了" : "次へ"}
         </button>
         <button
           onClick={() => setStep(step - 1)}
@@ -332,7 +354,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
           {step === 0 ? "キャンセル" : "戻る"}
         </button>
       </div>
-    </div>
+    </>
   );
 };
 
