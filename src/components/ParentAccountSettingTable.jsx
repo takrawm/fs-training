@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
-import { TARGET_SHEETS } from "../utils/constants";
+import { TARGET_SHEETS, SUMMARY_ACCOUNTS } from "../utils/constants";
 
 /**
  * 親科目設定テーブルコンポーネント
@@ -11,6 +11,13 @@ import { TARGET_SHEETS } from "../utils/constants";
  * @returns {JSX.Element}
  */
 const ParentAccountSettingTable = ({ data, onChange }) => {
+  // 親科目のリストを抽出
+  const parentAccounts = useMemo(() => {
+    return Object.values(SUMMARY_ACCOUNTS)
+      .filter((account) => account.calculationType === "CHILDREN_SUM")
+      .map((account) => account.accountName);
+  }, []);
+
   const parentAccountSettings = useMemo(() => {
     return {
       data: data.map((account) => [
@@ -23,7 +30,7 @@ const ParentAccountSettingTable = ({ data, onChange }) => {
         { type: "text", readOnly: true },
         {
           type: "dropdown",
-          source: ["損益計算書", "貸借対照表", "キャッシュフロー計算書"],
+          source: parentAccounts,
         },
         {
           type: "dropdown",
@@ -36,7 +43,7 @@ const ParentAccountSettingTable = ({ data, onChange }) => {
       rowHeaders: true,
       licenseKey: "non-commercial-and-evaluation",
     };
-  }, [data]);
+  }, [data, parentAccounts]);
 
   const handleChange = (changes, source) => {
     // changesがnullまたは編集以外のソースの場合は何もしない

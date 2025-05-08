@@ -8,11 +8,12 @@ import ParameterSettingTable from "./ParameterSettingTable";
 import ParameterValueSettingTable from "./ParameterValueSettingTable";
 import RelationSettingTable from "./RelationSettingTable";
 import ResultTableWithTabs from "./ResultTableWithTabs";
+import SortedAccountsTable from "./SortedAccountsTable";
 import {
   createInitialMappingData,
   createAggregatedMap,
   createAggregatedAccounts,
-  createFinalAccounts,
+  createSortedAccounts,
   createPeriods,
 } from "../models/account";
 import {
@@ -177,12 +178,14 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       case 1:
         return "親科目設定";
       case 2:
-        return "パラメータ分類設定";
+        return "ソート済みアカウント確認";
       case 3:
-        return "パラメータ値設定";
+        return "パラメータ分類設定";
       case 4:
-        return "リレーション設定";
+        return "パラメータ値設定";
       case 5:
+        return "リレーション設定";
+      case 6:
         return "集計結果確認";
       default:
         return "";
@@ -207,24 +210,35 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       // 次のステップへ
       setStep(1);
     } else if (step === 1) {
-      // ステップ1：親科目設定完了 → パラメータ分類設定へ
-      console.log("ステップ1完了時のアカウント:", accounts);
-      // 次のステップへ進むだけ
+      // ステップ1：親科目設定完了 → ソート済みアカウント確認へ
+      // ソートされたアカウントリストを作成
+      const sortedAccounts = createSortedAccounts(accounts);
+      console.log("ソート後のアカウント:", sortedAccounts);
+
+      // アカウントリストを更新
+      setAccounts(sortedAccounts);
+
+      // 次のステップへ
       setStep(2);
     } else if (step === 2) {
-      // ステップ2：パラメータ分類設定完了 → パラメータ値設定へ
+      // ステップ2：ソート済みアカウント確認完了 → パラメータ分類設定へ
       console.log("ステップ2完了時のアカウント:", accounts);
       // 次のステップへ進むだけ
       setStep(3);
     } else if (step === 3) {
-      // ステップ3：パラメータ値設定完了 → リレーション設定へ
+      // ステップ3：パラメータ分類設定完了 → パラメータ値設定へ
       console.log("ステップ3完了時のアカウント:", accounts);
       // 次のステップへ進むだけ
       setStep(4);
     } else if (step === 4) {
-      // ステップ4：リレーション設定完了 → 集計結果確認へ
+      // ステップ4：パラメータ値設定完了 → リレーション設定へ
+      console.log("ステップ4完了時のアカウント:", accounts);
+      // 次のステップへ進むだけ
+      setStep(5);
+    } else if (step === 5) {
+      // ステップ5：リレーション設定完了 → 集計結果確認へ
       // 最終的なアカウントリストを作成
-      const finalAccounts = createFinalAccounts(accounts);
+      const finalAccounts = createSortedAccounts(accounts);
       console.log("最終アカウント:", finalAccounts);
 
       // 期間情報を作成
@@ -279,7 +293,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       console.log("finalAccounts:", finalAccounts);
 
       // 次のステップへ
-      setStep(5);
+      setStep(6);
     }
   };
 
@@ -305,23 +319,26 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
             onChange={handleParentAccountChange}
           />
         ) : step === 2 ? (
-          // ステップ2：パラメータ分類設定
-          <ParameterSettingTable data={accounts} onChange={handleParamChange} />
+          // ステップ2：ソート済みアカウント確認
+          <SortedAccountsTable data={accounts} />
         ) : step === 3 ? (
-          // ステップ3：パラメータ値設定
+          // ステップ3：パラメータ分類設定
+          <ParameterSettingTable data={accounts} onChange={handleParamChange} />
+        ) : step === 4 ? (
+          // ステップ4：パラメータ値設定
           <ParameterValueSettingTable
             accounts={accounts}
             referenceAccounts={referenceAccounts}
             onChange={handleParameterValueChange}
           />
-        ) : step === 4 ? (
-          // ステップ4：リレーション設定
+        ) : step === 5 ? (
+          // ステップ5：リレーション設定
           <RelationSettingTable
             accounts={accounts}
             onChange={handleRelationChange}
           />
         ) : (
-          // ステップ5：集計結果確認（タブ付きテーブル）と期間追加ボタン
+          // ステップ6：集計結果確認（タブ付きテーブル）と期間追加ボタン
           <div>
             <div style={{ marginBottom: "10px" }}>
               <button
@@ -344,7 +361,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       {/* ボタンエリア */}
       <div className="table-button-area">
         <button onClick={handleSave} className="btn-primary">
-          {step === 5 ? "完了" : "次へ"}
+          {step === 6 ? "完了" : "次へ"}
         </button>
         <button
           onClick={() => setStep(step - 1)}

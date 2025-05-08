@@ -84,20 +84,20 @@ export const createAggregatedAccounts = (aggregatedMap) => {
 };
 
 /**
- * 最終的なアカウントリストを生成する
+ * ソートされたアカウントリストを生成する
  * @param {Array} accounts アカウント配列
- * @returns {Array} 最終的なアカウント配列
+ * @returns {Array} ソートされたアカウント配列
  */
-export const createFinalAccounts = (accounts) => {
+export const createSortedAccounts = (accounts) => {
   const filteredAccounts = accounts
-    .filter((account) => account.parentAccount !== "")
+    .filter((account) => account.parentAccount !== "集約科目")
     .map((account) => ({
       ...account,
       calculationType: null,
     }));
 
   const prefixMap = {};
-  Object.entries(SUMMARY_ACCOUNTS).forEach(([key, account]) => {
+  Object.values(SUMMARY_ACCOUNTS).forEach((account) => {
     prefixMap[account.accountName] = account.prefix;
   });
 
@@ -118,16 +118,20 @@ export const createFinalAccounts = (accounts) => {
     };
   });
 
-  const finalAccounts = [...accountsWithOrder];
+  const sortedAccounts = [...accountsWithOrder];
   Object.values(SUMMARY_ACCOUNTS).forEach((summaryAccount) => {
-    finalAccounts.push({
+    if (sortedAccounts.some((account) => account.id === summaryAccount.id)) {
+      return;
+    }
+
+    sortedAccounts.push({
       ...summaryAccount,
       order: summaryAccount.order,
       calculationType: summaryAccount.calculationType,
     });
   });
 
-  finalAccounts.sort((a, b) => {
+  sortedAccounts.sort((a, b) => {
     if (!a.order) return 1;
     if (!b.order) return -1;
     if (a.order < b.order) return -1;
@@ -135,7 +139,7 @@ export const createFinalAccounts = (accounts) => {
     return 0;
   });
 
-  return finalAccounts;
+  return sortedAccounts;
 };
 
 /**
