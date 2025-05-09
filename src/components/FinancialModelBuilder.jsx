@@ -19,10 +19,8 @@ import {
 import {
   createFinancialModel,
   createAccountValues,
-  createDisplayDataFromModel,
   addNewPeriodToModel,
 } from "../models/financialModel";
-import { createAggregatedValueForDisplay } from "../display/financialDisplay";
 import "../styles/FinancialModelBuilder.css";
 
 // Handsontableのすべてのモジュールを登録
@@ -41,12 +39,12 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
   const [mappingData, setMappingData] = useState([]);
   // 財務モデルを構成するアカウント
   const [accounts, setAccounts] = useState([]);
-  // 表示用の集計値
-  const [aggregatedValue, setAggregatedValue] = useState([]);
   // 期間情報
   const [periods, setPeriods] = useState([]);
   // 財務モデル
   const [financialModel, setFinancialModel] = useState(null);
+  // アカウント値
+  const [accountValues, setAccountValues] = useState([]);
 
   // 初期マッピングデータをセット
   useEffect(() => {
@@ -164,10 +162,6 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
     // 各状態を更新
     setAccounts(updatedModel.accounts);
     setPeriods(updatedModel.periods);
-
-    // 表示用データを更新
-    const displayData = createDisplayDataFromModel(updatedModel);
-    setAggregatedValue(displayData);
   }, [financialModel]);
 
   // ステップタイトルを取得
@@ -218,6 +212,25 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       // アカウントリストを更新
       setAccounts(sortedAccounts);
 
+      // 期間情報を作成
+      const newPeriods = createPeriods(flattenedData);
+      setPeriods(newPeriods);
+
+      // 集計マップを作成
+      const newAggregatedMap = createAggregatedMap(flattenedRows, mappingData);
+      console.log("newAggregatedMap: ", newAggregatedMap);
+
+      // アカウント値を作成
+      const newAccountValues = createAccountValues(
+        newAggregatedMap,
+        newPeriods,
+        sortedAccounts
+      );
+      console.log("作成されたアカウント値:", newAccountValues);
+
+      // アカウント値を更新
+      setAccountValues(newAccountValues);
+
       // 次のステップへ
       setStep(2);
     } else if (step === 2) {
@@ -237,30 +250,11 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       setStep(5);
     } else if (step === 5) {
       // ステップ5：リレーション設定完了 → 集計結果確認へ
-      // 最終的なアカウントリストを作成
-      const finalAccounts = createSortedAccounts(accounts);
-      console.log("最終アカウント:", finalAccounts);
-
-      // 期間情報を作成
-      const newPeriods = createPeriods(flattenedData);
-      setPeriods(newPeriods);
-
-      // 集計マップを作成
-      const newAggregatedMap = createAggregatedMap(flattenedRows, mappingData);
-      console.log("newAggregatedMap: ", newAggregatedMap);
-
-      // アカウント値を作成
-      const newAccountValues = createAccountValues(
-        newAggregatedMap,
-        newPeriods,
-        finalAccounts
-      );
-
       // 統合された財務モデルを作成
       const newFinancialModel = createFinancialModel(
-        finalAccounts,
-        newPeriods,
-        newAccountValues
+        accounts,
+        periods,
+        accountValues
       );
       setFinancialModel(newFinancialModel);
 
@@ -277,20 +271,6 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
         ).length
       );
       console.log("=== 財務モデルのログ終了 ===");
-
-      // 表示用最終集計値を作成（財務モデルから直接使用）
-      const aggregatedValueForDisplay = createAggregatedValueForDisplay(
-        newFinancialModel.accounts,
-        newFinancialModel.periods,
-        newFinancialModel.values
-      );
-
-      // 集計値を更新
-      setAggregatedValue(aggregatedValueForDisplay);
-
-      // アカウントリストを更新
-      setAccounts(finalAccounts);
-      console.log("finalAccounts:", finalAccounts);
 
       // 次のステップへ
       setStep(6);
@@ -338,23 +318,11 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
             onChange={handleRelationChange}
           />
         ) : (
-          // ステップ6：集計結果確認（タブ付きテーブル）と期間追加ボタン
-          <div>
-            <div style={{ marginBottom: "10px" }}>
-              <button
-                onClick={handleAddPeriod}
-                className="btn-secondary"
-                style={{ marginRight: "10px" }}
-              >
-                期間を追加
-              </button>
-            </div>
-            <ResultTableWithTabs
-              aggregatedValue={aggregatedValue}
-              accounts={accounts}
-              periods={periods}
-            />
-          </div>
+          // ステップ6：集計結果確認（タブ付きテーブル）
+          <ResultTableWithTabs
+            financialModel={financialModel}
+            onAddPeriod={handleAddPeriod}
+          />
         )}
       </div>
 
@@ -364,7 +332,10 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
           {step === 6 ? "完了" : "次へ"}
         </button>
         <button
-          onClick={() => setStep(step - 1)}
+          onClick={() => {
+            console.log("戻るボタンがクリックされました。現在のstep:", step);
+            setStep(step - 1);
+          }}
           className="btn-secondary"
           disabled={step === 0}
         >

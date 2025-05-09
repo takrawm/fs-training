@@ -19,7 +19,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 5px;
   background-color: #fff;
   border-left: 1px solid #dee2e6;
   border-right: 1px solid #dee2e6;
@@ -30,7 +30,7 @@
 .hot-table-container {
   height: 100%;
   width: 100%;
-  overflow: auto;
+  overflow: hidden;
   margin: 0;
   padding: 0;
   box-sizing: border-box;

@@ -11,7 +11,7 @@ registerAllModules();
  * 結果表示用のテーブルとタブコンポーネント
  * PL、BS、CAPEX、CF、パラメータのタブを切り替えて結果を表示します
  */
-const ResultTableWithTabs = ({ aggregatedValue, accounts, periods }) => {
+const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
   const hotTableRef = useRef(null);
   const [activeTab, setActiveTab] = useState("PL");
   const [filteredData, setFilteredData] = useState([]);
@@ -33,23 +33,35 @@ const ResultTableWithTabs = ({ aggregatedValue, accounts, periods }) => {
     (tabName) => {
       setActiveTab(tabName);
 
+      if (!financialModel) return;
+
       // フィルタリングされたデータを設定
-      const filtered = getFilteredDataByTab(tabName, aggregatedValue, accounts);
+      const filtered = getFilteredDataByTab(tabName, financialModel);
+      console.log("=== フィルタリングされたデータ ===");
+      console.log("タブ:", tabName);
+      console.log("データ:", filtered);
+      console.log("データの長さ:", filtered.length);
+      console.log("=== フィルタリングデータのログ終了 ===");
       setFilteredData(filtered);
     },
-    [aggregatedValue, accounts]
+    [financialModel]
   );
 
   // 初期データロード
   useEffect(() => {
-    if (aggregatedValue.length > 0 && accounts.length > 0) {
+    if (financialModel) {
+      console.log("=== 財務モデル ===");
+      console.log("アカウント数:", financialModel.accounts.length);
+      console.log("期間数:", financialModel.periods.length);
+      console.log("値の数:", financialModel.values.length);
+      console.log("=== 財務モデルのログ終了 ===");
       handleTabChange("PL");
     }
-  }, [aggregatedValue, accounts, handleTabChange]);
+  }, [financialModel, handleTabChange]);
 
   // 集計結果表示用の列定義
   const getResultColumns = () => {
-    if (periods.length === 0) return [];
+    if (!financialModel?.periods.length) return [];
 
     // パラメータタブが選択されている場合
     if (activeTab === "パラメータ") {
@@ -67,7 +79,7 @@ const ResultTableWithTabs = ({ aggregatedValue, accounts, periods }) => {
     // 通常のタブ用
     return [
       { data: 0, title: "勘定科目", readOnly: true, width: 200 },
-      ...periods.map((p, idx) => ({
+      ...financialModel.periods.map((p, idx) => ({
         data: idx + 1,
         title: `${p.year} ${p.isActual ? "実績" : "計画"}\n${
           p.isFromExcel ? "取込" : "計算"
@@ -87,7 +99,9 @@ const ResultTableWithTabs = ({ aggregatedValue, accounts, periods }) => {
     const accountName = filteredData[row]?.[0];
     if (!accountName) return {};
 
-    const account = accounts.find((acc) => acc.accountName === accountName);
+    const account = financialModel?.accounts.find(
+      (acc) => acc.accountName === accountName
+    );
 
     if (account?.calculationType) {
       return {
@@ -123,7 +137,16 @@ const ResultTableWithTabs = ({ aggregatedValue, accounts, periods }) => {
 
   return (
     <>
-      <div className="tab-container" style={{ marginBottom: "10px" }}>
+      <div className="upper-button">
+        <button
+          onClick={onAddPeriod}
+          className="btn-secondary"
+          style={{ marginRight: "10px" }}
+        >
+          期間を追加
+        </button>
+      </div>
+      <div className="sheet-tabs-container">
         <div
           style={activeTab === "PL" ? activeTabStyle : inactiveTabStyle}
           onClick={() => handleTabChange("PL")}
@@ -155,10 +178,7 @@ const ResultTableWithTabs = ({ aggregatedValue, accounts, periods }) => {
           パラメータ
         </div>
       </div>
-      <div
-        className="mapping-table-container"
-        style={{ height: "55vh", width: "100%", overflow: "auto" }}
-      >
+      <div className="result-table-container">
         <HotTable
           ref={hotTableRef}
           data={filteredData}

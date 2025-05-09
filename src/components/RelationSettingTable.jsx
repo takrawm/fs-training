@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
+import "../styles/RelationSettingTable.css";
 
 /**
  * リレーション設定テーブルコンポーネント

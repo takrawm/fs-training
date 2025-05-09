@@ -1,0 +1,40 @@
+/* RelationSettingTable.css */
+
+.relation-setting-table {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+}
+
+/* リレーション設定テーブルのヘッダー */
+.relation-setting-table .htCore th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+  text-align: center;
+  padding: 2px;
+  border: 1px solid #dee2e6;
+  height: 25px;
+}
+
+/* リレーション設定テーブルのセル */
+.relation-setting-table .htCore td {
+  padding: 2px;
+  border: 1px solid #dee2e6;
+  height: 25px;
+}
+
+/* 読み取り専用セルのスタイル */
+.relation-setting-table .htCore td.readOnly {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+/* ドロップダウンセルのスタイル */
+.relation-setting-table .htCore td.dropdown {
+  background-color: #fff;
+  cursor: pointer;
+}

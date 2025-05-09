@@ -1,0 +1,51 @@
+/* ParameterValueSettingTable.css */
+
+.parameter-value-setting-table {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+}
+
+/* .parameter-value-setting-table .hot-table-container {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+} */
+
+/* パラメータ値設定テーブルのヘッダー */
+.parameter-value-setting-table .htCore th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+  text-align: center;
+  padding: 2px;
+  border: 1px solid #dee2e6;
+  height: 25px;
+}
+
+/* パラメータ値設定テーブルのセル */
+.parameter-value-setting-table .htCore td {
+  padding: 2px;
+  border: 1px solid #dee2e6;
+  height: 25px;
+}
+
+/* 読み取り専用セルのスタイル */
+.parameter-value-setting-table .htCore td.readOnly {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+/* ドロップダウンセルのスタイル */
+.parameter-value-setting-table .htCore td.dropdown {
+  background-color: #fff;
+  cursor: pointer;
+}
+
+/* 数値入力セルのスタイル */
+.parameter-value-setting-table .htCore td.numeric {
+  text-align: right;
+}

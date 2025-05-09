@@ -1,35 +1,12 @@
 /**
- * 表示用の最終集計値を生成する
- * @param {Array} finalAccounts 最終的なアカウント配列
- * @param {Array} periods 期間配列
- * @param {Array} accountValues アカウント値配列
- * @returns {Array} 表示用最終集計値配列
- */
-export const createAggregatedValueForDisplay = (
-  finalAccounts,
-  periods,
-  accountValues
-) => {
-  return finalAccounts.map((account) => {
-    const valuesRow = periods.map((p) => {
-      const v = accountValues.find(
-        (av) => av.accountId === account.id && av.periodId === p.id
-      );
-      const raw = v ? v.value : 0;
-      return Math.trunc(raw);
-    });
-    return [account.accountName, ...valuesRow];
-  });
-};
-
-/**
  * タブに基づいてフィルタリングされたデータを生成する
  * @param {string} tabName タブ名
- * @param {Array} aggregatedValue 集計値配列
- * @param {Array} accounts アカウント配列
+ * @param {Object} financialModel 財務モデル
  * @returns {Array} フィルタリングされたデータ
  */
-export const getFilteredDataByTab = (tabName, aggregatedValue, accounts) => {
+export const getFilteredDataByTab = (tabName, financialModel) => {
+  const { accounts, periods, values } = financialModel;
+
   // パラメータタブの場合
   if (tabName === "パラメータ") {
     return accounts.map((account) => {
@@ -45,8 +22,30 @@ export const getFilteredDataByTab = (tabName, aggregatedValue, accounts) => {
     });
   }
 
+  // 表示用のデータテーブルを生成
+  const dataTable = [];
+
+  // 各勘定科目について処理
+  accounts.forEach((account) => {
+    // 各行の配列を作成（最初の要素は勘定科目名）
+    const row = [account.accountName];
+
+    // 各期間の値を取得して配列に追加
+    periods.forEach((period) => {
+      // 該当する勘定科目と期間の値を検索
+      const value = values.find(
+        (v) => v.accountId === account.id && v.periodId === period.id
+      );
+      // 値が見つかった場合はその値、見つからない場合は0を追加
+      row.push(value ? value.value : 0);
+    });
+
+    // 完成した行をdataTableに追加
+    dataTable.push(row);
+  });
+
   // タブに該当する勘定科目のみをフィルタリング
-  return aggregatedValue.filter((row) => {
+  return dataTable.filter((row) => {
     const accountName = row[0];
     const account = accounts.find((acc) => acc.accountName === accountName);
     return account && account.sheetType === tabName;

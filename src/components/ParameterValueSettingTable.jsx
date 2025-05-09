@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
+import "../styles/ParameterValueSettingTable.css";
 
 /**
  * パラメータ値設定テーブルコンポーネント
@@ -139,7 +140,7 @@ const ParameterValueSettingTable = ({
         },
       ],
       width: "100%",
-      height: Math.min(400, 50 + data.length * 30),
+      // height: Math.min(400, 50 + data.length * 30),
       stretchH: "all",
       licenseKey: "non-commercial-and-evaluation",
     };
@@ -176,7 +177,7 @@ const ParameterValueSettingTable = ({
         },
       ],
       width: "100%",
-      height: Math.min(400, 50 + data.length * 30),
+      // height: Math.min(400, 50 + data.length * 30),
       stretchH: "all",
       licenseKey: "non-commercial-and-evaluation",
     };
@@ -203,7 +204,7 @@ const ParameterValueSettingTable = ({
         },
       ],
       width: "100%",
-      height: Math.min(400, 50 + data.length * 30),
+      // height: Math.min(400, 50 + data.length * 30),
       stretchH: "all",
       licenseKey: "non-commercial-and-evaluation",
     };
