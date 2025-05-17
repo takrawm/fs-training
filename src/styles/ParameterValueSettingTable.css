@@ -21,15 +21,15 @@
   background-color: #f8f9fa;
   font-weight: bold;
   text-align: center;
-  padding: 2px;
+  /* padding: 2px; */
   border: 1px solid #dee2e6;
   height: 25px;
 }
 
 /* パラメータ値設定テーブルのセル */
 .parameter-value-setting-table .htCore td {
-  padding: 2px;
-  border: 1px solid #dee2e6;
+  /* padding: 2px; */
+  /* border: 1px solid #dee2e6; */
   height: 25px;
 }
 

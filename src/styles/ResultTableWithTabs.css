@@ -1,17 +1,14 @@
 /* ResultTableWithTabs.css */
 
 .upper-button {
-  padding: 0;
+  padding: 10px 0;
 }
 
 .sheet-tabs-container {
   display: flex;
   gap: 5px;
   margin: 0;
-}
-
-.result-table-container {
-  flex: 1;
-  height: 100%;
-  overflow: auto;
+  padding: 0 10px;
+  margin-bottom: 10px;
+  justify-content: center;
 }

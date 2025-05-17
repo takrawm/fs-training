@@ -3,6 +3,9 @@ import { HotTable } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
 import { getFilteredDataByTab } from "../display/financialDisplay";
+import TabTableForRelations from "./TabTableForRelations";
+import { RELATION_TYPES } from "../utils/constants";
+import "../styles/ResultTableWithTabs.css";
 
 // Handsontableのすべてのモジュールを登録
 registerAllModules();
@@ -13,12 +16,58 @@ registerAllModules();
  */
 const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
   const hotTableRef = useRef(null);
+  const { accounts, periods, values, relationMaster } = financialModel || {};
   const [activeTab, setActiveTab] = useState("PL");
   const [filteredData, setFilteredData] = useState([]);
 
-  // テーブル再描画
+  // デバッグ情報：financialModelの受け取りを確認
   useEffect(() => {
-    if (hotTableRef.current?.hotInstance) {
+    if (financialModel) {
+      console.log("=== ResultTableWithTabs - financialModel受け取り ===");
+      console.log("financialModel:", financialModel);
+      console.log("期間の数:", financialModel.periods.length);
+      console.log("値の数:", financialModel.values.length);
+
+      // 期間ごとの値の数を詳細に確認
+      const periodValueCounts = financialModel.periods.map((period) => {
+        const periodValues = financialModel.values.filter(
+          (v) => v.periodId === period.id
+        );
+        return {
+          periodId: period.id,
+          year: period.year,
+          valueCount: periodValues.length,
+          // 値が0のものの数を確認
+          zeroValueCount: periodValues.filter((v) => v.value === 0).length,
+          // 値のサンプル（最初の5つ）
+          sampleValues: periodValues.slice(0, 5).map((v) => ({
+            accountId: v.accountId,
+            value: v.value,
+          })),
+        };
+      });
+
+      console.log("期間ごとの値の詳細:", periodValueCounts);
+      console.log("=== デバッグ情報終了 ===");
+    }
+  }, [financialModel]);
+
+  // デバッグ情報：valuesの状態をログ出力
+  console.log("ResultTableWithTabs - values:", values);
+  console.log("ResultTableWithTabs - periods:", periods);
+  console.log(
+    "ResultTableWithTabs - 期間ごとの値の数:",
+    periods?.map((p) => ({
+      periodId: p.id,
+      year: p.year,
+      valueCount: values?.filter((v) => v.periodId === p.id).length || 0,
+    }))
+  );
+
+  // データが変更された場合にも再描画
+  useEffect(() => {
+    if (financialModel && hotTableRef.current?.hotInstance) {
+      // データロード後にテーブルのサイズを再計算
       requestAnimationFrame(() => {
         if (hotTableRef.current?.hotInstance) {
           hotTableRef.current.hotInstance.render();
@@ -26,38 +75,7 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
         }
       });
     }
-  }, [filteredData, activeTab]);
-
-  // タブ切り替え処理
-  const handleTabChange = useCallback(
-    (tabName) => {
-      setActiveTab(tabName);
-
-      if (!financialModel) return;
-
-      // フィルタリングされたデータを設定
-      const filtered = getFilteredDataByTab(tabName, financialModel);
-      console.log("=== フィルタリングされたデータ ===");
-      console.log("タブ:", tabName);
-      console.log("データ:", filtered);
-      console.log("データの長さ:", filtered.length);
-      console.log("=== フィルタリングデータのログ終了 ===");
-      setFilteredData(filtered);
-    },
-    [financialModel]
-  );
-
-  // 初期データロード
-  useEffect(() => {
-    if (financialModel) {
-      console.log("=== 財務モデル ===");
-      console.log("アカウント数:", financialModel.accounts.length);
-      console.log("期間数:", financialModel.periods.length);
-      console.log("値の数:", financialModel.values.length);
-      console.log("=== 財務モデルのログ終了 ===");
-      handleTabChange("PL");
-    }
-  }, [financialModel, handleTabChange]);
+  }, [financialModel]);
 
   // 集計結果表示用の列定義
   const getResultColumns = () => {
@@ -76,6 +94,16 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
       ];
     }
 
+    // リレーションタブが選択されている場合
+    if (activeTab === "リレーション") {
+      return [
+        { data: 0, title: "項目", readOnly: true, width: 150 },
+        { data: 1, title: "科目名", readOnly: true, width: 200 },
+        { data: 2, title: "関連科目1", readOnly: true, width: 200 },
+        { data: 3, title: "関連科目2", readOnly: true, width: 200 },
+      ];
+    }
+
     // 通常のタブ用
     return [
       { data: 0, title: "勘定科目", readOnly: true, width: 200 },
@@ -88,6 +116,19 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
         width: 100,
         type: "numeric",
         numericFormat: { pattern: "0,0", culture: "ja-JP" },
+        renderer: (instance, td, row, col, prop, value) => {
+          if (value === null || value === undefined) {
+            td.innerHTML = "";
+            return td;
+          }
+          const numValue = Number(value);
+          if (isNaN(numValue)) {
+            td.innerHTML = value;
+            return td;
+          }
+          td.innerHTML = Math.round(numValue).toLocaleString("ja-JP");
+          return td;
+        },
       })),
     ];
   };
@@ -135,6 +176,47 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
     borderBottom: "1px solid #ccc",
   };
 
+  // タブ切り替え処理
+  const handleTabChange = useCallback(
+    (tabName) => {
+      console.log(`タブを ${tabName} に切り替えます`);
+      setActiveTab(tabName);
+
+      if (!financialModel) {
+        console.log("財務モデルがありません");
+        return;
+      }
+
+      // フィルタリングされたデータを設定
+      const filtered = getFilteredDataByTab(tabName, financialModel);
+      console.log("=== フィルタリングされたデータ ===");
+      console.log("タブ:", tabName);
+      console.log("フィルターされたデータ:", filtered);
+      console.log("現在のモデル:", financialModel);
+      console.log("=== フィルタリングデータのログ終了 ===");
+
+      if (filtered.length === 0) {
+        console.warn(`${tabName}タブのデータが空です`);
+      }
+
+      setFilteredData(filtered);
+    },
+    [financialModel]
+  );
+
+  // 初期データロード
+  useEffect(() => {
+    if (financialModel) {
+      console.log("=== 財務モデル ===");
+      console.log("アカウント:", financialModel.accounts);
+      console.log("期間:", financialModel.periods);
+      console.log("値:", financialModel.values);
+      console.log("リレーション:", financialModel.relationMaster);
+      console.log("=== 財務モデルのログ終了 ===");
+      handleTabChange("PL");
+    }
+  }, [financialModel, handleTabChange]);
+
   return (
     <>
       <div className="upper-button">
@@ -177,27 +259,45 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
         >
           パラメータ
         </div>
+        <div
+          style={
+            activeTab === "リレーション" ? activeTabStyle : inactiveTabStyle
+          }
+          onClick={() => handleTabChange("リレーション")}
+        >
+          リレーション
+        </div>
       </div>
-      <div className="result-table-container">
-        <HotTable
-          ref={hotTableRef}
-          data={filteredData}
-          columns={getResultColumns()}
-          rowHeaders={true}
-          colHeaders={true}
-          width="100%"
-          height="100%"
-          manualColumnResize
-          autoColumnSize
-          stretchH="all"
-          licenseKey="non-commercial-and-evaluation"
-          readOnly={true}
-          cells={(row, col, prop) => ({
-            className: "my-cell",
-            ...getSummaryRowClass(row),
-          })}
-        />
-      </div>
+      {activeTab === "リレーション" ? (
+        <TabTableForRelations data={filteredData} />
+      ) : (
+        <div className="hot-table-container">
+          <HotTable
+            ref={hotTableRef}
+            data={filteredData}
+            columns={getResultColumns()}
+            rowHeaders={true}
+            colHeaders={true}
+            width="100%"
+            height="100%"
+            manualColumnResize
+            autoColumnSize
+            stretchH="all"
+            licenseKey="non-commercial-and-evaluation"
+            readOnly={true}
+            afterRender={() => {
+              console.log("テーブルがレンダリングされました");
+              if (hotTableRef.current?.hotInstance) {
+                hotTableRef.current.hotInstance.refreshDimensions();
+              }
+            }}
+            cells={(row, col, prop) => ({
+              className: "my-cell",
+              ...getSummaryRowClass(row),
+            })}
+          />
+        </div>
+      )}
     </>
   );
 };

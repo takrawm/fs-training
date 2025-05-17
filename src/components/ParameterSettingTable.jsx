@@ -1,6 +1,11 @@
 import React, { useMemo } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
+import { PARAMETER_TYPES } from "../utils/constants";
+import { ReactSelectEditor, chipRenderer } from "./ReactSelectEditor";
+
+// すべての勘定科目名を選択肢に使う
+const ALL_ACCOUNT_NAMES = (list) => list.map((a) => a.accountName);
 
 /**
  * パラメータ設定テーブルコンポーネント
@@ -15,7 +20,9 @@ const ParameterSettingTable = ({ data, onChange }) => {
       data: data.map((account) => [
         account.accountName,
         account.parameterType || "NONE",
-        account.isParameterReference || false,
+        account.parameterReferenceAccounts ||
+          account.isParameterReference ||
+          [],
         account.relation?.type || "NONE",
         account.relation?.subType || null,
       ]),
@@ -30,9 +37,15 @@ const ParameterSettingTable = ({ data, onChange }) => {
         { type: "text", readOnly: true },
         {
           type: "dropdown",
-          source: ["NONE", "GROWTH_RATE", "PERCENTAGE", "PROPORTIONATE"],
+          source: PARAMETER_TYPES,
         },
-        { type: "checkbox" },
+        {
+          data: 2,
+          editor: ReactSelectEditor,
+          renderer: chipRenderer,
+          source: ALL_ACCOUNT_NAMES(data),
+          width: 120,
+        },
         {
           type: "dropdown",
           source: ["NONE", "ADDITION", "SUBTRACTION", "MULTIPLICATION"],
@@ -52,37 +65,35 @@ const ParameterSettingTable = ({ data, onChange }) => {
 
   const handleChange = (changes) => {
     if (!changes) return;
+    const updated = [...data];
 
-    const updatedAccounts = [...data];
-    changes.forEach(([rowIndex, columnIndex, oldValue, newValue]) => {
-      if (newValue !== oldValue) {
-        const account = { ...updatedAccounts[rowIndex] };
+    changes.forEach(([rowIdx, colIdx, _old, newVal]) => {
+      if (colIdx === 0 || newVal === undefined) return;
+      const acc = { ...updated[rowIdx] };
 
-        switch (columnIndex) {
-          case 1: // パラメータタイプ
-            account.parameterType = newValue;
-            break;
-          case 2: // 被参照科目
-            account.isParameterReference = newValue;
-            break;
-          case 3: // リレーションタイプ
-            if (!account.relation)
-              account.relation = { type: "NONE", subType: null };
-            account.relation.type = newValue;
-            if (newValue === "NONE") account.relation.subType = null;
-            break;
-          case 4: // リレーションサブタイプ
-            if (!account.relation)
-              account.relation = { type: "NONE", subType: null };
-            account.relation.subType = newValue;
-            break;
-        }
-
-        updatedAccounts[rowIndex] = account;
+      switch (colIdx) {
+        case 1:
+          acc.parameterType = newVal;
+          break;
+        case 2: // 被参照科目（配列）
+          acc.parameterReferenceAccounts = newVal; // 配列をそのまま保持
+          // 互換性のため、isParameterReferenceも更新
+          acc.isParameterReference = Array.isArray(newVal) && newVal.length > 0;
+          break;
+        case 3:
+          acc.relation ??= { type: "NONE", subType: null };
+          acc.relation.type = newVal;
+          if (newVal === "NONE") acc.relation.subType = null;
+          break;
+        case 4:
+          acc.relation ??= { type: "NONE", subType: null };
+          acc.relation.subType = newVal;
+          break;
       }
+      updated[rowIdx] = acc;
     });
 
-    onChange(updatedAccounts);
+    onChange(updated);
   };
 
   return (

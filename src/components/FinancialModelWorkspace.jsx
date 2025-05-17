@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import FinancialModelBuilder from "./FinancialModelBuilder";
-import { useFinancialModel } from "../hooks/useFinancialModel";
 import { useExcelImport } from "../hooks/useExcelImport";
 import "../styles/FinancialModelWorkspace.css";
 
@@ -18,9 +17,6 @@ const FinancialModelWorkspace = ({ excelFilePath }) => {
 
   // エラーメッセージ
   const [errorMessage, setErrorMessage] = useState(null);
-
-  // フックの初期化
-  const { model, updateModel } = useFinancialModel();
 
   // Excelデータの読み込みと処理を管理するフック
   const {
@@ -97,11 +93,8 @@ const FinancialModelWorkspace = ({ excelFilePath }) => {
         </ul>
 
         <div className="tab-content">
-          {activeTab === "data" && model && (
-            <FinancialModelBuilder
-              model={model}
-              flattenedData={flattenedData}
-            />
+          {activeTab === "data" && (
+            <FinancialModelBuilder flattenedData={flattenedData} />
           )}
 
           {activeTab === "params" && (
