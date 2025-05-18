@@ -47,7 +47,9 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
         sheetType: defaultMapping.sheetType || "",
         parentAccount: defaultMapping.parentAccount || "",
         parameterType: defaultMapping.parameterType || "",
-        isParameterReference: false,
+        parameterReferenceAccounts: defaultMapping.defaultRelationAccount
+          ? [defaultMapping.defaultRelationAccount]
+          : [],
         relation: {
           type: defaultMapping.relation.type,
           subType: defaultMapping.relation.subType,

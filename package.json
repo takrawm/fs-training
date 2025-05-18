@@ -13,6 +13,7 @@
     "@emotion/styled": "^11.14.0",
     "@handsontable/react": "^12.1.2",
     "@mui/material": "^6.4.7",
+    "@yaireo/tagify": "^4.35.1",
     "bootstrap": "^5.3.5",
     "handsontable": "^12.1.2",
     "hyperformula": "^3.0.0",

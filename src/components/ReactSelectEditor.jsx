@@ -13,40 +13,70 @@ export class ReactSelectEditor extends Handsontable.editors.BaseEditor {
   }
 
   prepare(row, col, prop, td, originalValue, cellProperties) {
+    console.log(`[prepare] (${row},${col}) originalValue =`, originalValue);
     super.prepare(row, col, prop, td, originalValue, cellProperties);
     this.options = cellProperties.source || [];
+    this.row = row;
+    this.col = col;
 
-    // 値が文字列にキャストされている場合に対応
-    if (typeof originalValue === "string" && originalValue.includes(",")) {
-      // カンマ区切りの文字列を配列に分割
-      this.value = originalValue.split(",").map((item) => item.trim());
-    } else {
-      // 通常の配列処理
-      this.value = Array.isArray(originalValue)
-        ? originalValue
-        : originalValue
-        ? [originalValue]
-        : [];
+    let cellValue = this.hot.getDataAtCell(row, col);
+    console.log(`[prepare] raw value in cell (${row}, ${col}):`, cellValue);
+
+    if (!Array.isArray(cellValue)) {
+      try {
+        cellValue = JSON.parse(cellValue);
+      } catch (e) {
+        cellValue = [];
+      }
     }
 
-    // 重複の除去
-    this.value = [...new Set(this.value)];
-  }
+    if (!Array.isArray(cellValue)) cellValue = [];
 
-  getValue() {
-    return this.value;
+    // 必ずJSON文字列でセルに保存（正規化）
+    this.hot.setDataAtCell(row, col, JSON.stringify(cellValue));
+
+    this.value = cellValue.map((id) => ({
+      value: id,
+      label: this.options.find((opt) => opt.value === id)?.label || id,
+    }));
   }
 
   setValue(value) {
-    // 値が文字列の場合はカンマ区切りとして処理
-    if (typeof value === "string" && value.includes(",")) {
-      this.value = value.split(",").map((item) => item.trim());
-    } else {
-      this.value = Array.isArray(value) ? value : value ? [value] : [];
+    console.log(`[setValue] arg for cell (${this.row}, ${this.col}):`, value);
+    let ids = [];
+
+    if (Array.isArray(value)) {
+      ids = value; // 配列ならそのまま
+    } else if (typeof value === "string") {
+      try {
+        ids = JSON.parse(value); // JSON ならパース
+        if (!Array.isArray(ids)) ids = [value]; // 失敗なら「単一ID配列」とみなす
+      } catch {
+        ids = [value]; // 文字列一つを ID として扱う
+      }
     }
 
-    // 重複の除去
-    this.value = [...new Set(this.value)];
+    this.value = ids.map((id) => ({
+      value: id,
+      label: this.options.find((o) => o.value === id)?.label || id,
+    }));
+    console.log(
+      `[setValue] (${this.row},${this.col}) this.value =`,
+      this.value
+    );
+  }
+
+  getValue() {
+    // セルにはIDだけを保存（シンプルな配列）
+    const ids = this.value.map((item) => item.value);
+    const json = JSON.stringify(ids);
+    console.log(`[getValue] return for cell (${this.row}, ${this.col}):`, json);
+    return json;
+  }
+
+  finishEditing(...args) {
+    console.log("[finishEditing] args =", args);
+    super.finishEditing(...args);
   }
 
   open() {
@@ -74,54 +104,34 @@ export class ReactSelectEditor extends Handsontable.editors.BaseEditor {
 
     // Selectコンポーネントのレンダリング関数
     const renderSelect = () => {
-      // 各値を確実にオブジェクトに変換
-      const valueOptions = this.value.map((v) => ({ value: v, label: v }));
-
       this.root.render(
         <Select
           isMulti
           autoFocus
-          menuIsOpen
+          // menuIsOpen
+          defaultMenuIsOpen
           closeMenuOnSelect={false}
           blurInputOnSelect={false}
-          options={this.options.map((option) => ({
-            value: option,
-            label: option,
-          }))}
-          value={valueOptions}
-          onInputChange={(inputValue, { action }) => {
-            console.log("onInputChange:", { inputValue, action });
-          }}
-          onKeyDown={(e) => {
-            console.log("onKeyDown:", e.key);
-          }}
-          onMouseDown={(e) => {
-            console.log("onMouseDown:", e.target);
-            // イベントの伝播を確認
-            console.log("Event path:", e.composedPath());
-          }}
+          options={this.options}
+          value={this.value}
+          onBlur={() => this.finishEditing(false)}
           onChange={(selectedOptions, actionMeta) => {
-            console.log("onChange called with:", selectedOptions);
-            console.log("Action:", actionMeta.action);
-            console.log("ActionMeta:", actionMeta);
-            console.log("Current value:", this.value);
-
+            console.log("[onChange] selected =", selectedOptions);
             // 値の更新
-            const newValue = selectedOptions
-              ? selectedOptions.map((option) => option.value)
-              : [];
-
-            console.log(
-              "→ newValue にセットする前:",
-              this.value,
-              "→ newValue:",
-              newValue
-            );
-
-            // 値を更新
-            this.setValue(newValue);
-            console.log("→ setValue 後の this.value:", this.value);
-
+            if (selectedOptions) {
+              // 選択されたオプションをreact-select形式に変換
+              this.value = selectedOptions.map((option) => {
+                if (typeof option === "object" && option !== null) {
+                  return {
+                    value: option.value,
+                    label: option.label,
+                  };
+                }
+                return { value: option, label: option };
+              });
+            } else {
+              this.value = [];
+            }
             // UIを再描画
             renderSelect();
           }}
@@ -200,6 +210,12 @@ export class ReactSelectEditor extends Handsontable.editors.BaseEditor {
 
     // エディタをDOMに追加
     document.body.appendChild(this.container);
+
+    console.log(
+      "8. After renderSelect - this.value:",
+      JSON.stringify(this.value, null, 2)
+    );
+    console.log("=== End open method Debug Info ===");
   }
 
   close() {
@@ -231,13 +247,32 @@ export function chipRenderer(
 ) {
   td.innerHTML = "";
 
-  // 値が文字列の場合（カンマ区切り）は配列に分割
-  let displayValues = value;
-  if (typeof value === "string" && value.includes(",")) {
-    displayValues = value.split(",").map((item) => item.trim());
-  } else if (!Array.isArray(value)) {
-    displayValues = value ? [value] : [];
+  let displayValues = [];
+  try {
+    if (typeof value === "string") {
+      // JSON文字列をオブジェクトに変換
+      const parsedValue = JSON.parse(value);
+
+      if (Array.isArray(parsedValue)) {
+        displayValues = parsedValue;
+      } else if (parsedValue) {
+        displayValues = [parsedValue];
+      }
+    } else if (Array.isArray(value)) {
+      displayValues = value;
+    } else if (value) {
+      displayValues = [value];
+    }
+  } catch (error) {
+    console.error("JSONパースエラー:", error);
+    displayValues = [];
   }
+
+  console.log(
+    "6. Final displayValues:",
+    JSON.stringify(displayValues, null, 2)
+  );
+  console.log("=== End chipRenderer Debug Info ===");
 
   if (!displayValues.length) {
     td.textContent = "";
@@ -252,7 +287,10 @@ export function chipRenderer(
 
   displayValues.forEach((item) => {
     const chip = document.createElement("div");
-    chip.textContent = item;
+    chip.textContent =
+      typeof item === "object" && item !== null
+        ? item.label || item.accountName
+        : item;
     chip.style.background = "#e0e0e0";
     chip.style.borderRadius = "12px";
     chip.style.padding = "2px 8px";
