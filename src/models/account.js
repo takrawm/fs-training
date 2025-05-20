@@ -47,9 +47,8 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
         sheetType: defaultMapping.sheetType || "",
         parentAccount: defaultMapping.parentAccount || "",
         parameterType: defaultMapping.parameterType || "",
-        parameterReferenceAccounts: defaultMapping.defaultRelationAccount
-          ? [defaultMapping.defaultRelationAccount]
-          : [],
+        parameterReferenceAccounts:
+          defaultMapping.parameterReferenceAccounts || [],
         relation: {
           type: defaultMapping.relation.type,
           subType: defaultMapping.relation.subType,
@@ -64,25 +63,6 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
   });
 
   return newAggregatedMap;
-};
-
-/**
- * 集計アカウントを生成する
- * @param {Object} aggregatedMap 集計マップ
- * @returns {Array} 集計アカウント配列
- */
-export const createAggregatedAccounts = (aggregatedMap) => {
-  return Object.values(aggregatedMap).map(({ values, ...rest }) => {
-    const account = { ...rest };
-
-    if (!account.relation) {
-      account.relation = { type: "NONE", subType: null };
-    } else if (typeof account.relation !== "object") {
-      account.relation = { type: "NONE", subType: null };
-    }
-
-    return account;
-  });
 };
 
 /**

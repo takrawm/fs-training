@@ -10,7 +10,16 @@ export const PARAMETER_TYPES = [
   "FIXED_VALUE",
   "CHILDREN_SUM",
   "REFERENCE",
+  "BALANCE_AND_CHANGE",
 ];
+
+// パラメータタイプの選択肢
+export const PARAM_OP_MAPPING = {
+  GROWTH_RATE: ["CONST"],
+  PERCENTAGE: ["CONST"],
+  REFERENCE: ["ADD", "SUB"],
+  BALANCE_AND_CHANGE: ["ADD", "SUB"],
+};
 
 // リレーションタイプの定義
 export const RELATION_TYPES = {
@@ -69,6 +78,16 @@ export const SUMMARY_ACCOUNTS = {
     dependencies: {
       depends_on: ["rev-total", "cogs-total"],
     },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "ADD",
+      },
+      {
+        id: "cogs-total",
+        operation: "SUB",
+      },
+    ],
   },
   販管費合計: {
     id: "sga-total",
@@ -96,6 +115,16 @@ export const SUMMARY_ACCOUNTS = {
     dependencies: {
       depends_on: ["gross-profit", "sga-total"],
     },
+    parameterReferenceAccounts: [
+      {
+        id: "gross-profit",
+        operation: "ADD",
+      },
+      {
+        id: "sga-total",
+        operation: "SUB",
+      },
+    ],
   },
 
   // BSアカウント - 親子関係の階層構造を明確化
@@ -246,13 +275,12 @@ export const DEFAULT_SHEET_TYPES = {
     parentAccount: "売上原価合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   労務費: {
     sheetType: "PL",
@@ -283,13 +311,12 @@ export const DEFAULT_SHEET_TYPES = {
     parentAccount: "販管費合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   減価償却費_PL: {
     sheetType: "PL",
@@ -298,13 +325,6 @@ export const DEFAULT_SHEET_TYPES = {
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.DEPRECIATION,
-    },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
     },
   },
   無形固定資産償却費_PL: {
@@ -321,13 +341,12 @@ export const DEFAULT_SHEET_TYPES = {
     parentAccount: "販管費合計",
     parameterType: "PERCENTAGE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   販管費合計: {
     sheetType: "集約科目",
@@ -347,15 +366,14 @@ export const DEFAULT_SHEET_TYPES = {
   現預金: {
     sheetType: "BS",
     parentAccount: "流動資産合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: "CASH_CALCULATION",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   売掛金: {
     sheetType: "BS",
@@ -365,13 +383,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.WORKING_CAPITAL,
       subType: RELATION_SUB_TYPES.WC_ASSET,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   棚卸資産: {
     sheetType: "BS",
@@ -381,13 +398,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.WORKING_CAPITAL,
       subType: RELATION_SUB_TYPES.WC_ASSET,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   流動資産合計: {
     sheetType: "集約科目",
@@ -398,29 +414,27 @@ export const DEFAULT_SHEET_TYPES = {
   有形固定資産: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
-    parameterType: "REFERENCE",
+    parameterType: "BALANCE_AND_CHANGE",
     calculationType: "ACCOUNT_CALC",
     relation: { type: RELATION_TYPES.PPE, subType: RELATION_SUB_TYPES.ASSET },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   無形固定資産: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
-    parameterType: "REFERENCE",
+    parameterType: "BALANCE_AND_CHANGE",
     relation: { type: RELATION_TYPES.PPE, subType: RELATION_SUB_TYPES.ASSET },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   固定資産合計: {
     sheetType: "集約科目",
@@ -442,13 +456,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.WORKING_CAPITAL,
       subType: RELATION_SUB_TYPES.WC_LIABILITY,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   支払手形: {
     sheetType: "BS",
@@ -458,13 +471,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.WORKING_CAPITAL,
       subType: RELATION_SUB_TYPES.WC_LIABILITY,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   流動負債合計: {
     sheetType: "集約科目",
@@ -477,26 +489,24 @@ export const DEFAULT_SHEET_TYPES = {
     parentAccount: "固定負債合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   社債: {
     sheetType: "BS",
     parentAccount: "固定負債合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   固定負債合計: {
     sheetType: "集約科目",
@@ -513,31 +523,23 @@ export const DEFAULT_SHEET_TYPES = {
   資本金: {
     sheetType: "BS",
     parentAccount: "純資産合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: "FIXED_VALUE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
   },
   利益剰余金: {
     sheetType: "BS",
     parentAccount: "純資産合計",
-    parameterType: "REFERENCE",
+    parameterType: "BALANCE_AND_CHANGE",
     relation: {
       type: RELATION_TYPES.RETAINED_EARNINGS,
       subType: RELATION_SUB_TYPES.RETAINED,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "op-profit",
+        operation: "MUL",
+      },
+    ],
   },
   純資産合計: {
     sheetType: "集約科目",
@@ -559,13 +561,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.INVESTMENT,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   無形資産投資: {
     sheetType: "CAPEX",
@@ -575,13 +576,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.INVESTMENT,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   設備投資合計: {
     sheetType: "集約科目",
@@ -650,52 +650,48 @@ export const DEFAULT_SHEET_TYPES = {
     parentAccount: "売上原価合計",
     parameterType: "PERCENTAGE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   売上原価2: {
     sheetType: "PL",
     parentAccount: "売上原価合計",
     parameterType: "PERCENTAGE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   広告宣伝費: {
     sheetType: "PL",
     parentAccount: "販管費合計",
     parameterType: "PERCENTAGE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   物件費: {
     sheetType: "PL",
     parentAccount: "販管費合計",
     parameterType: "PERCENTAGE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   その他償却費1: {
     sheetType: "PL",
@@ -705,13 +701,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.DEPRECIATION,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   その他償却費2: {
     sheetType: "PL",
@@ -721,91 +716,84 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.DEPRECIATION,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   その他流動資産: {
     sheetType: "BS",
     parentAccount: "流動資産合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   償却資産1: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.PPE, subType: RELATION_SUB_TYPES.ASSET },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   償却資産2: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.PPE, subType: RELATION_SUB_TYPES.ASSET },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   その他固定資産: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   その他流動負債: {
     sheetType: "BS",
     parentAccount: "流動負債合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   その他固定負債: {
     sheetType: "BS",
     parentAccount: "固定負債合計",
     parameterType: "PROPORTIONATE",
     relation: { type: RELATION_TYPES.NONE, subType: null },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   固定資産投資1: {
     sheetType: "CAPEX",
@@ -815,13 +803,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.INVESTMENT,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
   固定資産投資2: {
     sheetType: "CAPEX",
@@ -831,13 +818,12 @@ export const DEFAULT_SHEET_TYPES = {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.INVESTMENT,
     },
-    defaultRelationAccount: {
-      id: "rev-total",
-      accountName: "売上高合計",
-      operation: "MUL",
-      coefficient: 1.0,
-      order: 1,
-    },
+    parameterReferenceAccounts: [
+      {
+        id: "rev-total",
+        operation: "MUL",
+      },
+    ],
   },
 };
 

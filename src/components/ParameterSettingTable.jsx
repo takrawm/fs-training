@@ -3,6 +3,7 @@ import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
 import { PARAMETER_TYPES } from "../utils/constants";
 import { ReactSelectEditor, chipRenderer } from "./ReactSelectEditor";
+import { createAccountMap } from "../utils/accountMapping";
 
 // すべての勘定科目名を選択肢に使う
 const ALL_ACCOUNT_NAMES = (list) => list.map((a) => a.accountName);
@@ -19,12 +20,7 @@ const OPERATION_TYPES = ["MUL", "DIV", "ADD", "SUB"];
  */
 const ParameterSettingTable = ({ data, onChange }) => {
   // 科目IDと科目名のマッピングを作成
-  const accountMap = useMemo(() => {
-    return data.reduce((map, account) => {
-      map[account.id] = account.accountName;
-      return map;
-    }, {});
-  }, [data]);
+  const accountMap = useMemo(() => createAccountMap(data), [data]);
 
   // 選択肢の作成（IDと名前のペア）
   const accountOptions = useMemo(() => {
@@ -46,21 +42,13 @@ const ParameterSettingTable = ({ data, onChange }) => {
           ? account.parameterReferenceAccounts.map((a) => a.id)
           : []
       ),
-      account.relation?.type || "NONE",
-      account.relation?.subType || null,
     ]);
 
     console.log("2. Mapped data for table:", mappedData);
 
     const settings = {
       data: mappedData,
-      colHeaders: [
-        "勘定科目",
-        "パラメータタイプ",
-        "参照科目",
-        "リレーションタイプ",
-        "リレーションサブタイプ",
-      ],
+      colHeaders: ["勘定科目", "パラメータタイプ", "参照科目"],
       columns: [
         { type: "text", readOnly: true },
         {
@@ -105,14 +93,6 @@ const ParameterSettingTable = ({ data, onChange }) => {
           source: accountOptions,
           width: 120,
         },
-        {
-          type: "dropdown",
-          source: ["NONE", "ADDITION", "SUBTRACTION", "MULTIPLICATION"],
-        },
-        {
-          type: "dropdown",
-          source: ["NONE", "DIRECT", "INVERSE"],
-        },
       ],
       width: "100%",
       height: "100%",
@@ -144,24 +124,12 @@ const ParameterSettingTable = ({ data, onChange }) => {
             const ids = JSON.parse(newVal); // 文字列 → 配列に戻す
             acc.parameterReferenceAccounts = ids.map((id, idx) => ({
               id,
-              accountName: accountMap[id],
-              operation: "MUL",
-              coefficient: 1.0,
-              order: idx + 1,
+              operation: null,
             }));
           } catch (error) {
             console.error("JSON parse error:", error);
             acc.parameterReferenceAccounts = [];
           }
-          break;
-        case 3:
-          acc.relation ??= { type: "NONE", subType: null };
-          acc.relation.type = newVal;
-          if (newVal === "NONE") acc.relation.subType = null;
-          break;
-        case 4:
-          acc.relation ??= { type: "NONE", subType: null };
-          acc.relation.subType = newVal;
           break;
       }
       updated[rowIdx] = acc;
