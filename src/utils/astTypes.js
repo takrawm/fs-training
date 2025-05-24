@@ -39,6 +39,6 @@ export const OPERATION_SYMBOLS = {
  * @returns {ASTNode}
  */
 export const createNode = (op, props = {}) => ({
-  op,
-  ...props,
+  op, // 演算子
+  ...props, // その他のプロパティ
 });

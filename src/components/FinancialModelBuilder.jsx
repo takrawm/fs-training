@@ -10,7 +10,12 @@ import ParameterValueSettingTable from "./ParameterValueSettingTable";
 import RelationSettingTable from "./RelationSettingTable";
 import ResultTableWithTabs from "./ResultTableWithTabs";
 import SortedAccountsTable from "./SortedAccountsTable";
-import { RELATION_TYPES, RELATION_SUB_TYPES } from "../utils/constants";
+import {
+  RELATION_TYPES,
+  RELATION_SUB_TYPES,
+  PARAMETER_TYPES,
+  DEFAULT_PARAMETER_VALUES,
+} from "../utils/constants";
 import {
   createInitialMappingData,
   createAggregatedMap,
@@ -329,9 +334,57 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       // 次のステップへ進むだけ
       setStep(4);
     } else if (step === 4) {
-      // ステップ4：パラメータ設定確認完了 → パラメータ値設定へ
-      console.log("ステップ4完了時のアカウント:", financialModel?.accounts);
-      // 次のステップへ進むだけ
+      /***** パラメータ設定確認 (Step 4) *****/
+      // ParameterConfiguration で表示されているデフォルト値や参照設定を
+      // ボタン押下（Next）時に accounts 配列へ確定反映させる
+      if (!financialModel) return;
+
+      const updatedAccounts = financialModel.accounts.map((account) => {
+        const newAccount = { ...account };
+
+        // 1. 単一値パラメータ型（成長率 / 他科目割合 / 他科目連動）
+        //    画面遷移時に表示したデフォルト値がまだ保存されていないケースを補完
+        const singleValueTypes = [
+          PARAMETER_TYPES.GROWTH_RATE,
+          PARAMETER_TYPES.PERCENTAGE,
+          PARAMETER_TYPES.PROPORTIONATE,
+        ];
+
+        if (
+          singleValueTypes.includes(newAccount.parameterType) &&
+          newAccount.parameterValue == null
+        ) {
+          const paramKey = Object.keys(PARAMETER_TYPES).find(
+            (k) => PARAMETER_TYPES[k] === newAccount.parameterType
+          );
+          newAccount.parameterValue = DEFAULT_PARAMETER_VALUES[paramKey] ?? 0;
+        }
+
+        // 2. 参照型／期末残高+/-変動型
+        //    デフォルトで定義済みの parameterReferenceAccounts が onChange 未発火で
+        //    undefined のままの場合は空配列を入れて後段エラーを防ぐ
+        if (
+          [
+            PARAMETER_TYPES.REFERENCE,
+            PARAMETER_TYPES.BALANCE_AND_CHANGE,
+          ].includes(newAccount.parameterType) &&
+          !Array.isArray(newAccount.parameterReferenceAccounts)
+        ) {
+          newAccount.parameterReferenceAccounts = [];
+        }
+
+        return newAccount;
+      });
+
+      // FinancialModel に確定値を保存
+      setFinancialModel({
+        ...financialModel,
+        accounts: updatedAccounts,
+      });
+
+      console.log("ステップ4でパラメータ設定を確定:", updatedAccounts);
+
+      // 次のステップへ遷移
       setStep(5);
     } else if (step === 5) {
       // ステップ5：パラメータ値設定完了 → リレーション設定へ
@@ -399,6 +452,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
           // ステップ4：パラメータ設定確認
           <ParameterConfiguration
             data={financialModel?.accounts || []}
+            financialModel={financialModel}
             onChange={handleParamChange}
           />
         ) : step === 5 ? (

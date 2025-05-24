@@ -2,23 +2,28 @@
 export const TARGET_SHEETS = ["PL", "BS", "CAPEX", "CS"];
 
 // パラメータタイプの選択肢
-export const PARAMETER_TYPES = [
-  "NONE",
-  "GROWTH_RATE",
-  "PERCENTAGE",
-  "PROPORTIONATE",
-  "FIXED_VALUE",
-  "CHILDREN_SUM",
-  "REFERENCE",
-  "BALANCE_AND_CHANGE",
-];
+export const PARAMETER_TYPES = {
+  NONE: "なし",
+  GROWTH_RATE: "成長率",
+  PERCENTAGE: "他科目割合",
+  PROPORTIONATE: "他科目連動",
+  FIXED_VALUE: "横置き",
+  CHILDREN_SUM: "合計値",
+  REFERENCE: "個別参照",
+  BALANCE_AND_CHANGE: "期末残高+/-変動",
+};
 
 // パラメータタイプの選択肢
 export const PARAM_OP_MAPPING = {
-  GROWTH_RATE: ["CONST"],
-  PERCENTAGE: ["CONST"],
-  REFERENCE: ["ADD", "SUB"],
-  BALANCE_AND_CHANGE: ["ADD", "SUB"],
+  [PARAMETER_TYPES.GROWTH_RATE]: ["CONST"],
+  [PARAMETER_TYPES.PERCENTAGE]: ["CONST"],
+  [PARAMETER_TYPES.REFERENCE]: ["ADD", "SUB"],
+  [PARAMETER_TYPES.BALANCE_AND_CHANGE]: ["ADD", "SUB"],
+};
+
+export const DEFAULT_PARAMETER_VALUES = {
+  GROWTH_RATE: 0.05,
+  PERCENTAGE: 0.02,
 };
 
 // リレーションタイプの定義
@@ -50,7 +55,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "売上高合計",
     sheetType: "PL",
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "A99",
     prefix: "A",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -60,7 +65,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "売上原価合計",
     sheetType: "PL",
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "B99",
     prefix: "B",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -71,7 +76,7 @@ export const SUMMARY_ACCOUNTS = {
     sheetType: "PL",
     parentAccount: "SUMMARY_ACCOUNTS",
     calculationType: "ACCOUNT_CALC",
-    parameterType: "REFERENCE",
+    parameterType: PARAMETER_TYPES.REFERENCE,
     order: "C99",
     prefix: "C",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -94,7 +99,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "販管費合計",
     sheetType: "PL",
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "D99",
     prefix: "D",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -105,7 +110,7 @@ export const SUMMARY_ACCOUNTS = {
     sheetType: "PL",
     parentAccount: "SUMMARY_ACCOUNTS",
     calculationType: "ACCOUNT_CALC",
-    parameterType: "REFERENCE",
+    parameterType: PARAMETER_TYPES.REFERENCE,
     order: "E99",
     prefix: "E",
     relation: {
@@ -133,7 +138,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "流動資産合計",
     sheetType: "BS",
     parentAccount: "資産合計",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "F99",
     prefix: "F",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -143,7 +148,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "固定資産合計",
     sheetType: "BS",
     parentAccount: "資産合計",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "G99",
     prefix: "G",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -153,7 +158,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "資産合計",
     sheetType: "BS",
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "H99",
     prefix: "H",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -163,7 +168,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "流動負債合計",
     sheetType: "BS",
     parentAccount: "負債合計",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "I99",
     prefix: "I",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -173,7 +178,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "固定負債合計",
     sheetType: "BS",
     parentAccount: "負債合計",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "J99",
     prefix: "J",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -183,7 +188,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "負債合計",
     sheetType: "BS",
     parentAccount: "負債及び純資産合計",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "K99",
     prefix: "K",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -193,7 +198,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "純資産合計",
     sheetType: "BS",
     parentAccount: "負債及び純資産合計",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "N99",
     prefix: "N",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -203,7 +208,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "負債及び純資産合計",
     sheetType: "BS",
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "O99",
     prefix: "O",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -215,7 +220,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "設備投資合計",
     sheetType: "CAPEX",
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "Q99",
     prefix: "Q",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -227,7 +232,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "営業CF合計",
     sheetType: "CF",
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "R99",
     prefix: "R",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -237,7 +242,7 @@ export const SUMMARY_ACCOUNTS = {
     accountName: "投資CF合計",
     sheetType: "CF",
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: "CHILDREN_SUM",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "S99",
     prefix: "S",
     relation: { type: RELATION_TYPES.NONE, subType: null },
@@ -249,31 +254,31 @@ export const DEFAULT_SHEET_TYPES = {
   商品売上: {
     sheetType: "PL",
     parentAccount: "売上高合計",
-    parameterType: "GROWTH_RATE",
+    parameterType: PARAMETER_TYPES.GROWTH_RATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   サービス売上: {
     sheetType: "PL",
     parentAccount: "売上高合計",
-    parameterType: "GROWTH_RATE",
+    parameterType: PARAMETER_TYPES.GROWTH_RATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   その他売上: {
     sheetType: "PL",
     parentAccount: "売上高合計",
-    parameterType: "GROWTH_RATE",
+    parameterType: PARAMETER_TYPES.GROWTH_RATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   売上高合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   材料費: {
     sheetType: "PL",
     parentAccount: "売上原価合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -285,31 +290,31 @@ export const DEFAULT_SHEET_TYPES = {
   労務費: {
     sheetType: "PL",
     parentAccount: "売上原価合計",
-    parameterType: "FIXED_VALUE",
+    parameterType: PARAMETER_TYPES.FIXED_VALUE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   売上原価合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   売上総利益: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   人件費: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "FIXED_VALUE",
+    parameterType: PARAMETER_TYPES.FIXED_VALUE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   物流費: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -321,7 +326,7 @@ export const DEFAULT_SHEET_TYPES = {
   減価償却費_PL: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "FIXED_VALUE",
+    parameterType: PARAMETER_TYPES.FIXED_VALUE,
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.DEPRECIATION,
@@ -330,7 +335,7 @@ export const DEFAULT_SHEET_TYPES = {
   無形固定資産償却費_PL: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "FIXED_VALUE",
+    parameterType: PARAMETER_TYPES.FIXED_VALUE,
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.DEPRECIATION,
@@ -339,7 +344,7 @@ export const DEFAULT_SHEET_TYPES = {
   その他販管費: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "PERCENTAGE",
+    parameterType: PARAMETER_TYPES.PERCENTAGE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -351,13 +356,13 @@ export const DEFAULT_SHEET_TYPES = {
   販管費合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   営業利益: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: {
       type: RELATION_TYPES.RETAINED_EARNINGS,
       subType: RELATION_SUB_TYPES.PROFIT,
@@ -366,7 +371,7 @@ export const DEFAULT_SHEET_TYPES = {
   現預金: {
     sheetType: "BS",
     parentAccount: "流動資産合計",
-    parameterType: "CASH_CALCULATION",
+    parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -378,7 +383,7 @@ export const DEFAULT_SHEET_TYPES = {
   売掛金: {
     sheetType: "BS",
     parentAccount: "流動資産合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: {
       type: RELATION_TYPES.WORKING_CAPITAL,
       subType: RELATION_SUB_TYPES.WC_ASSET,
@@ -393,7 +398,7 @@ export const DEFAULT_SHEET_TYPES = {
   棚卸資産: {
     sheetType: "BS",
     parentAccount: "流動資産合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: {
       type: RELATION_TYPES.WORKING_CAPITAL,
       subType: RELATION_SUB_TYPES.WC_ASSET,
@@ -408,13 +413,13 @@ export const DEFAULT_SHEET_TYPES = {
   流動資産合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   有形固定資産: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
-    parameterType: "BALANCE_AND_CHANGE",
+    parameterType: PARAMETER_TYPES.BALANCE_AND_CHANGE,
     calculationType: "ACCOUNT_CALC",
     relation: { type: RELATION_TYPES.PPE, subType: RELATION_SUB_TYPES.ASSET },
     parameterReferenceAccounts: [
@@ -427,7 +432,7 @@ export const DEFAULT_SHEET_TYPES = {
   無形固定資産: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
-    parameterType: "BALANCE_AND_CHANGE",
+    parameterType: PARAMETER_TYPES.BALANCE_AND_CHANGE,
     relation: { type: RELATION_TYPES.PPE, subType: RELATION_SUB_TYPES.ASSET },
     parameterReferenceAccounts: [
       {
@@ -439,19 +444,19 @@ export const DEFAULT_SHEET_TYPES = {
   固定資産合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   資産合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   買掛金: {
     sheetType: "BS",
     parentAccount: "流動負債合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: {
       type: RELATION_TYPES.WORKING_CAPITAL,
       subType: RELATION_SUB_TYPES.WC_LIABILITY,
@@ -466,7 +471,7 @@ export const DEFAULT_SHEET_TYPES = {
   支払手形: {
     sheetType: "BS",
     parentAccount: "流動負債合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: {
       type: RELATION_TYPES.WORKING_CAPITAL,
       subType: RELATION_SUB_TYPES.WC_LIABILITY,
@@ -481,13 +486,13 @@ export const DEFAULT_SHEET_TYPES = {
   流動負債合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   長期借入金: {
     sheetType: "BS",
     parentAccount: "固定負債合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -499,7 +504,7 @@ export const DEFAULT_SHEET_TYPES = {
   社債: {
     sheetType: "BS",
     parentAccount: "固定負債合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -511,25 +516,25 @@ export const DEFAULT_SHEET_TYPES = {
   固定負債合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   負債合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   資本金: {
     sheetType: "BS",
     parentAccount: "純資産合計",
-    parameterType: "FIXED_VALUE",
+    parameterType: PARAMETER_TYPES.FIXED_VALUE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   利益剰余金: {
     sheetType: "BS",
     parentAccount: "純資産合計",
-    parameterType: "BALANCE_AND_CHANGE",
+    parameterType: PARAMETER_TYPES.BALANCE_AND_CHANGE,
     relation: {
       type: RELATION_TYPES.RETAINED_EARNINGS,
       subType: RELATION_SUB_TYPES.RETAINED,
@@ -544,19 +549,19 @@ export const DEFAULT_SHEET_TYPES = {
   純資産合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   負債及び純資産合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   有形資産投資: {
     sheetType: "CAPEX",
     parentAccount: "設備投資合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.INVESTMENT,
@@ -571,7 +576,7 @@ export const DEFAULT_SHEET_TYPES = {
   無形資産投資: {
     sheetType: "CAPEX",
     parentAccount: "設備投資合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.INVESTMENT,
@@ -586,49 +591,49 @@ export const DEFAULT_SHEET_TYPES = {
   設備投資合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   営業利益_CF: {
     sheetType: "集約科目",
     parentAccount: "営業CF合計",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   減価償却費_CF: {
     sheetType: "CF",
     parentAccount: "営業CF合計",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   無形固定資産償却費_CF: {
     sheetType: "CF",
     parentAccount: "営業CF合計",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   運転資本増減: {
     sheetType: "CF",
     parentAccount: "営業CF合計",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   営業CF合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   設備投資合計_CF: {
     sheetType: "CF",
     parentAccount: "投資CF合計",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   投資CF合計: {
     sheetType: "集約科目",
     parentAccount: "集約科目",
-    parameterType: "NONE",
+    parameterType: PARAMETER_TYPES.NONE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
 
@@ -636,19 +641,19 @@ export const DEFAULT_SHEET_TYPES = {
   売上高1: {
     sheetType: "PL",
     parentAccount: "売上高合計",
-    parameterType: "GROWTH_RATE",
+    parameterType: PARAMETER_TYPES.GROWTH_RATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   売上高2: {
     sheetType: "PL",
     parentAccount: "売上高合計",
-    parameterType: "GROWTH_RATE",
+    parameterType: PARAMETER_TYPES.GROWTH_RATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
   },
   売上原価1: {
     sheetType: "PL",
     parentAccount: "売上原価合計",
-    parameterType: "PERCENTAGE",
+    parameterType: PARAMETER_TYPES.PERCENTAGE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -660,7 +665,7 @@ export const DEFAULT_SHEET_TYPES = {
   売上原価2: {
     sheetType: "PL",
     parentAccount: "売上原価合計",
-    parameterType: "PERCENTAGE",
+    parameterType: PARAMETER_TYPES.PERCENTAGE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -672,7 +677,7 @@ export const DEFAULT_SHEET_TYPES = {
   広告宣伝費: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "PERCENTAGE",
+    parameterType: PARAMETER_TYPES.PERCENTAGE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -684,7 +689,7 @@ export const DEFAULT_SHEET_TYPES = {
   物件費: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "PERCENTAGE",
+    parameterType: PARAMETER_TYPES.PERCENTAGE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -696,7 +701,7 @@ export const DEFAULT_SHEET_TYPES = {
   その他償却費1: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "PERCENTAGE",
+    parameterType: PARAMETER_TYPES.PERCENTAGE,
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.DEPRECIATION,
@@ -711,7 +716,7 @@ export const DEFAULT_SHEET_TYPES = {
   その他償却費2: {
     sheetType: "PL",
     parentAccount: "販管費合計",
-    parameterType: "PERCENTAGE",
+    parameterType: PARAMETER_TYPES.PERCENTAGE,
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.DEPRECIATION,
@@ -726,7 +731,7 @@ export const DEFAULT_SHEET_TYPES = {
   その他流動資産: {
     sheetType: "BS",
     parentAccount: "流動資産合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -738,7 +743,7 @@ export const DEFAULT_SHEET_TYPES = {
   償却資産1: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.PPE, subType: RELATION_SUB_TYPES.ASSET },
     parameterReferenceAccounts: [
       {
@@ -750,7 +755,7 @@ export const DEFAULT_SHEET_TYPES = {
   償却資産2: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.PPE, subType: RELATION_SUB_TYPES.ASSET },
     parameterReferenceAccounts: [
       {
@@ -762,7 +767,7 @@ export const DEFAULT_SHEET_TYPES = {
   その他固定資産: {
     sheetType: "BS",
     parentAccount: "固定資産合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -774,7 +779,7 @@ export const DEFAULT_SHEET_TYPES = {
   その他流動負債: {
     sheetType: "BS",
     parentAccount: "流動負債合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -786,7 +791,7 @@ export const DEFAULT_SHEET_TYPES = {
   その他固定負債: {
     sheetType: "BS",
     parentAccount: "固定負債合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: { type: RELATION_TYPES.NONE, subType: null },
     parameterReferenceAccounts: [
       {
@@ -798,7 +803,7 @@ export const DEFAULT_SHEET_TYPES = {
   固定資産投資1: {
     sheetType: "CAPEX",
     parentAccount: "設備投資合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.INVESTMENT,
@@ -813,7 +818,7 @@ export const DEFAULT_SHEET_TYPES = {
   固定資産投資2: {
     sheetType: "CAPEX",
     parentAccount: "設備投資合計",
-    parameterType: "PROPORTIONATE",
+    parameterType: PARAMETER_TYPES.PROPORTIONATE,
     relation: {
       type: RELATION_TYPES.PPE,
       subType: RELATION_SUB_TYPES.INVESTMENT,

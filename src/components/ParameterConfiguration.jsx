@@ -1,116 +1,69 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
 import { createAccountMap } from "../utils/accountMapping";
 import { OPERATION_SYMBOLS } from "../utils/astTypes";
-import { PARAM_OP_MAPPING } from "../utils/constants";
-import { buildFormula } from "../utils/astBuilder";
-import { evalNode } from "../utils/astEvaluator";
+import {
+  PARAM_OP_MAPPING,
+  PARAMETER_TYPES,
+  DEFAULT_PARAMETER_VALUES,
+} from "../utils/constants";
 
 /**
  * パラメータ設定確認コンポーネント
  * @param {Object} props
  * @param {Array} props.data - アカウント配列
+ * @param {Object} props.financialModel - 財務モデル
  * @param {Function} props.onChange - 変更時のコールバック
  * @returns {JSX.Element}
  */
-const ParameterConfiguration = ({ data, onChange }) => {
-  // 計算テスト用の状態
-  const [testAccountId, setTestAccountId] = useState("");
-  const [testPeriod, setTestPeriod] = useState("");
-  const [testResult, setTestResult] = useState(null);
-
+const ParameterConfiguration = ({ data, financialModel, onChange }) => {
   // 科目IDと科目名のマッピングを作成
   const accountMap = useMemo(() => createAccountMap(data), [data]);
 
-  // 計算テストを実行
-  const runTest = () => {
-    try {
-      // 入力値の検証
-      if (!testAccountId || !testPeriod) {
-        setTestResult("勘定科目と期間を入力してください");
-        return;
-      }
-
-      // 勘定科目を取得
-      const account = data.find((acc) => acc.id === testAccountId);
-      if (!account) {
-        setTestResult("勘定科目が見つかりません");
-        return;
-      }
-
-      console.log("選択された勘定科目:", account);
-      console.log("全データ:", data);
-
-      // ASTを構築
-      const ast = buildFormula(account);
-      console.log("構築されたAST:", ast);
-
-      // 値を取得する関数
-      const getValue = (id, period) => {
-        // 期間を数値に変換
-        const periodNum = parseInt(period, 10);
-
-        // 勘定科目を検索
-        const targetAccount = data.find((acc) => acc.id === id);
-        if (!targetAccount) {
-          console.log(`勘定科目が見つかりません: ${id}`);
-          return 0;
-        }
-
-        // 値の配列を確認
-        console.log(`勘定科目 ${id} の値:`, targetAccount.values);
-        console.log(`勘定科目 ${id} の全データ:`, targetAccount);
-
-        // 期間に一致する値を検索
-        // valuesが配列でない場合は、accountValuesから取得を試みる
-        let value;
-        if (Array.isArray(targetAccount.values)) {
-          value = targetAccount.values.find(
-            (v) => parseInt(v.periodId, 10) === periodNum
-          )?.value;
-        } else if (targetAccount.accountValues) {
-          value = targetAccount.accountValues.find(
-            (v) => parseInt(v.periodId, 10) === periodNum
-          )?.value;
-        }
-
-        console.log(`期間 ${periodNum} の値:`, value);
-        return value ?? 0;
-      };
-
-      // ASTを評価
-      const result = evalNode(ast, testPeriod, getValue);
-      console.log("計算結果:", result);
-      setTestResult(result);
-    } catch (error) {
-      console.error("計算エラー:", error);
-      setTestResult(`エラー: ${error.message}`);
-    }
-  };
-
   // 参照科目の設定を抽出
   const referenceAccounts = useMemo(() => {
-    return data.filter((account) => account.parameterType === "REFERENCE");
+    return data.filter(
+      (account) => account.parameterType === PARAMETER_TYPES.REFERENCE
+    );
   }, [data]);
 
-  // 最大の参照科目数を取得
-  const maxReferenceCount = useMemo(() => {
-    return Math.max(
-      ...referenceAccounts.map(
-        (account) => account.parameterReferenceAccounts?.length || 0
-      )
+  // 期末残高+/-変動科目の設定を抽出
+  const balanceAndChangeAccounts = useMemo(() => {
+    return data.filter(
+      (account) => account.parameterType === PARAMETER_TYPES.BALANCE_AND_CHANGE
     );
-  }, [referenceAccounts]);
+  }, [data]);
 
-  // テーブルデータの作成
-  const tableData = useMemo(() => {
-    return referenceAccounts.map((account) => {
+  // 成長率科目の設定を抽出
+  const growthRateAccounts = useMemo(() => {
+    return data.filter(
+      (account) => account.parameterType === PARAMETER_TYPES.GROWTH_RATE
+    );
+  }, [data]);
+
+  // 他科目割合科目の設定を抽出
+  const percentageAccounts = useMemo(() => {
+    return data.filter(
+      (account) => account.parameterType === PARAMETER_TYPES.PERCENTAGE
+    );
+  }, [data]);
+
+  // 他科目連動科目の設定を抽出
+  const proportionateAccounts = useMemo(() => {
+    return data.filter(
+      (account) => account.parameterType === PARAMETER_TYPES.PROPORTIONATE
+    );
+  }, [data]);
+
+  // 共通のテーブルデータ生成関数
+  const createTableData = useCallback((accounts, maxRefCount, accountMap) => {
+    return accounts.map((account) => {
       const row = [account.accountName, account.parameterType];
       const refAccounts = account.parameterReferenceAccounts || [];
 
       // 参照科目の数だけ列を追加（式と科目名の2列ずつ）
-      for (let i = 0; i < maxReferenceCount; i++) {
+      for (let i = 0; i < maxRefCount; i++) {
         const refAccount = refAccounts[i];
         row.push(
           refAccount
@@ -122,23 +75,23 @@ const ParameterConfiguration = ({ data, onChange }) => {
 
       return row;
     });
-  }, [referenceAccounts, maxReferenceCount, accountMap]);
+  }, []);
 
-  // 列の設定を動的に生成
-  const columns = useMemo(() => {
+  // 共通の列設定生成関数
+  const createColumns = useCallback((accounts, maxRefCount) => {
     const cols = [
       { type: "text", readOnly: true },
       { type: "text", readOnly: true },
     ];
 
     // 参照科目の数だけ列を追加（式と科目名の2列ずつ）
-    for (let i = 0; i < maxReferenceCount; i++) {
+    for (let i = 0; i < maxRefCount; i++) {
       cols.push(
         {
           type: "dropdown",
           source(query, process) {
             const rowIndex = this.row;
-            const account = referenceAccounts[rowIndex];
+            const account = accounts[rowIndex];
             if (!account) {
               process([]);
               return;
@@ -167,19 +120,19 @@ const ParameterConfiguration = ({ data, onChange }) => {
     }
 
     return cols;
-  }, [maxReferenceCount, referenceAccounts]);
+  }, []);
 
-  // 列ヘッダーを動的に生成
-  const colHeaders = useMemo(() => {
+  // 共通のヘッダー生成関数
+  const createHeaders = useCallback((maxRefCount) => {
     const headers = ["勘定科目", "パラメータタイプ"];
-    for (let i = 0; i < maxReferenceCount; i++) {
+    for (let i = 0; i < maxRefCount; i++) {
       headers.push("式", "科目名");
     }
     return headers;
-  }, [maxReferenceCount]);
+  }, []);
 
-  // ネストされたヘッダーの設定
-  const nestedHeaders = useMemo(() => {
+  // 共通のネストヘッダー生成関数
+  const createNestedHeaders = useCallback((maxRefCount) => {
     // 1行目
     const firstRow = [
       { label: "勘定科目", rowspan: 2 },
@@ -187,7 +140,7 @@ const ParameterConfiguration = ({ data, onChange }) => {
     ];
 
     // 参照科目ブロックを追加（colspan=2）
-    for (let i = 0; i < maxReferenceCount; i++) {
+    for (let i = 0; i < maxRefCount; i++) {
       firstRow.push({ label: `参照科目${i + 1}`, colspan: 2 });
     }
 
@@ -196,146 +149,401 @@ const ParameterConfiguration = ({ data, onChange }) => {
       null, // 勘定科目のrowspan分
       null, // パラメータタイプのrowspan分
     ];
-    for (let i = 0; i < maxReferenceCount; i++) {
+    for (let i = 0; i < maxRefCount; i++) {
       secondRow.push("式", "科目名");
     }
 
     return [firstRow, secondRow];
-  }, [maxReferenceCount]);
+  }, []);
 
-  // セル変更時の処理
-  const handleChange = (changes) => {
-    if (!changes || typeof onChange !== "function") return;
-
-    // 元のデータをディープコピー
-    const updated = data.map((account) => ({
-      ...account,
-      parameterReferenceAccounts:
-        account.parameterReferenceAccounts?.map((ref) => ({ ...ref })) || [],
-    }));
-
-    // 参照科目の設定を抽出（更新されたデータから）
-    const updatedReferenceAccounts = updated.filter(
-      (account) => account.parameterType === "REFERENCE"
+  // 参照科目の最大参照数を取得
+  const maxReferenceCount = useMemo(() => {
+    return Math.max(
+      ...referenceAccounts.map(
+        (account) => account.parameterReferenceAccounts?.length || 0
+      )
     );
+  }, [referenceAccounts]);
 
-    changes.forEach(([rowIdx, colIdx, oldValue, newValue]) => {
-      // 列の設定を取得
-      const column = columns[colIdx];
+  // 期末残高+/-変動科目の最大参照数を取得
+  const maxBalanceAndChangeCount = useMemo(() => {
+    return Math.max(
+      ...balanceAndChangeAccounts.map(
+        (account) => account.parameterReferenceAccounts?.length || 0
+      )
+    );
+  }, [balanceAndChangeAccounts]);
 
-      // 式の列の場合のみ処理
-      if (column?.title === "式") {
-        const account = updatedReferenceAccounts[rowIdx];
-        if (!account) return;
+  // 参照科目のテーブルデータの作成
+  const referenceTableData = useMemo(() => {
+    return createTableData(referenceAccounts, maxReferenceCount, accountMap);
+  }, [referenceAccounts, maxReferenceCount, accountMap, createTableData]);
 
-        const refAccounts = account.parameterReferenceAccounts || [];
-        // 式の列のインデックスから参照科目のインデックスを計算
-        const refIndex = Math.floor((colIdx - 2) / 2);
-        const refAccount = refAccounts[refIndex];
+  // 期末残高+/-変動科目のテーブルデータの作成
+  const balanceAndChangeTableData = useMemo(() => {
+    return createTableData(
+      balanceAndChangeAccounts,
+      maxBalanceAndChangeCount,
+      accountMap
+    );
+  }, [
+    balanceAndChangeAccounts,
+    maxBalanceAndChangeCount,
+    accountMap,
+    createTableData,
+  ]);
 
-        if (refAccount) {
-          // 記号から演算子に変換
-          const operation = Object.entries(OPERATION_SYMBOLS).find(
-            ([_, symbol]) => symbol === newValue
-          )?.[0];
+  // 参照科目の列の設定を動的に生成
+  const referenceColumns = useMemo(() => {
+    return createColumns(referenceAccounts, maxReferenceCount);
+  }, [maxReferenceCount, referenceAccounts, createColumns]);
 
-          if (operation) {
-            // 参照科目の演算子を更新
-            refAccount.operation = operation;
+  // 期末残高+/-変動科目の列の設定を動的に生成
+  const balanceAndChangeColumns = useMemo(() => {
+    return createColumns(balanceAndChangeAccounts, maxBalanceAndChangeCount);
+  }, [maxBalanceAndChangeCount, balanceAndChangeAccounts, createColumns]);
+
+  // 参照科目の列ヘッダーを動的に生成
+  const referenceColHeaders = useMemo(() => {
+    return createHeaders(maxReferenceCount);
+  }, [maxReferenceCount, createHeaders]);
+
+  // 期末残高+/-変動科目の列ヘッダーを動的に生成
+  const balanceAndChangeColHeaders = useMemo(() => {
+    return createHeaders(maxBalanceAndChangeCount);
+  }, [maxBalanceAndChangeCount, createHeaders]);
+
+  // 参照科目のネストされたヘッダーの設定
+  const referenceNestedHeaders = useMemo(() => {
+    return createNestedHeaders(maxReferenceCount);
+  }, [maxReferenceCount, createNestedHeaders]);
+
+  // 期末残高+/-変動科目のネストされたヘッダーの設定
+  const balanceAndChangeNestedHeaders = useMemo(() => {
+    return createNestedHeaders(maxBalanceAndChangeCount);
+  }, [maxBalanceAndChangeCount, createNestedHeaders]);
+
+  // セル変更時の処理（共通化）
+  const createHandleChange = useCallback(
+    (accounts, parameterType) => {
+      return (changes) => {
+        if (!changes || typeof onChange !== "function") return;
+
+        // 元のデータをディープコピー
+        const updated = data.map((account) => ({
+          ...account,
+          parameterReferenceAccounts:
+            account.parameterReferenceAccounts?.map((ref) => ({ ...ref })) ||
+            [],
+        }));
+
+        // 対象科目の設定を抽出（更新されたデータから）
+        const updatedTargetAccounts = updated.filter(
+          (account) => account.parameterType === parameterType
+        );
+
+        changes.forEach(([rowIdx, colIdx, oldValue, newValue]) => {
+          // 列の設定を取得
+          const columns =
+            parameterType === PARAMETER_TYPES.REFERENCE
+              ? referenceColumns
+              : balanceAndChangeColumns;
+          const column = columns[colIdx];
+
+          // 式の列の場合のみ処理
+          if (column?.title === "式") {
+            const account = updatedTargetAccounts[rowIdx];
+            if (!account) return;
+
+            const refAccounts = account.parameterReferenceAccounts || [];
+            // 式の列のインデックスから参照科目のインデックスを計算
+            const refIndex = Math.floor((colIdx - 2) / 2);
+            const refAccount = refAccounts[refIndex];
+
+            if (refAccount) {
+              // 記号から演算子に変換
+              const operation = Object.entries(OPERATION_SYMBOLS).find(
+                ([_, symbol]) => symbol === newValue
+              )?.[0];
+
+              if (operation) {
+                // 参照科目の演算子を更新
+                refAccount.operation = operation;
+              }
+            }
           }
+        });
+
+        // 変更があった場合のみonChangeを呼び出す
+        if (JSON.stringify(updated) !== JSON.stringify(data)) {
+          console.log("更新前:", data);
+          console.log("更新後:", updated);
+          onChange(updated);
         }
-      }
-    });
+      };
+    },
+    [data, onChange, referenceColumns, balanceAndChangeColumns]
+  );
 
-    // 変更があった場合のみonChangeを呼び出す
-    if (JSON.stringify(updated) !== JSON.stringify(data)) {
-      console.log("更新前:", data);
-      console.log("更新後:", updated);
-      onChange(updated);
-    }
-  };
+  // 参照科目用の変更ハンドラ
+  const handleReferenceChange = useMemo(() => {
+    return createHandleChange(referenceAccounts, PARAMETER_TYPES.REFERENCE);
+  }, [createHandleChange, referenceAccounts]);
 
-  const settings = {
-    data: tableData,
-    colHeaders,
-    columns,
-    nestedHeaders,
+  // 期末残高+/-変動科目用の変更ハンドラ
+  const handleBalanceAndChangeChange = useMemo(() => {
+    return createHandleChange(
+      balanceAndChangeAccounts,
+      PARAMETER_TYPES.BALANCE_AND_CHANGE
+    );
+  }, [createHandleChange, balanceAndChangeAccounts]);
+
+  // 参照科目のテーブル設定
+  const referenceSettings = {
+    data: referenceTableData,
+    colHeaders: referenceColHeaders,
+    columns: referenceColumns,
+    nestedHeaders: referenceNestedHeaders,
     width: "100%",
-    height: "calc(100% - 120px)", // 計算ブロックの高さ分を引く
+    height: 300,
     stretchH: "all",
     rowHeaders: true,
     licenseKey: "non-commercial-and-evaluation",
-    afterChange: handleChange,
+    afterChange: handleReferenceChange,
+  };
+
+  // 期末残高+/-変動科目のテーブル設定
+  const balanceAndChangeSettings = {
+    data: balanceAndChangeTableData,
+    colHeaders: balanceAndChangeColHeaders,
+    columns: balanceAndChangeColumns,
+    nestedHeaders: balanceAndChangeNestedHeaders,
+    width: "100%",
+    height: 300,
+    stretchH: "all",
+    rowHeaders: true,
+    licenseKey: "non-commercial-and-evaluation",
+    afterChange: handleBalanceAndChangeChange,
+  };
+
+  // 単一値パラメータ用のテーブルデータ生成関数
+  const createSingleValueTableData = useCallback((accounts, parameterType) => {
+    return accounts.map((account) => {
+      const row = [account.accountName, account.parameterType];
+
+      // PROPORTIONATEタイプの場合はparameterValueを追加しない
+      if (parameterType !== PARAMETER_TYPES.PROPORTIONATE) {
+        // パラメータタイプから定数キーを取得
+        const paramKey = Object.entries(PARAMETER_TYPES).find(
+          ([_, value]) => value === account.parameterType
+        )?.[0];
+
+        // デフォルト値の取得
+        const defaultValue = paramKey ? DEFAULT_PARAMETER_VALUES[paramKey] : 0;
+        row.push(account.parameterValue ?? defaultValue);
+      }
+
+      return row;
+    });
+  }, []);
+
+  // 単一値パラメータ用の列設定生成関数
+  const createSingleValueColumns = useCallback((parameterType) => {
+    const cols = [
+      { type: "text", readOnly: true },
+      { type: "text", readOnly: true },
+    ];
+
+    // PROPORTIONATEタイプの場合はparameterValueの列を追加しない
+    if (parameterType !== PARAMETER_TYPES.PROPORTIONATE) {
+      cols.push({
+        type: "numeric",
+        numericFormat: {
+          pattern: "0.00%",
+          culture: "ja-JP",
+        },
+        readOnly: false,
+      });
+    }
+
+    return cols;
+  }, []);
+
+  // 単一値パラメータ用のヘッダー生成関数
+  const createSingleValueHeaders = useCallback((parameterType) => {
+    const headers = ["勘定科目", "パラメータタイプ"];
+
+    // PROPORTIONATEタイプの場合はparameterValueのヘッダーを追加しない
+    if (parameterType !== PARAMETER_TYPES.PROPORTIONATE) {
+      headers.push("設定値");
+    }
+
+    return headers;
+  }, []);
+
+  // 成長率科目のテーブルデータの作成
+  const growthRateTableData = useMemo(() => {
+    return createSingleValueTableData(
+      growthRateAccounts,
+      PARAMETER_TYPES.GROWTH_RATE
+    );
+  }, [growthRateAccounts, createSingleValueTableData]);
+
+  // 他科目割合科目のテーブルデータの作成
+  const percentageTableData = useMemo(() => {
+    return createSingleValueTableData(
+      percentageAccounts,
+      PARAMETER_TYPES.PERCENTAGE
+    );
+  }, [percentageAccounts, createSingleValueTableData]);
+
+  // 他科目連動科目のテーブルデータの作成
+  const proportionateTableData = useMemo(() => {
+    return createSingleValueTableData(
+      proportionateAccounts,
+      PARAMETER_TYPES.PROPORTIONATE
+    );
+  }, [proportionateAccounts, createSingleValueTableData]);
+
+  // 単一値パラメータ用の変更ハンドラ
+  const createSingleValueHandleChange = useCallback(
+    (accounts, parameterType) => {
+      return (changes) => {
+        if (!changes || typeof onChange !== "function") return;
+
+        // 元のデータをディープコピー
+        const updated = data.map((account) => ({ ...account }));
+
+        // 対象科目の設定を抽出（更新されたデータから）
+        const updatedTargetAccounts = updated.filter(
+          (account) => account.parameterType === parameterType
+        );
+
+        changes.forEach(([rowIdx, colIdx, oldValue, newValue]) => {
+          // 設定値の列の場合のみ処理
+          if (colIdx === 2) {
+            const account = updatedTargetAccounts[rowIdx];
+            if (!account) return;
+
+            // パーセント値を小数に変換
+            const numericValue =
+              typeof newValue === "string"
+                ? parseFloat(newValue.replace("%", "")) / 100
+                : newValue;
+
+            // 参照科目の演算子を更新
+            account.parameterValue = numericValue;
+          }
+        });
+
+        // 変更があった場合のみonChangeを呼び出す
+        if (JSON.stringify(updated) !== JSON.stringify(data)) {
+          console.log("更新前:", data);
+          console.log("更新後:", updated);
+          onChange(updated);
+        }
+      };
+    },
+    [data, onChange]
+  );
+
+  // 成長率科目用の変更ハンドラ
+  const handleGrowthRateChange = useMemo(() => {
+    return createSingleValueHandleChange(
+      growthRateAccounts,
+      PARAMETER_TYPES.GROWTH_RATE
+    );
+  }, [createSingleValueHandleChange, growthRateAccounts]);
+
+  // 他科目割合科目用の変更ハンドラ
+  const handlePercentageChange = useMemo(() => {
+    return createSingleValueHandleChange(
+      percentageAccounts,
+      PARAMETER_TYPES.PERCENTAGE
+    );
+  }, [createSingleValueHandleChange, percentageAccounts]);
+
+  // 他科目連動科目用の変更ハンドラ
+  const handleProportionateChange = useMemo(() => {
+    return createSingleValueHandleChange(
+      proportionateAccounts,
+      PARAMETER_TYPES.PROPORTIONATE
+    );
+  }, [createSingleValueHandleChange, proportionateAccounts]);
+
+  // 成長率科目のテーブル設定
+  const growthRateSettings = {
+    data: growthRateTableData,
+    colHeaders: createSingleValueHeaders(PARAMETER_TYPES.GROWTH_RATE),
+    columns: createSingleValueColumns(PARAMETER_TYPES.GROWTH_RATE),
+    width: "100%",
+    height: 300,
+    stretchH: "all",
+    rowHeaders: true,
+    licenseKey: "non-commercial-and-evaluation",
+    afterChange: handleGrowthRateChange,
+  };
+
+  // 他科目割合科目のテーブル設定
+  const percentageSettings = {
+    data: percentageTableData,
+    colHeaders: createSingleValueHeaders(PARAMETER_TYPES.PERCENTAGE),
+    columns: createSingleValueColumns(PARAMETER_TYPES.PERCENTAGE),
+    width: "100%",
+    height: 300,
+    stretchH: "all",
+    rowHeaders: true,
+    licenseKey: "non-commercial-and-evaluation",
+    afterChange: handlePercentageChange,
+  };
+
+  // 他科目連動科目のテーブル設定
+  const proportionateSettings = {
+    data: proportionateTableData,
+    colHeaders: createSingleValueHeaders(PARAMETER_TYPES.PROPORTIONATE),
+    columns: createSingleValueColumns(PARAMETER_TYPES.PROPORTIONATE),
+    width: "100%",
+    height: 300,
+    stretchH: "all",
+    rowHeaders: true,
+    licenseKey: "non-commercial-and-evaluation",
+    afterChange: handleProportionateChange,
   };
 
   return (
-    <div
-      className="hot-table-container"
-      style={{ display: "flex", flexDirection: "column" }}
-    >
-      <div style={{ flex: "1 1 auto", minHeight: 0 }}>
-        <HotTable {...settings} />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div className="table-group">
+        <h3>成長率型</h3>
+        <div className="hot-table-container">
+          <HotTable {...growthRateSettings} />
+        </div>
       </div>
 
-      {/* 計算テストブロック */}
-      <div
-        style={{
-          flex: "0 0 120px",
-          padding: "10px",
-          borderTop: "1px solid #ccc",
-          backgroundColor: "white",
-          boxSizing: "border-box",
-        }}
-      >
-        <h3 style={{ margin: "0 0 10px 0", fontSize: "14px" }}>計算テスト</h3>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <div>
-            <label>勘定科目：</label>
-            <select
-              value={testAccountId}
-              onChange={(e) => setTestAccountId(e.target.value)}
-              style={{ marginLeft: "5px" }}
-            >
-              <option value="">選択してください</option>
-              {data.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.accountName}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label>期間：</label>
-            <input
-              type="number"
-              value={testPeriod}
-              onChange={(e) => setTestPeriod(e.target.value)}
-              style={{ marginLeft: "5px", width: "100px" }}
-            />
-          </div>
-          <button
-            onClick={runTest}
-            style={{
-              padding: "5px 15px",
-              backgroundColor: "#4CAF50",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            計算実行
-          </button>
-          {testResult !== null && (
-            <div style={{ marginLeft: "20px" }}>
-              <label>計算結果：</label>
-              <span style={{ marginLeft: "5px", fontWeight: "bold" }}>
-                {typeof testResult === "number"
-                  ? testResult.toLocaleString()
-                  : testResult}
-              </span>
-            </div>
-          )}
+      <div className="table-group">
+        <h3>他科目割合型</h3>
+        <div className="hot-table-container">
+          <HotTable {...percentageSettings} />
+        </div>
+      </div>
+
+      <div className="table-group">
+        <h3>他科目連動型</h3>
+        <div className="hot-table-container">
+          <HotTable {...proportionateSettings} />
+        </div>
+      </div>
+
+      <div className="table-group">
+        <h3>個別参照型</h3>
+        <div className="hot-table-container">
+          <HotTable {...referenceSettings} />
+        </div>
+      </div>
+
+      <div className="table-group">
+        <h3>期末残高+/-変動型</h3>
+        <div className="hot-table-container">
+          <HotTable {...balanceAndChangeSettings} />
         </div>
       </div>
     </div>
