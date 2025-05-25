@@ -50,7 +50,7 @@ export function buildDependencyGraph(accounts) {
   // 依存関係の追加
   accounts.forEach((account) => {
     // 1. 親子関係（合計）
-    if (account.calculationType === "CHILDREN_SUM") {
+    if (account.parameterType === "CHILDREN_SUM") {
       // 子アカウントを見つける
       const childAccounts = accounts.filter(
         (a) => a.parentAccount === account.accountName

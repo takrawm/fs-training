@@ -11,12 +11,13 @@ import { TARGET_SHEETS, SUMMARY_ACCOUNTS } from "../utils/constants";
  * @returns {JSX.Element}
  */
 const ParentAccountSettingTable = ({ data, onChange }) => {
-  // 親科目のリストを抽出
-  const parentAccounts = useMemo(() => {
-    return Object.values(SUMMARY_ACCOUNTS)
-      .filter((account) => account.calculationType === "CHILDREN_SUM")
-      .map((account) => account.accountName);
-  }, []);
+  // 集計科目のみをフィルタリング
+  const summaryAccounts = data
+    .filter((account) => account.parameterType === "CHILDREN_SUM")
+    .map((account) => ({
+      accountName: account.accountName,
+      parentAccount: account.parentAccount || "",
+    }));
 
   const parentAccountSettings = useMemo(() => {
     return {
@@ -30,7 +31,7 @@ const ParentAccountSettingTable = ({ data, onChange }) => {
         { type: "text", readOnly: true },
         {
           type: "dropdown",
-          source: parentAccounts,
+          source: summaryAccounts.map((account) => account.accountName),
         },
         {
           type: "dropdown",
@@ -43,7 +44,7 @@ const ParentAccountSettingTable = ({ data, onChange }) => {
       rowHeaders: true,
       licenseKey: "non-commercial-and-evaluation",
     };
-  }, [data, parentAccounts]);
+  }, [data, summaryAccounts]);
 
   const handleChange = (changes, source) => {
     // changesがnullまたは編集以外のソースの場合は何もしない

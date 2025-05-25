@@ -22,3 +22,21 @@ export const createAccountValues = (aggregatedMap, periods, accounts) => {
   });
   return values;
 };
+
+export const createPeriods = (flattenedData) => {
+  const newPeriods = [];
+  if (flattenedData?.headerRow && flattenedData.headerRow.length > 0) {
+    flattenedData.headerRow.forEach((year, index) => {
+      const currentYear = new Date().getFullYear();
+      const isActual = Number(year) <= currentYear;
+      newPeriods.push({
+        id: `p-${year}`,
+        year,
+        isActual,
+        isFromExcel: true,
+        order: index + 1,
+      });
+    });
+  }
+  return newPeriods;
+};

@@ -4,7 +4,6 @@ import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
 import { getFilteredDataByTab } from "../display/financialDisplay";
 import TabTableForRelations from "./TabTableForRelations";
-import { RELATION_TYPES } from "../utils/constants";
 import "../styles/ResultTableWithTabs.css";
 
 // Handsontableのすべてのモジュールを登録
@@ -25,8 +24,6 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
     if (financialModel) {
       console.log("=== ResultTableWithTabs - financialModel受け取り ===");
       console.log("financialModel:", financialModel);
-      console.log("期間の数:", financialModel.periods.length);
-      console.log("値の数:", financialModel.values.length);
 
       // 期間ごとの値の数を詳細に確認
       const periodValueCounts = financialModel.periods.map((period) => {
@@ -51,18 +48,6 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
       console.log("=== デバッグ情報終了 ===");
     }
   }, [financialModel]);
-
-  // デバッグ情報：valuesの状態をログ出力
-  console.log("ResultTableWithTabs - values:", values);
-  console.log("ResultTableWithTabs - periods:", periods);
-  console.log(
-    "ResultTableWithTabs - 期間ごとの値の数:",
-    periods?.map((p) => ({
-      periodId: p.id,
-      year: p.year,
-      valueCount: values?.filter((v) => v.periodId === p.id).length || 0,
-    }))
-  );
 
   // データが変更された場合にも再描画
   useEffect(() => {
@@ -144,7 +129,7 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
       (acc) => acc.accountName === accountName
     );
 
-    if (account?.calculationType) {
+    if (account?.parameterType === "CHILDREN_SUM") {
       return {
         fontWeight: "bold",
         backgroundColor: "#f0f8ff",

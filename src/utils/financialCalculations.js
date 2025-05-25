@@ -219,52 +219,23 @@ export const addNewPeriodToModel = (model) => {
     let newValue = 0;
     let isCalculated = true;
 
-    // 計算タイプに応じて値を計算
-    switch (account.calculationType) {
-      case "CHILDREN_SUM":
-        newValue = calculateSummaryAccountValue(
-          account,
-          newPeriod,
-          createParentChildMap(updatedModel.accounts),
-          updatedModel.values
-        );
-        break;
-
-      case "ACCOUNT_CALC":
-        // parameterReferenceAccountsに基づく計算
-        if (account.parameterReferenceAccounts?.length > 0) {
-          newValue = account.parameterReferenceAccounts.reduce((sum, ref) => {
-            const refValue =
-              updatedModel.values.find(
-                (v) => v.accountId === ref.id && v.periodId === newPeriod.id
-              )?.value || 0;
-
-            switch (ref.operation) {
-              case "ADD":
-                return sum + refValue;
-              case "SUB":
-                return sum - refValue;
-              case "MUL":
-                return sum * refValue;
-              case "DIV":
-                return refValue !== 0 ? sum / refValue : sum;
-              default:
-                return sum + refValue;
-            }
-          }, 0);
-        }
-        break;
-
-      case null:
-        newValue = calculateParameterAccount(
-          account,
-          newPeriod,
-          lastPeriod,
-          updatedModel.values,
-          updatedModel.accounts
-        );
-        isCalculated = false;
-        break;
+    // パラメータタイプに応じて値を計算
+    if (account.parameterType === PARAMETER_TYPES.CHILDREN_SUM) {
+      newValue = calculateSummaryAccountValue(
+        account,
+        newPeriod,
+        createParentChildMap(updatedModel.accounts),
+        updatedModel.values
+      );
+    } else {
+      newValue = calculateParameterAccount(
+        account,
+        newPeriod,
+        lastPeriod,
+        updatedModel.values,
+        updatedModel.accounts
+      );
+      isCalculated = false;
     }
 
     console.log(`${account.accountName}: ${newValue}`);

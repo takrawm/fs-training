@@ -13,9 +13,8 @@ import {
   createInitialMappingData,
   createAggregatedMap,
   createSortedAccounts,
-  createPeriods,
 } from "../models/account";
-import { createAccountValues } from "../models/financialModel";
+import { createAccountValues, createPeriods } from "../models/financialModel";
 import { addNewPeriodToModel } from "../utils/financialCalculations";
 import "../styles/FinancialModelBuilder.css";
 
@@ -30,6 +29,11 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
   // ステップ状態
   const [step, setStep] = useState(0);
   // フラット化済みデータをもとにした行情報
+  // [
+  //   ['商品売上', 100, 120, 140, 160, 180, 200, 220, 240, 260],
+  //   ['サービス売上', 10, 25, 35, 45, 55, 65, 75, 85, 95],
+  //   ...
+  // ]
   const flattenedRows = flattenedData?.dataRows || [];
   // マッピングデータ
   const [mappingData, setMappingData] = useState([]);
@@ -42,19 +46,14 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
   useEffect(() => {
     if (mappingData.length === 0 && flattenedRows.length > 0) {
       const initialMappingData = createInitialMappingData(flattenedRows);
+      // [
+      // {id: 'row-0', originalAccount: '商品売上', modelAccount: '商品売上'},
+      // {id: 'row-1', originalAccount: 'サービス売上', modelAccount: 'サービス売上'}
+      // ]
       console.log("initialMappingData: ", initialMappingData);
       setMappingData(initialMappingData);
     }
   }, [flattenedRows, mappingData.length]);
-
-  // 被参照科目の取得（将来の拡張用に残す）
-  const referenceAccounts = useMemo(() => {
-    return (
-      financialModel?.accounts.filter(
-        (account) => account.parameterType === "REFERENCE"
-      ) || []
-    );
-  }, [financialModel]);
 
   // マッピングデータ変更ハンドラ
   const handleMappingChange = useCallback(

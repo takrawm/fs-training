@@ -17,6 +17,12 @@ export const createInitialMappingData = (flattenedRows) => {
     };
   });
 };
+// mappingDataとしてオブジェクトの配列が返る
+// [
+// {id: 'row-0', originalAccount: '商品売上', modelAccount: '商品売上'},
+// {id: 'row-1', originalAccount: 'サービス売上', modelAccount: 'サービス売上'}
+// ...
+// ]
 
 /**
  * 集計マップを生成する
@@ -28,6 +34,7 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
   const newAggregatedMap = {};
 
   flattenedRows.forEach((row, idx) => {
+    // modelAccountの科目名をkeyとしてとってくる
     const key = mappingData[idx]?.modelAccount || row[0];
     if (!key) return;
 
@@ -38,7 +45,6 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
         sheetType: "",
         parentAccount: "",
         parameterType: "NONE",
-        relation: { type: "NONE", subType: null },
       };
 
       newAggregatedMap[key] = {
@@ -50,8 +56,6 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
         parameterValue: defaultMapping.parameterValue,
         parameterReferenceAccounts:
           defaultMapping.parameterReferenceAccounts || [],
-        calculationType: defaultMapping.calculationType,
-        dependencies: defaultMapping.dependencies,
         values: [...values],
       };
     } else {
@@ -74,7 +78,6 @@ export const createSortedAccounts = (accounts) => {
     .filter((account) => account.parentAccount !== "集約科目")
     .map((account) => ({
       ...account,
-      calculationType: null,
     }));
 
   const prefixMap = {};
@@ -108,7 +111,6 @@ export const createSortedAccounts = (accounts) => {
     sortedAccounts.push({
       ...summaryAccount,
       order: summaryAccount.order,
-      calculationType: summaryAccount.calculationType,
     });
   });
 
@@ -121,27 +123,4 @@ export const createSortedAccounts = (accounts) => {
   });
 
   return sortedAccounts;
-};
-
-/**
- * 期間情報を生成する
- * @param {Object} flattenedData フラット化されたデータ
- * @returns {Array} 期間情報配列
- */
-export const createPeriods = (flattenedData) => {
-  const newPeriods = [];
-  if (flattenedData?.headerRow && flattenedData.headerRow.length > 0) {
-    flattenedData.headerRow.forEach((year, index) => {
-      const currentYear = new Date().getFullYear();
-      const isActual = Number(year) <= currentYear;
-      newPeriods.push({
-        id: `p-${year}`,
-        year,
-        isActual,
-        isFromExcel: true,
-        order: index + 1,
-      });
-    });
-  }
-  return newPeriods;
 };

@@ -35,8 +35,10 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
       row.push(
         account.parentAccount || "",
         account.parameterType || "",
-        account.parameterReferenceAccounts?.length > 0 ? "あり" : "なし",
-        account.calculationType || ""
+        account.isReferenced ? "○" : "",
+        "", // リレーションタイプ（削除済み）
+        "", // リレーション詳細（削除済み）
+        "" // 計算タイプ（削除済み）
       );
     } else if (tabName === "リレーション") {
       const refAccounts = account.parameterReferenceAccounts || [];
