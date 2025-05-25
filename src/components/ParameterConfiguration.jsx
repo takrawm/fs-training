@@ -327,25 +327,36 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
   };
 
   // 単一値パラメータ用のテーブルデータ生成関数
-  const createSingleValueTableData = useCallback((accounts, parameterType) => {
-    return accounts.map((account) => {
-      const row = [account.accountName, account.parameterType];
+  const createSingleValueTableData = useCallback(
+    (accounts, parameterType) => {
+      return accounts.map((account) => {
+        const row = [account.accountName, account.parameterType];
 
-      // PROPORTIONATEタイプの場合はparameterValueを追加しない
-      if (parameterType !== PARAMETER_TYPES.PROPORTIONATE) {
-        // パラメータタイプから定数キーを取得
-        const paramKey = Object.entries(PARAMETER_TYPES).find(
-          ([_, value]) => value === account.parameterType
-        )?.[0];
+        // PROPORTIONATEタイプの場合は参照科目を表示
+        if (parameterType === PARAMETER_TYPES.PROPORTIONATE) {
+          const refAccounts = account.parameterReferenceAccounts || [];
+          const refAccount = refAccounts[0]; // 最初の参照科目を使用
+          row.push(
+            refAccount ? accountMap[refAccount.id] || refAccount.id : ""
+          );
+        } else {
+          // パラメータタイプから定数キーを取得
+          const paramKey = Object.entries(PARAMETER_TYPES).find(
+            ([_, value]) => value === account.parameterType
+          )?.[0];
 
-        // デフォルト値の取得
-        const defaultValue = paramKey ? DEFAULT_PARAMETER_VALUES[paramKey] : 0;
-        row.push(account.parameterValue ?? defaultValue);
-      }
+          // デフォルト値の取得
+          const defaultValue = paramKey
+            ? DEFAULT_PARAMETER_VALUES[paramKey]
+            : 0;
+          row.push(account.parameterValue ?? defaultValue);
+        }
 
-      return row;
-    });
-  }, []);
+        return row;
+      });
+    },
+    [accountMap]
+  );
 
   // 単一値パラメータ用の列設定生成関数
   const createSingleValueColumns = useCallback((parameterType) => {
@@ -354,8 +365,14 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
       { type: "text", readOnly: true },
     ];
 
-    // PROPORTIONATEタイプの場合はparameterValueの列を追加しない
-    if (parameterType !== PARAMETER_TYPES.PROPORTIONATE) {
+    // PROPORTIONATEタイプの場合は参照科目の列を追加
+    if (parameterType === PARAMETER_TYPES.PROPORTIONATE) {
+      cols.push({
+        type: "text",
+        readOnly: true,
+        title: "参照科目",
+      });
+    } else {
       cols.push({
         type: "numeric",
         numericFormat: {

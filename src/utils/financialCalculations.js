@@ -1,4 +1,7 @@
 import { getCalculationOrder } from "./dependencyCalculation";
+import { buildFormula } from "./astBuilder";
+import { evalNode } from "./astEvaluator";
+import { PARAMETER_TYPES } from "./constants";
 
 /**
  * 親子関係のマップを作成する
@@ -55,132 +58,7 @@ export const calculateSummaryAccountValue = (
 };
 
 /**
- * relationMasterから依存関係を生成する関数
- * @param {Object} relationMaster - リレーションマスター
- * @param {Array} accounts - アカウント配列
- * @returns {Object} 依存関係のマップ
- */
-export const createDependenciesFromRelationMaster = (
-  relationMaster,
-  accounts
-) => {
-  const dependencies = {};
-
-  // relationMasterが存在しない場合は空の依存関係を返す
-  if (!relationMaster) {
-    return dependencies;
-  }
-
-  // 既存の依存関係を保持
-  accounts.forEach((account) => {
-    if (account.dependencies?.depends_on) {
-      dependencies[account.id] = {
-        depends_on: account.dependencies.depends_on.map((dep) => ({
-          accountId: dep,
-          periodOffset: 0,
-          coefficient: 1,
-        })),
-      };
-    }
-  });
-
-  // PP&Eの依存関係を生成
-  if (relationMaster.ppe?.relations) {
-    relationMaster.ppe.relations.forEach((relation) => {
-      const { asset, investment, depreciation } = relation;
-
-      // 既存の依存関係と統合
-      const existingDeps = dependencies[asset.id]?.depends_on || [];
-      dependencies[asset.id] = {
-        depends_on: [
-          ...existingDeps,
-          {
-            accountId: asset.id, // 前期末の資産
-            periodOffset: -1, // 前期
-            coefficient: 1,
-          },
-          {
-            accountId: investment.id, // 投資
-            periodOffset: 0, // 当期
-            coefficient: 1,
-          },
-          {
-            accountId: depreciation.id, // 減価償却
-            periodOffset: 0, // 当期
-            coefficient: -1,
-          },
-        ],
-      };
-    });
-  }
-
-  return dependencies;
-};
-
-/**
- * 特殊なアカウントの値を計算する関数（拡張版）
- * @param {Object} account - 計算対象のアカウント
- * @param {Object} period - 計算対象の期間
- * @param {Array} values - アカウント値の配列
- * @param {Array} accounts - アカウントの配列
- * @param {Object} dependencies - 依存関係のマップ
- * @param {Array} periods - 期間の配列
- * @returns {number} 計算された値
- */
-export const calculateSpecialAccount = (
-  account,
-  period,
-  values,
-  accounts,
-  dependencies,
-  periods
-) => {
-  // 依存関係に基づく計算
-  if (dependencies[account.id]?.depends_on) {
-    const dependsOn = dependencies[account.id].depends_on;
-
-    console.log("=== PP&E計算デバッグ ===");
-    console.log("計算対象アカウント:", account);
-    console.log("計算対象期間:", period);
-    console.log("依存関係:", dependsOn);
-
-    const result = dependsOn.reduce((sum, dep) => {
-      // 対象期間を計算
-      const targetPeriodIndex =
-        periods.findIndex((p) => p.id === period.id) + dep.periodOffset;
-      if (targetPeriodIndex < 0 || targetPeriodIndex >= periods.length) {
-        console.log(`期間オフセット ${dep.periodOffset} は範囲外です`);
-        return sum;
-      }
-
-      const targetPeriod = periods[targetPeriodIndex];
-
-      // 値を見つける
-      const value =
-        values.find(
-          (v) => v.accountId === dep.accountId && v.periodId === targetPeriod.id
-        )?.value || 0;
-
-      console.log(`依存アカウント ${dep.accountId} の値:`, value);
-      console.log(
-        `係数: ${dep.coefficient}, 期間オフセット: ${dep.periodOffset}`
-      );
-
-      // 係数を掛けて合計に加算
-      return sum + value * dep.coefficient;
-    }, 0);
-
-    console.log("計算結果:", result);
-    console.log("=== デバッグ終了 ===");
-
-    return result;
-  }
-
-  return 0;
-};
-
-/**
- * パラメータに基づいてアカウントの値を計算する
+ * パラメータタイプに基づいてアカウントの値を計算する
  * @param {Object} account アカウント
  * @param {Object} newPeriod 新しい期間
  * @param {Object} lastPeriod 最後の期間
@@ -201,27 +79,88 @@ export const calculateParameterAccount = (
     )?.value || 0;
 
   switch (account.parameterType) {
-    case "GROWTH_RATE":
-      const growthRate = account.parameter?.growthRate || 0.05;
+    case PARAMETER_TYPES.GROWTH_RATE:
+      const growthRate = account.parameterValue || 0.05;
       return lastPeriodValue * (1 + growthRate);
 
-    case "PERCENTAGE":
-      const percentage = account.parameter?.percentage || 0.1;
-      const referenceAccount = accounts.find(
-        (a) => a.id === account.parameter?.referenceAccountId
-      );
-      if (!referenceAccount) return lastPeriodValue;
+    case PARAMETER_TYPES.PERCENTAGE:
+      const percentage = account.parameterValue || 0.02;
+      if (account.parameterReferenceAccounts?.length > 0) {
+        const refAccount = account.parameterReferenceAccounts[0];
+        const referenceValue =
+          values.find(
+            (v) => v.accountId === refAccount.id && v.periodId === newPeriod.id
+          )?.value || 0;
+        return referenceValue * percentage;
+      }
+      return lastPeriodValue;
 
-      const referenceValue =
-        values.find(
-          (v) =>
-            v.accountId === referenceAccount.id && v.periodId === newPeriod.id
-        )?.value || 0;
+    case PARAMETER_TYPES.PROPORTIONATE:
+      if (account.parameterReferenceAccounts?.length > 0) {
+        const refAccount = account.parameterReferenceAccounts[0];
+        return (
+          values.find(
+            (v) => v.accountId === refAccount.id && v.periodId === newPeriod.id
+          )?.value || 0
+        );
+      }
+      return lastPeriodValue;
 
-      return referenceValue * percentage;
+    case PARAMETER_TYPES.REFERENCE:
+      // 個別参照型：AST式を使用して計算
+      if (account.parameterReferenceAccounts?.length > 0) {
+        let result = 0;
+        account.parameterReferenceAccounts.forEach((ref) => {
+          const refValue =
+            values.find(
+              (v) => v.accountId === ref.id && v.periodId === newPeriod.id
+            )?.value || 0;
 
-    case "FIXED_VALUE":
-      return account.parameter?.fixedValue || lastPeriodValue;
+          switch (ref.operation) {
+            case "ADD":
+              result += refValue;
+              break;
+            case "SUB":
+              result -= refValue;
+              break;
+            case "MUL":
+              result *= refValue;
+              break;
+            case "DIV":
+              if (refValue !== 0) result /= refValue;
+              break;
+            default:
+              result += refValue;
+          }
+        });
+        return result;
+      }
+      return lastPeriodValue;
+
+    case PARAMETER_TYPES.BALANCE_AND_CHANGE:
+      // 期末残高+/-変動型：前期残高 + 当期変動
+      let balanceResult = lastPeriodValue; // 前期残高
+
+      if (account.parameterReferenceAccounts?.length > 0) {
+        account.parameterReferenceAccounts.forEach((ref) => {
+          const refValue =
+            values.find(
+              (v) => v.accountId === ref.id && v.periodId === newPeriod.id
+            )?.value || 0;
+
+          switch (ref.operation) {
+            case "ADD":
+              balanceResult += refValue;
+              break;
+            case "SUB":
+              balanceResult -= refValue;
+              break;
+            default:
+              balanceResult += refValue;
+          }
+        });
+      }
+      return balanceResult;
 
     case "NONE":
     default:
@@ -258,7 +197,6 @@ export const addNewPeriodToModel = (model) => {
     accounts: [...model.accounts],
     periods: [...model.periods],
     values: [...model.values],
-    relationMaster: model.relationMaster || {}, // relationMasterが存在しない場合は空オブジェクトを設定
   };
 
   // 期間の追加
@@ -267,14 +205,17 @@ export const addNewPeriodToModel = (model) => {
   updatedModel.periods.push(newPeriod);
 
   console.log("=== 期間追加デバッグ ===");
-  console.log("relationMaster:", updatedModel.relationMaster);
-  console.log(
-    "PP&E関連アカウント:",
-    updatedModel.accounts.filter((account) => account.relation?.type === "PPE")
-  );
+  console.log("新しい期間:", newPeriod);
 
-  // 各アカウントの新しい期間の値を計算
-  updatedModel.accounts.forEach((account) => {
+  // 計算順序を取得
+  const calculationOrder = getCalculationOrder(updatedModel.accounts);
+  console.log("計算順序:", calculationOrder);
+
+  // 計算順序に従って各アカウントの新しい期間の値を計算
+  calculationOrder.forEach((accountId) => {
+    const account = updatedModel.accounts.find((a) => a.id === accountId);
+    if (!account) return;
+
     let newValue = 0;
     let isCalculated = true;
 
@@ -290,19 +231,28 @@ export const addNewPeriodToModel = (model) => {
         break;
 
       case "ACCOUNT_CALC":
-        console.log(`PP&E計算開始: ${account.accountName}`);
-        newValue = calculateSpecialAccount(
-          account,
-          newPeriod,
-          updatedModel.values,
-          updatedModel.accounts,
-          createDependenciesFromRelationMaster(
-            updatedModel.relationMaster,
-            updatedModel.accounts
-          ),
-          updatedModel.periods
-        );
-        console.log(`PP&E計算結果: ${account.accountName} = ${newValue}`);
+        // parameterReferenceAccountsに基づく計算
+        if (account.parameterReferenceAccounts?.length > 0) {
+          newValue = account.parameterReferenceAccounts.reduce((sum, ref) => {
+            const refValue =
+              updatedModel.values.find(
+                (v) => v.accountId === ref.id && v.periodId === newPeriod.id
+              )?.value || 0;
+
+            switch (ref.operation) {
+              case "ADD":
+                return sum + refValue;
+              case "SUB":
+                return sum - refValue;
+              case "MUL":
+                return sum * refValue;
+              case "DIV":
+                return refValue !== 0 ? sum / refValue : sum;
+              default:
+                return sum + refValue;
+            }
+          }, 0);
+        }
         break;
 
       case null:
@@ -316,6 +266,8 @@ export const addNewPeriodToModel = (model) => {
         isCalculated = false;
         break;
     }
+
+    console.log(`${account.accountName}: ${newValue}`);
 
     // 新しい値を追加
     updatedModel.values.push({

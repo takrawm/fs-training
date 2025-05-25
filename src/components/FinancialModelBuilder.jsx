@@ -6,16 +6,9 @@ import AccountMappingTable from "./AccountMappingTable";
 import ParentAccountSettingTable from "./ParentAccountSettingTable";
 import ParameterSettingTable from "./ParameterSettingTable";
 import ParameterConfiguration from "./ParameterConfiguration";
-import ParameterValueSettingTable from "./ParameterValueSettingTable";
-import RelationSettingTable from "./RelationSettingTable";
 import ResultTableWithTabs from "./ResultTableWithTabs";
 import SortedAccountsTable from "./SortedAccountsTable";
-import {
-  RELATION_TYPES,
-  RELATION_SUB_TYPES,
-  PARAMETER_TYPES,
-  DEFAULT_PARAMETER_VALUES,
-} from "../utils/constants";
+import { PARAMETER_TYPES, DEFAULT_PARAMETER_VALUES } from "../utils/constants";
 import {
   createInitialMappingData,
   createAggregatedMap,
@@ -54,7 +47,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
     }
   }, [flattenedRows, mappingData.length]);
 
-  // 被参照科目の取得（パラメータ値設定の際に渡される）
+  // 被参照科目の取得（将来の拡張用に残す）
   const referenceAccounts = useMemo(() => {
     return (
       financialModel?.accounts.filter(
@@ -102,123 +95,6 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
     [financialModel]
   );
 
-  // パラメータ値更新ハンドラ
-  const handleParameterValueChange = useCallback(
-    (updatedAccounts) => {
-      if (!financialModel) return;
-      setFinancialModel({
-        ...financialModel,
-        accounts: updatedAccounts,
-      });
-      console.log("パラメータ値が更新されました:", updatedAccounts);
-    },
-    [financialModel]
-  );
-
-  // リレーション設定更新ハンドラ
-  const handleRelationChange = useCallback(
-    (updatedAccounts) => {
-      if (!financialModel) return;
-      setFinancialModel({
-        ...financialModel,
-        accounts: updatedAccounts,
-      });
-      console.log("リレーション設定が更新されました:", updatedAccounts);
-    },
-    [financialModel]
-  );
-
-  // relationMasterの作成
-  const createRelationMaster = useCallback(() => {
-    if (!financialModel) return null;
-    const { accounts } = financialModel;
-
-    const ppeAccounts = accounts.filter(
-      (account) => account.relation?.type === RELATION_TYPES.PPE
-    );
-    const retainedEarningsAccounts = accounts.filter(
-      (account) => account.relation?.type === RELATION_TYPES.RETAINED_EARNINGS
-    );
-    const workingCapitalAccounts = accounts.filter(
-      (account) => account.relation?.type === RELATION_TYPES.WORKING_CAPITAL
-    );
-
-    const assetAccounts = ppeAccounts.filter(
-      (account) => account.relation?.subType === RELATION_SUB_TYPES.ASSET
-    );
-    const investmentAccounts = ppeAccounts.filter(
-      (account) => account.relation?.subType === RELATION_SUB_TYPES.INVESTMENT
-    );
-    const depreciationAccounts = ppeAccounts.filter(
-      (account) => account.relation?.subType === RELATION_SUB_TYPES.DEPRECIATION
-    );
-    const retainedEarningsAssetAccounts = retainedEarningsAccounts.filter(
-      (account) => account.relation?.subType === RELATION_SUB_TYPES.RETAINED
-    );
-    const profitAccounts = accounts.filter(
-      (account) => account.relation?.subType === RELATION_SUB_TYPES.PROFIT
-    );
-    const workingCapitalAssetAccounts = workingCapitalAccounts.filter(
-      (account) => account.relation?.subType === RELATION_SUB_TYPES.WC_ASSET
-    );
-    const workingCapitalLiabilityAccounts = workingCapitalAccounts.filter(
-      (account) => account.relation?.subType === RELATION_SUB_TYPES.WC_LIABILITY
-    );
-
-    return {
-      ppe: {
-        type: RELATION_TYPES.PPE,
-        relations: assetAccounts.map((asset) => {
-          const investment = investmentAccounts.find(
-            (inv) => inv.accountName === asset.relation?.investmentAccount
-          );
-          const depreciation = depreciationAccounts.find(
-            (dep) => dep.accountName === asset.relation?.depreciationAccount
-          );
-
-          return {
-            asset: { id: asset.id, name: asset.accountName },
-            investment: investment
-              ? { id: investment.id, name: investment.accountName }
-              : null,
-            depreciation: depreciation
-              ? { id: depreciation.id, name: depreciation.accountName }
-              : null,
-          };
-        }),
-      },
-      retainedEarnings: {
-        type: RELATION_TYPES.RETAINED_EARNINGS,
-        relation:
-          retainedEarningsAssetAccounts.map((retained) => {
-            const profit = profitAccounts.find(
-              (p) => p.accountName === retained.relation?.profitAccount
-            );
-
-            return {
-              retained: { id: retained.id, name: retained.accountName },
-              profit: profit
-                ? { id: profit.id, name: profit.accountName }
-                : null,
-            };
-          })[0] || null,
-      },
-      workingCapital: {
-        type: RELATION_TYPES.WORKING_CAPITAL,
-        relations: {
-          assets: workingCapitalAssetAccounts.map((account) => ({
-            id: account.id,
-            name: account.accountName,
-          })),
-          liabilities: workingCapitalLiabilityAccounts.map((account) => ({
-            id: account.id,
-            name: account.accountName,
-          })),
-        },
-      },
-    };
-  }, [financialModel]);
-
   // 期間追加ハンドラ
   const handleAddPeriod = useCallback(() => {
     if (!financialModel) return;
@@ -262,10 +138,6 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       case 4:
         return "パラメータ設定確認";
       case 5:
-        return "パラメータ値設定";
-      case 6:
-        return "リレーション設定";
-      case 7:
         return "集計結果確認";
       default:
         return "";
@@ -288,7 +160,6 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
         ),
         periods: [],
         values: [],
-        relationMaster: null,
       };
       setFinancialModel(newFinancialModel);
 
@@ -342,12 +213,11 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       const updatedAccounts = financialModel.accounts.map((account) => {
         const newAccount = { ...account };
 
-        // 1. 単一値パラメータ型（成長率 / 他科目割合 / 他科目連動）
+        // 1. 単一値パラメータ型（成長率 / 他科目割合）
         //    画面遷移時に表示したデフォルト値がまだ保存されていないケースを補完
         const singleValueTypes = [
           PARAMETER_TYPES.GROWTH_RATE,
           PARAMETER_TYPES.PERCENTAGE,
-          PARAMETER_TYPES.PROPORTIONATE,
         ];
 
         if (
@@ -360,13 +230,14 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
           newAccount.parameterValue = DEFAULT_PARAMETER_VALUES[paramKey] ?? 0;
         }
 
-        // 2. 参照型／期末残高+/-変動型
+        // 2. 参照型／期末残高+/-変動型／他科目連動型
         //    デフォルトで定義済みの parameterReferenceAccounts が onChange 未発火で
         //    undefined のままの場合は空配列を入れて後段エラーを防ぐ
         if (
           [
             PARAMETER_TYPES.REFERENCE,
             PARAMETER_TYPES.BALANCE_AND_CHANGE,
+            PARAMETER_TYPES.PROPORTIONATE,
           ].includes(newAccount.parameterType) &&
           !Array.isArray(newAccount.parameterReferenceAccounts)
         ) {
@@ -384,37 +255,11 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
 
       console.log("ステップ4でパラメータ設定を確定:", updatedAccounts);
 
-      // 次のステップへ遷移
+      // 次のステップへ遷移（step5: 集計結果確認へ）
       setStep(5);
     } else if (step === 5) {
-      // ステップ5：パラメータ値設定完了 → リレーション設定へ
-      console.log("ステップ5完了時のアカウント:", financialModel?.accounts);
-      // 次のステップへ進むだけ
-      setStep(6);
-    } else if (step === 6) {
-      // ステップ6：リレーション設定完了 → 集計結果確認へ
-      if (!financialModel) return;
-
-      // relationMasterを更新
-      const newRelationMaster = createRelationMaster();
-
-      // 財務モデルを更新
-      setFinancialModel({
-        ...financialModel,
-        relationMaster: newRelationMaster,
-      });
-
-      // 財務モデルをコンソールに出力
-      console.log("=== リレーション設定完了後の財務モデル ===");
-      console.log("財務モデル:", financialModel);
-      console.log("アカウント数:", financialModel.accounts.length);
-      console.log("期間数:", financialModel.periods.length);
-      console.log("値の数:", financialModel.values.length);
-      console.log("relationMasterの内容:", newRelationMaster);
-      console.log("=== 財務モデルのログ終了 ===");
-
-      // 次のステップへ
-      setStep(7);
+      // ステップ5：集計結果確認（最後のステップなので何もしない）
+      console.log("集計結果確認完了");
     }
   };
 
@@ -456,31 +301,18 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
             onChange={handleParamChange}
           />
         ) : step === 5 ? (
-          // ステップ5：パラメータ値設定
-          <ParameterValueSettingTable
-            accounts={financialModel?.accounts || []}
-            referenceAccounts={referenceAccounts}
-            onChange={handleParameterValueChange}
-          />
-        ) : step === 6 ? (
-          // ステップ6：リレーション設定
-          <RelationSettingTable
-            accounts={financialModel?.accounts || []}
-            onChange={handleRelationChange}
-          />
-        ) : (
-          // ステップ7：集計結果確認（タブ付きテーブル）
+          // ステップ5：集計結果確認
           <ResultTableWithTabs
             financialModel={financialModel}
             onAddPeriod={handleAddPeriod}
           />
-        )}
+        ) : null}
       </div>
 
       {/* ボタンエリア */}
       <div className="table-button-area">
         <button onClick={handleSave} className="btn-primary">
-          {step === 7 ? "完了" : "次へ"}
+          {step === 5 ? "完了" : "次へ"}
         </button>
         <button
           onClick={() => {

@@ -1,6 +1,35 @@
 import { AST_OPERATIONS } from "./astTypes";
 
 /**
+ * 式から依存関係を抽出する
+ * @param {Object} expr 計算式
+ * @returns {Array} 依存するアカウントIDの配列
+ */
+export function extractDependencies(expr) {
+  if (!expr) return [];
+
+  switch (expr.op) {
+    case AST_OPERATIONS.CONST:
+      return [];
+
+    case AST_OPERATIONS.REF:
+      return [expr.id]; // 単一の依存関係
+
+    case AST_OPERATIONS.ADD:
+    case AST_OPERATIONS.SUB:
+    case AST_OPERATIONS.MUL:
+    case AST_OPERATIONS.DIV:
+      // すべての引数から依存関係を再帰的に抽出して平坦化
+      return expr.args
+        .flatMap((arg) => extractDependencies(arg))
+        .filter((v, i, a) => a.indexOf(v) === i); // 重複除去
+
+    default:
+      return [];
+  }
+}
+
+/**
  * ASTノードを評価する
  * @param {ASTNode} node - 評価するASTノード
  * @param {number} period - 評価する期間

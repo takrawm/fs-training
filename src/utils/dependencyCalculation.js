@@ -1,35 +1,37 @@
 /**
  * 財務モデルの依存関係計算に関するユーティリティ
  *
- * トポロジカルソートを用いて、複雑な依存関係を持つ計算を最適な順序で実行します。
+ * ASTとparameterReferenceAccountsを用いて、複雑な依存関係を持つ計算を最適な順序で実行します。
  */
+
+import { buildFormula } from "./astBuilder";
+import { extractDependencies } from "./astEvaluator";
 
 /**
- * 式から依存関係を抽出する
- * @param {Object} expr 計算式
+ * アカウントからAST式を構築し、依存関係を抽出する
+ * @param {Object} account アカウント
  * @returns {Array} 依存するアカウントIDの配列
  */
-export function extractDependencies(expr) {
-  if (!expr) return [];
+export function extractAccountDependencies(account) {
+  const dependencies = [];
 
-  switch (expr.op) {
-    case "CONST":
-      return [];
-
-    case "REF":
-      return [expr.id]; // 単一の依存関係
-
-    case "ADD":
-    case "SUB":
-    case "MUL":
-      // すべての引数から依存関係を再帰的に抽出して平坦化
-      return expr.args
-        .flatMap((arg) => extractDependencies(arg))
-        .filter((v, i, a) => a.indexOf(v) === i); // 重複除去
-
-    default:
-      return [];
+  // 1. parameterReferenceAccountsからの依存関係
+  if (account.parameterReferenceAccounts?.length > 0) {
+    account.parameterReferenceAccounts.forEach((ref) => {
+      if (ref.id && !dependencies.includes(ref.id)) {
+        dependencies.push(ref.id);
+      }
+    });
   }
+
+  // 2. 期末残高+/-変動型の場合、前期の自分自身への依存関係を追加
+  if (account.parameterType === "BALANCE_AND_CHANGE") {
+    if (!dependencies.includes(account.id)) {
+      dependencies.push(account.id); // 前期の自分自身
+    }
+  }
+
+  return dependencies;
 }
 
 /**
@@ -60,82 +62,52 @@ export function buildDependencyGraph(accounts) {
       });
     }
 
-    // 2. 個別計算式による依存関係
-    if (account.calculationType === "ACCOUNT_CALC") {
-      // 明示的な依存関係プロパティがある場合はそれを使用
-      if (account.dependencies && account.dependencies.depends_on) {
-        account.dependencies.depends_on.forEach((depId) => {
-          if (!graph[account.id].includes(depId)) {
-            graph[account.id].push(depId);
-          }
-        });
-      }
-    }
-
-    // 3. パラメータによる依存関係
-    if (account.parameterType === "PERCENTAGE") {
-      const referenceAccounts = accounts.filter((a) => a.isReferenceAccount);
-      referenceAccounts.forEach((ref) => {
-        if (!graph[account.id].includes(ref.id)) {
+    // 2. parameterReferenceAccountsによる依存関係
+    if (account.parameterReferenceAccounts?.length > 0) {
+      account.parameterReferenceAccounts.forEach((ref) => {
+        if (ref.id && !graph[account.id].includes(ref.id)) {
           graph[account.id].push(ref.id);
         }
       });
     }
 
-    // 4. relationによる依存関係
-    if (account.relation && account.relation.type !== "NONE") {
-      // relation.typeに基づいた依存関係を追加
-      switch (account.relation.type) {
-        case "PPE":
-          if (account.relation.subType === "asset") {
-            // 資産科目は、関連する投資科目と減価償却科目に依存する
-            if (account.relation.investmentAccountId) {
-              if (
-                !graph[account.id].includes(
-                  account.relation.investmentAccountId
-                )
-              ) {
-                graph[account.id].push(account.relation.investmentAccountId);
-              }
-            }
-            if (account.relation.depreciationAccountId) {
-              if (
-                !graph[account.id].includes(
-                  account.relation.depreciationAccountId
-                )
-              ) {
-                graph[account.id].push(account.relation.depreciationAccountId);
-              }
-            }
-          }
-          break;
+    // 3. 期末残高+/-変動型の場合、前期の自分自身への依存関係
+    if (account.parameterType === "BALANCE_AND_CHANGE") {
+      // 前期の自分自身への依存は、計算時に特別に処理するため、
+      // ここでは依存関係グラフには追加しない（循環参照を避けるため）
+    }
 
-        case "RETAINED_EARNINGS":
-          if (account.relation.subType === "asset") {
-            // 利益剰余金科目は、関連する利益科目に依存する
-            if (account.relation.profitAccountId) {
-              if (
-                !graph[account.id].includes(account.relation.profitAccountId)
-              ) {
-                graph[account.id].push(account.relation.profitAccountId);
-              }
-            }
+    // 4. 他科目連動型の場合
+    if (account.parameterType === "PROPORTIONATE") {
+      if (account.parameterReferenceAccounts?.length > 0) {
+        account.parameterReferenceAccounts.forEach((ref) => {
+          if (ref.id && !graph[account.id].includes(ref.id)) {
+            graph[account.id].push(ref.id);
           }
-          break;
+        });
       }
     }
 
-    // 5. 明示的な依存関係 (既に2で処理した場合は処理しない)
-    if (
-      account.calculationType !== "ACCOUNT_CALC" &&
-      account.dependencies &&
-      account.dependencies.depends_on
-    ) {
-      account.dependencies.depends_on.forEach((depId) => {
-        if (!graph[account.id].includes(depId)) {
-          graph[account.id].push(depId);
-        }
-      });
+    // 5. 他科目割合型の場合
+    if (account.parameterType === "PERCENTAGE") {
+      if (account.parameterReferenceAccounts?.length > 0) {
+        account.parameterReferenceAccounts.forEach((ref) => {
+          if (ref.id && !graph[account.id].includes(ref.id)) {
+            graph[account.id].push(ref.id);
+          }
+        });
+      }
+    }
+
+    // 6. 個別参照型の場合
+    if (account.parameterType === "REFERENCE") {
+      if (account.parameterReferenceAccounts?.length > 0) {
+        account.parameterReferenceAccounts.forEach((ref) => {
+          if (ref.id && !graph[account.id].includes(ref.id)) {
+            graph[account.id].push(ref.id);
+          }
+        });
+      }
     }
   });
 
@@ -155,7 +127,8 @@ export function topologicalSort(graph) {
   function visit(nodeId) {
     // 循環参照チェック
     if (temp[nodeId]) {
-      throw new Error(`循環参照が検出されました: ${nodeId}`);
+      console.warn(`循環参照が検出されました: ${nodeId} - スキップします`);
+      return;
     }
 
     // 既に処理済みならスキップ
@@ -194,5 +167,8 @@ export function topologicalSort(graph) {
  */
 export function getCalculationOrder(accounts) {
   const graph = buildDependencyGraph(accounts);
-  return topologicalSort(graph);
+  console.log("依存関係グラフ:", graph);
+  const order = topologicalSort(graph);
+  console.log("計算順序:", order);
+  return order;
 }

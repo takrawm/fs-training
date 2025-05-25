@@ -16,7 +16,7 @@ registerAllModules();
  */
 const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
   const hotTableRef = useRef(null);
-  const { accounts, periods, values, relationMaster } = financialModel || {};
+  const { accounts, periods, values } = financialModel || {};
   const [activeTab, setActiveTab] = useState("PL");
   const [filteredData, setFilteredData] = useState([]);
 
@@ -211,7 +211,6 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
       console.log("アカウント:", financialModel.accounts);
       console.log("期間:", financialModel.periods);
       console.log("値:", financialModel.values);
-      console.log("リレーション:", financialModel.relationMaster);
       console.log("=== 財務モデルのログ終了 ===");
       handleTabChange("PL");
     }
