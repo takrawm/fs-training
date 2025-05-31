@@ -346,8 +346,12 @@ export const DEFAULT_SHEET_TYPES = {
     parameterType: PARAMETER_TYPES.BALANCE_AND_CHANGE,
     parameterReferenceAccounts: [
       {
-        id: "rev-total",
+        id: "account-34", //有形資産投資になるように一旦入れる
         operation: "ADD",
+      },
+      {
+        id: "account-10", //減価償却費_PLになるように一旦入れる
+        operation: "SUB",
       },
     ],
   },
@@ -357,8 +361,12 @@ export const DEFAULT_SHEET_TYPES = {
     parameterType: PARAMETER_TYPES.BALANCE_AND_CHANGE,
     parameterReferenceAccounts: [
       {
-        id: "rev-total",
-        operation: "MUL",
+        id: "account-35", //無形資産投資になるように一旦入れる
+        operation: "ADD",
+      },
+      {
+        id: "account-11", //無形固定資産償却費_PLになるように一旦入れる
+        operation: "SUB",
       },
     ],
   },

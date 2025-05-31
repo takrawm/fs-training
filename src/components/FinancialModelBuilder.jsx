@@ -101,24 +101,6 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
     // 新しい期間を追加して値を計算
     const updatedModel = addNewPeriodToModel(financialModel);
 
-    // デバッグ出力
-    console.log("=== 期間追加後のモデル ===");
-    console.log("更新前のfinancialModel:", financialModel);
-    console.log("更新後のupdatedModel:", updatedModel);
-    console.log(
-      "新しい期間:",
-      updatedModel.periods[updatedModel.periods.length - 1]
-    );
-    console.log(
-      "新しい期間の値の数:",
-      updatedModel.values.filter(
-        (v) =>
-          v.periodId ===
-          updatedModel.periods[updatedModel.periods.length - 1].id
-      ).length
-    );
-    console.log("=== デバッグ情報終了 ===");
-
     // 財務モデルを更新
     setFinancialModel(updatedModel);
   }, [financialModel]);

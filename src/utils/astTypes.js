@@ -40,5 +40,25 @@ export const OPERATION_SYMBOLS = {
  */
 export const createNode = (op, props = {}) => ({
   op, // 演算子
-  ...props, // その他のプロパティ
+  ...props, // その他のプロパティ(スプレッド演算子（...props）により、柔軟なプロパティの追加を可能に)
 });
+
+// 以下の2つは同じ結果になります
+// const op = "ADD";
+// const props = { left: 1, right: 2 };
+
+// 完全な形
+// const node1 = {
+//   op: op,
+//   left: props.left,
+//   right: props.right
+// };
+
+// 省略形
+// const node2 = {
+//   op,
+//   ...props
+// };
+
+// 結果は同じ
+// node1 = node2 = { op: "ADD", left: 1, right: 2 }

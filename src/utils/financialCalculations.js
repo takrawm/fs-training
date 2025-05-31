@@ -58,6 +58,22 @@ export const calculateSummaryAccountValue = (
 };
 
 /**
+ * AST評価用の値取得関数を作成
+ * @param {Array} values 値の配列
+ * @param {number} targetPeriod 対象期間の年
+ * @returns {Function} getValue関数
+ */
+export const createGetValueFunction = (values, targetPeriod) => {
+  return (accountId, period) => {
+    const periodId = `p-${period}`;
+    const value = values.find(
+      (v) => v.accountId === accountId && v.periodId === periodId
+    );
+    return value?.value || 0;
+  };
+};
+
+/**
  * パラメータタイプに基づいてアカウントの値を計算する
  * @param {Object} account アカウント
  * @param {Object} newPeriod 新しい期間
@@ -73,6 +89,55 @@ export const calculateParameterAccount = (
   values,
   accounts
 ) => {
+  try {
+    // AST構築
+    const periodYear = parseInt(newPeriod.year, 10);
+    const ast = buildFormula(account, periodYear);
+
+    // ASTがnullの場合（計算不要）は前期値を返す
+    if (!ast) {
+      const lastPeriodValue =
+        values.find(
+          (v) => v.accountId === account.id && v.periodId === lastPeriod.id
+        )?.value || 0;
+      return lastPeriodValue;
+    }
+
+    // AST評価
+    const getValue = createGetValueFunction(values, periodYear);
+    return evalNode(ast, periodYear, getValue) || 0;
+  } catch (error) {
+    console.warn(
+      `AST evaluation failed for ${account.accountName}:`,
+      error.message
+    );
+    // フォールバック：既存の計算方法を使用
+    return calculateParameterAccountFallback(
+      account,
+      newPeriod,
+      lastPeriod,
+      values,
+      accounts
+    );
+  }
+};
+
+/**
+ * パラメータタイプに基づいてアカウントの値を計算する（フォールバック）
+ * @param {Object} account アカウント
+ * @param {Object} newPeriod 新しい期間
+ * @param {Object} lastPeriod 最後の期間
+ * @param {Array} values 値の配列
+ * @param {Array} accounts アカウント配列
+ * @returns {number} 計算された値
+ */
+export const calculateParameterAccountFallback = (
+  account,
+  newPeriod,
+  lastPeriod,
+  values,
+  accounts
+) => {
   const lastPeriodValue =
     values.find(
       (v) => v.accountId === account.id && v.periodId === lastPeriod.id
@@ -80,11 +145,11 @@ export const calculateParameterAccount = (
 
   switch (account.parameterType) {
     case PARAMETER_TYPES.GROWTH_RATE:
-      const growthRate = account.parameterValue || 0.05;
+      const growthRate = account.parameterValue || 0.0;
       return lastPeriodValue * (1 + growthRate);
 
     case PARAMETER_TYPES.PERCENTAGE:
-      const percentage = account.parameterValue || 0.02;
+      const percentage = account.parameterValue || 0.0;
       if (account.parameterReferenceAccounts?.length > 0) {
         const refAccount = account.parameterReferenceAccounts[0];
         const referenceValue =
@@ -205,6 +270,8 @@ export const addNewPeriodToModel = (model) => {
   updatedModel.periods.push(newPeriod);
 
   console.log("=== 期間追加デバッグ ===");
+  // 以下のようなnewPeriodオブジェクトがfinancialModel.periodsに追加される
+  // {id: 'p-2028', year: '2028', isActual: false, isFromExcel: false, order: 10}
   console.log("新しい期間:", newPeriod);
 
   // 計算順序を取得
@@ -213,6 +280,7 @@ export const addNewPeriodToModel = (model) => {
 
   // 計算順序に従って各アカウントの新しい期間の値を計算
   calculationOrder.forEach((accountId) => {
+    // 並び替えられたaccountのidから、accountを取得
     const account = updatedModel.accounts.find((a) => a.id === accountId);
     if (!account) return;
 
@@ -237,8 +305,6 @@ export const addNewPeriodToModel = (model) => {
       );
       isCalculated = false;
     }
-
-    console.log(`${account.accountName}: ${newValue}`);
 
     // 新しい値を追加
     updatedModel.values.push({
