@@ -1,5 +1,14 @@
-// 対象シートの定義
-export const TARGET_SHEETS = ["PL", "BS", "CAPEX", "CS"];
+// 最初にインポートする対象シートの定義（キャッシュフロー計算書は最初インポート対象外）
+export const TARGET_SHEETS = ["PL", "BS", "CAPEX"];
+
+export const SHEET_ATTRIBUTES = {
+  CASH: "CASH",
+  ASSET: "ASSET",
+  LIABILITY: "LIABILITY",
+  EQUITY: "EQUITY",
+  RETAINED_EARNINGS: "RETAINED_EARNINGS",
+  NET_INCOME: "NET_INCOME",
+};
 
 // パラメータタイプの選択肢
 export const PARAMETER_TYPES = {
@@ -9,15 +18,16 @@ export const PARAMETER_TYPES = {
   PROPORTIONATE: "他科目連動",
   FIXED_VALUE: "横置き",
   CHILDREN_SUM: "合計値",
-  REFERENCE: "個別参照",
-  BALANCE_AND_CHANGE: "期末残高+/-変動",
+  CALCULATION: "個別計算",
+  BALANCE_AND_CHANGE: "期末残高＋当期変動",
+  REFERENCE: "参照",
 };
 
 // パラメータタイプの選択肢
 export const PARAM_OP_MAPPING = {
   [PARAMETER_TYPES.GROWTH_RATE]: ["CONST"],
   [PARAMETER_TYPES.PERCENTAGE]: ["CONST"],
-  [PARAMETER_TYPES.REFERENCE]: ["ADD", "SUB"],
+  [PARAMETER_TYPES.CALCULATION]: ["ADD", "SUB"],
   [PARAMETER_TYPES.BALANCE_AND_CHANGE]: ["ADD", "SUB"],
 };
 
@@ -32,7 +42,7 @@ export const SUMMARY_ACCOUNTS = {
   売上高合計: {
     id: "rev-total",
     accountName: "売上高合計",
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "SUMMARY_ACCOUNTS",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "A99",
@@ -41,7 +51,7 @@ export const SUMMARY_ACCOUNTS = {
   売上原価合計: {
     id: "cogs-total",
     accountName: "売上原価合計",
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "SUMMARY_ACCOUNTS",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "B99",
@@ -50,14 +60,11 @@ export const SUMMARY_ACCOUNTS = {
   売上総利益: {
     id: "gross-profit",
     accountName: "売上総利益",
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: PARAMETER_TYPES.REFERENCE,
+    parameterType: PARAMETER_TYPES.CALCULATION,
     order: "C99",
     prefix: "C",
-    dependencies: {
-      depends_on: ["rev-total", "cogs-total"],
-    },
     parameterReferenceAccounts: [
       {
         id: "rev-total",
@@ -72,7 +79,7 @@ export const SUMMARY_ACCOUNTS = {
   販管費合計: {
     id: "sga-total",
     accountName: "販管費合計",
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "SUMMARY_ACCOUNTS",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "D99",
@@ -81,14 +88,11 @@ export const SUMMARY_ACCOUNTS = {
   営業利益: {
     id: "op-profit",
     accountName: "営業利益",
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: SHEET_ATTRIBUTES.NET_INCOME },
     parentAccount: "SUMMARY_ACCOUNTS",
-    parameterType: PARAMETER_TYPES.REFERENCE,
+    parameterType: PARAMETER_TYPES.CALCULATION,
     order: "E99",
     prefix: "E",
-    dependencies: {
-      depends_on: ["gross-profit", "sga-total"],
-    },
     parameterReferenceAccounts: [
       {
         id: "gross-profit",
@@ -105,7 +109,7 @@ export const SUMMARY_ACCOUNTS = {
   流動資産合計: {
     id: "current-asset-total",
     accountName: "流動資産合計",
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.ASSET },
     parentAccount: "資産合計",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "F99",
@@ -114,7 +118,7 @@ export const SUMMARY_ACCOUNTS = {
   固定資産合計: {
     id: "fixed-asset-total",
     accountName: "固定資産合計",
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.ASSET },
     parentAccount: "資産合計",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "G99",
@@ -123,7 +127,7 @@ export const SUMMARY_ACCOUNTS = {
   資産合計: {
     id: "asset-total",
     accountName: "資産合計",
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.ASSET },
     parentAccount: "SUMMARY_ACCOUNTS",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "H99",
@@ -132,7 +136,7 @@ export const SUMMARY_ACCOUNTS = {
   流動負債合計: {
     id: "current-liability-total",
     accountName: "流動負債合計",
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.LIABILITY },
     parentAccount: "負債合計",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "I99",
@@ -141,7 +145,7 @@ export const SUMMARY_ACCOUNTS = {
   固定負債合計: {
     id: "fixed-liability-total",
     accountName: "固定負債合計",
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.LIABILITY },
     parentAccount: "負債合計",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "J99",
@@ -150,7 +154,7 @@ export const SUMMARY_ACCOUNTS = {
   負債合計: {
     id: "liability-total",
     accountName: "負債合計",
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.LIABILITY },
     parentAccount: "負債及び純資産合計",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "K99",
@@ -159,7 +163,7 @@ export const SUMMARY_ACCOUNTS = {
   純資産合計: {
     id: "equity-total",
     accountName: "純資産合計",
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.EQUITY },
     parentAccount: "負債及び純資産合計",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "N99",
@@ -168,7 +172,7 @@ export const SUMMARY_ACCOUNTS = {
   負債及び純資産合計: {
     id: "li-eq-total",
     accountName: "負債及び純資産合計",
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.EQUITY },
     parentAccount: "SUMMARY_ACCOUNTS",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "O99",
@@ -179,7 +183,7 @@ export const SUMMARY_ACCOUNTS = {
   設備投資合計: {
     id: "capex-total",
     accountName: "設備投資合計",
-    sheetType: "CAPEX",
+    sheetType: { sheet: "CAPEX", attribute: null },
     parentAccount: "SUMMARY_ACCOUNTS",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "Q99",
@@ -190,7 +194,7 @@ export const SUMMARY_ACCOUNTS = {
   営業CF合計: {
     id: "ope-cf-total",
     accountName: "営業CF合計",
-    sheetType: "CF",
+    sheetType: { sheet: "CF", attribute: null },
     parentAccount: "SUMMARY_ACCOUNTS",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "R99",
@@ -199,7 +203,7 @@ export const SUMMARY_ACCOUNTS = {
   投資CF合計: {
     id: "inv-cf-total",
     accountName: "投資CF合計",
-    sheetType: "CF",
+    sheetType: { sheet: "CF", attribute: null },
     parentAccount: "SUMMARY_ACCOUNTS",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
     order: "S99",
@@ -210,27 +214,27 @@ export const SUMMARY_ACCOUNTS = {
 // 勘定科目デフォルトシートタイプマッピング
 export const DEFAULT_SHEET_TYPES = {
   商品売上: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "売上高合計",
     parameterType: PARAMETER_TYPES.GROWTH_RATE,
   },
   サービス売上: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "売上高合計",
     parameterType: PARAMETER_TYPES.GROWTH_RATE,
   },
   その他売上: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "売上高合計",
     parameterType: PARAMETER_TYPES.GROWTH_RATE,
   },
   売上高合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   材料費: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "売上原価合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
@@ -241,27 +245,27 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   労務費: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "売上原価合計",
     parameterType: PARAMETER_TYPES.FIXED_VALUE,
   },
   売上原価合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   売上総利益: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
-    parameterType: PARAMETER_TYPES.NONE,
+    parameterType: PARAMETER_TYPES.CALCULATION,
   },
   人件費: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "販管費合計",
     parameterType: PARAMETER_TYPES.FIXED_VALUE,
   },
   物流費: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "販管費合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
@@ -272,17 +276,17 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   減価償却費_PL: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "販管費合計",
     parameterType: PARAMETER_TYPES.FIXED_VALUE,
   },
   無形固定資産償却費_PL: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "販管費合計",
     parameterType: PARAMETER_TYPES.FIXED_VALUE,
   },
   その他販管費: {
-    sheetType: "PL",
+    sheetType: { sheet: "PL", attribute: null },
     parentAccount: "販管費合計",
     parameterType: PARAMETER_TYPES.PERCENTAGE,
     parameterReferenceAccounts: [
@@ -293,28 +297,22 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   販管費合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   営業利益: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "PL", attribute: SHEET_ATTRIBUTES.NET_INCOME },
     parentAccount: "集約科目",
-    parameterType: PARAMETER_TYPES.NONE,
+    parameterType: PARAMETER_TYPES.CALCULATION,
   },
   現預金: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.CASH },
     parentAccount: "流動資産合計",
     parameterType: PARAMETER_TYPES.CHILDREN_SUM,
-    parameterReferenceAccounts: [
-      {
-        id: "rev-total",
-        operation: "MUL",
-      },
-    ],
   },
   売掛金: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.ASSET },
     parentAccount: "流動資産合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
@@ -325,7 +323,7 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   棚卸資産: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.ASSET },
     parentAccount: "流動資産合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
@@ -336,52 +334,52 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   流動資産合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   有形固定資産: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.ASSET },
     parentAccount: "固定資産合計",
     parameterType: PARAMETER_TYPES.BALANCE_AND_CHANGE,
     parameterReferenceAccounts: [
       {
-        id: "account-34", //有形資産投資になるように一旦入れる
+        id: "account-34",
         operation: "ADD",
       },
       {
-        id: "account-10", //減価償却費_PLになるように一旦入れる
+        id: "account-10",
         operation: "SUB",
       },
     ],
   },
   無形固定資産: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.ASSET },
     parentAccount: "固定資産合計",
     parameterType: PARAMETER_TYPES.BALANCE_AND_CHANGE,
     parameterReferenceAccounts: [
       {
-        id: "account-35", //無形資産投資になるように一旦入れる
+        id: "account-35",
         operation: "ADD",
       },
       {
-        id: "account-11", //無形固定資産償却費_PLになるように一旦入れる
+        id: "account-11",
         operation: "SUB",
       },
     ],
   },
   固定資産合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   資産合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   買掛金: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.LIABILITY },
     parentAccount: "流動負債合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
@@ -392,7 +390,7 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   支払手形: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.LIABILITY },
     parentAccount: "流動負債合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
@@ -403,12 +401,12 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   流動負債合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   長期借入金: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.LIABILITY },
     parentAccount: "固定負債合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
@@ -419,7 +417,7 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   社債: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.LIABILITY },
     parentAccount: "固定負債合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
@@ -430,100 +428,95 @@ export const DEFAULT_SHEET_TYPES = {
     ],
   },
   固定負債合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   負債合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   資本金: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.EQUITY },
     parentAccount: "純資産合計",
     parameterType: PARAMETER_TYPES.FIXED_VALUE,
   },
   利益剰余金: {
-    sheetType: "BS",
+    sheetType: { sheet: "BS", attribute: SHEET_ATTRIBUTES.RETAINED_EARNINGS },
     parentAccount: "純資産合計",
     parameterType: PARAMETER_TYPES.BALANCE_AND_CHANGE,
     parameterReferenceAccounts: [
       {
         id: "op-profit",
-        operation: "MUL",
+        operation: "ADD",
       },
     ],
   },
   純資産合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   負債及び純資産合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   有形資産投資: {
-    sheetType: "CAPEX",
+    sheetType: { sheet: "CAPEX", attribute: null },
     parentAccount: "設備投資合計",
-    parameterType: PARAMETER_TYPES.PROPORTIONATE,
-    parameterReferenceAccounts: [
-      {
-        id: "rev-total",
-        operation: "MUL",
-      },
-    ],
+    parameterType: PARAMETER_TYPES.FIXED_VALUE,
+    parameterReferenceAccounts: [],
   },
   無形資産投資: {
-    sheetType: "CAPEX",
+    sheetType: { sheet: "CAPEX", attribute: null },
     parentAccount: "設備投資合計",
     parameterType: PARAMETER_TYPES.PROPORTIONATE,
     parameterReferenceAccounts: [
       {
         id: "rev-total",
-        operation: "MUL",
+        operation: null,
       },
     ],
   },
   設備投資合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   営業利益_CF: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "営業CF合計",
     parameterType: PARAMETER_TYPES.NONE,
   },
   減価償却費_CF: {
-    sheetType: "CF",
+    sheetType: { sheet: "CF", attribute: null },
     parentAccount: "営業CF合計",
     parameterType: PARAMETER_TYPES.NONE,
   },
   無形固定資産償却費_CF: {
-    sheetType: "CF",
+    sheetType: { sheet: "CF", attribute: null },
     parentAccount: "営業CF合計",
     parameterType: PARAMETER_TYPES.NONE,
   },
   運転資本増減: {
-    sheetType: "CF",
+    sheetType: { sheet: "CF", attribute: null },
     parentAccount: "営業CF合計",
     parameterType: PARAMETER_TYPES.NONE,
   },
   営業CF合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },
   設備投資合計_CF: {
-    sheetType: "CF",
+    sheetType: { sheet: "CF", attribute: null },
     parentAccount: "投資CF合計",
     parameterType: PARAMETER_TYPES.NONE,
   },
   投資CF合計: {
-    sheetType: "集約科目",
+    sheetType: { sheet: "集約科目", attribute: null },
     parentAccount: "集約科目",
     parameterType: PARAMETER_TYPES.NONE,
   },

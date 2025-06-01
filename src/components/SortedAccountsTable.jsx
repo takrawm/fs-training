@@ -16,7 +16,7 @@ const SortedAccountsTable = ({ data }) => {
         account.order,
         account.accountName,
         account.parentAccount || "",
-        account.sheetType || "",
+        account.sheetType.sheet || "",
       ]),
       colHeaders: ["ID", "オーダー", "勘定科目", "親科目", "シート"],
       columns: [

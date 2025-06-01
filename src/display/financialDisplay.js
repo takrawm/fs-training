@@ -11,13 +11,13 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
   const filteredAccounts = accounts.filter((account) => {
     switch (tabName) {
       case "PL":
-        return account.sheetType === "PL";
+        return account.sheetType?.sheet === "PL";
       case "BS":
-        return account.sheetType === "BS";
+        return account.sheetType?.sheet === "BS";
       case "CAPEX":
-        return account.sheetType === "CAPEX";
+        return account.sheetType?.sheet === "CAPEX";
       case "CF":
-        return account.sheetType === "CF";
+        return account.sheetType?.sheet === "CF";
       case "パラメータ":
         return true;
       case "リレーション":

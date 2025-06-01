@@ -14,7 +14,8 @@ import {
   createAggregatedMap,
   createSortedAccounts,
 } from "../models/account";
-import { createAccountValues, createPeriods } from "../models/financialModel";
+import { createAccountValues } from "../models/accountValue";
+import { createPeriods } from "../models/period";
 import { addNewPeriodToModel } from "../utils/financialCalculations";
 import "../styles/FinancialModelBuilder.css";
 
@@ -216,7 +217,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
         //    undefined のままの場合は空配列を入れて後段エラーを防ぐ
         if (
           [
-            PARAMETER_TYPES.REFERENCE,
+            PARAMETER_TYPES.CALCULATION,
             PARAMETER_TYPES.BALANCE_AND_CHANGE,
             PARAMETER_TYPES.PROPORTIONATE,
           ].includes(newAccount.parameterType) &&
@@ -242,6 +243,30 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       // ステップ5：集計結果確認（最後のステップなので何もしない）
       console.log("集計結果確認完了");
     }
+  };
+
+  const handleParameterTypeChange = (accountId, newType) => {
+    const newAccount = {
+      ...financialModel.accounts.find((a) => a.id === accountId),
+    };
+    newAccount.parameterType = newType;
+
+    // パラメータタイプが変更された場合、関連する値をリセット
+    if (newType === PARAMETER_TYPES.CALCULATION) {
+      if (!Array.isArray(newAccount.parameterReferenceAccounts)) {
+        newAccount.parameterReferenceAccounts = [];
+      }
+    } else {
+      newAccount.parameterReferenceAccounts = [];
+    }
+
+    const updatedAccounts = financialModel.accounts.map((a) =>
+      a.id === accountId ? newAccount : a
+    );
+    setFinancialModel({
+      ...financialModel,
+      accounts: updatedAccounts,
+    });
   };
 
   return (

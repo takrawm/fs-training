@@ -1,7 +1,12 @@
 import { getCalculationOrder } from "./dependencyCalculation";
-import { buildFormula } from "./astBuilder";
+import { buildFormula, buildCashflowFormula } from "./astBuilder";
 import { evalNode } from "./astEvaluator";
 import { PARAMETER_TYPES } from "./constants";
+import {
+  extractReferencedAccounts,
+  calculateBSDifference,
+} from "./cashflowCalc.js";
+import { createCashflowAccount } from "../models/cashflowAccount";
 
 /**
  * 親子関係のマップを作成する
@@ -92,7 +97,7 @@ export const calculateParameterAccount = (
   try {
     // AST構築
     const periodYear = parseInt(newPeriod.year, 10);
-    const ast = buildFormula(account, periodYear);
+    const ast = buildFormula(account, periodYear, accounts);
 
     // ASTがnullの場合（計算不要）は前期値を返す
     if (!ast) {
@@ -171,8 +176,8 @@ export const calculateParameterAccountFallback = (
       }
       return lastPeriodValue;
 
-    case PARAMETER_TYPES.REFERENCE:
-      // 個別参照型：AST式を使用して計算
+    case PARAMETER_TYPES.CALCULATION:
+      // 個別計算型：AST式を使用して計算
       if (account.parameterReferenceAccounts?.length > 0) {
         let result = 0;
         account.parameterReferenceAccounts.forEach((ref) => {
@@ -316,6 +321,68 @@ export const addNewPeriodToModel = (model) => {
   });
 
   console.log("=== デバッグ終了 ===");
+
+  // BALANCE_AND_CHANGEタイプのアカウントから参照されているアカウントを抽出
+
+  calculateBSDifference(updatedModel, newPeriod, lastPeriod);
+
+  // キャッシュフロー計算書の構築
+  const referencedAccounts = extractReferencedAccounts(updatedModel) || [];
+  console.log("CFreferencedAccounts", referencedAccounts);
+  if (referencedAccounts.length > 0) {
+    // 新しいアカウントと値を保持する配列
+    const newCfAccounts = [];
+    const newCfValues = [];
+
+    // 既存のCFアカウントを取得
+    const existingCfAccounts = updatedModel.accounts.filter(
+      (acc) => acc.sheetType?.sheet === "CF"
+    );
+
+    // referencedAccountsをループ
+    referencedAccounts.forEach((referencedAccount) => {
+      // 既存のCFアカウントをチェック
+      let cfAccount = existingCfAccounts.find(
+        (acc) => acc.accountName === referencedAccount.accountName
+      );
+
+      // CFアカウントが存在しない場合のみ新規作成
+      if (!cfAccount) {
+        cfAccount = createCashflowAccount(referencedAccount);
+        newCfAccounts.push(cfAccount);
+      }
+
+      // キャッシュフロー計算用のASTを構築（単純参照モード）
+      const ast = buildCashflowFormula(referencedAccount, true);
+      console.log("ast: ", ast);
+
+      // 値を計算（単純参照モード）
+      const value = evalNode(ast, newPeriod.order, (accountId, period) => {
+        // periodIdは直接newPeriod.idを使用
+        const valueObj = updatedModel.values.find(
+          (v) => v.accountId === accountId && v.periodId === newPeriod.id
+        );
+        console.log("valueObj for", accountId, ":", valueObj);
+        return valueObj ? valueObj.value : 0;
+      });
+
+      // 新しい値を追加（既存のCFアカウントでも新しい期間の値は追加）
+      newCfValues.push({
+        id: `v-${cfAccount.id}-${newPeriod.id}`,
+        accountId: cfAccount.id,
+        periodId: newPeriod.id,
+        value: value,
+      });
+    });
+
+    // 新しいアカウントのみをモデルに追加
+    if (newCfAccounts.length > 0) {
+      updatedModel.accounts = [...updatedModel.accounts, ...newCfAccounts];
+    }
+
+    // 新しい値をモデルに追加
+    updatedModel.values = [...updatedModel.values, ...newCfValues];
+  }
 
   return updatedModel;
 };

@@ -76,39 +76,6 @@ export function buildDependencyGraph(accounts) {
       // 前期の自分自身への依存は、計算時に特別に処理するため、
       // ここでは依存関係グラフには追加しない（循環参照を避けるため）
     }
-
-    // 4. 他科目連動型の場合
-    if (account.parameterType === "PROPORTIONATE") {
-      if (account.parameterReferenceAccounts?.length > 0) {
-        account.parameterReferenceAccounts.forEach((ref) => {
-          if (ref.id && !graph[account.id].includes(ref.id)) {
-            graph[account.id].push(ref.id);
-          }
-        });
-      }
-    }
-
-    // 5. 他科目割合型の場合
-    if (account.parameterType === "PERCENTAGE") {
-      if (account.parameterReferenceAccounts?.length > 0) {
-        account.parameterReferenceAccounts.forEach((ref) => {
-          if (ref.id && !graph[account.id].includes(ref.id)) {
-            graph[account.id].push(ref.id);
-          }
-        });
-      }
-    }
-
-    // 6. 個別参照型の場合
-    if (account.parameterType === "REFERENCE") {
-      if (account.parameterReferenceAccounts?.length > 0) {
-        account.parameterReferenceAccounts.forEach((ref) => {
-          if (ref.id && !graph[account.id].includes(ref.id)) {
-            graph[account.id].push(ref.id);
-          }
-        });
-      }
-    }
   });
 
   return graph;

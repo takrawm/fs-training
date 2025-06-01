@@ -24,7 +24,7 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
   // 参照科目の設定を抽出
   const referenceAccounts = useMemo(() => {
     return data.filter(
-      (account) => account.parameterType === PARAMETER_TYPES.REFERENCE
+      (account) => account.parameterType === PARAMETER_TYPES.CALCULATION
     );
   }, [data]);
 
@@ -245,7 +245,7 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
         changes.forEach(([rowIdx, colIdx, oldValue, newValue]) => {
           // 列の設定を取得
           const columns =
-            parameterType === PARAMETER_TYPES.REFERENCE
+            parameterType === PARAMETER_TYPES.CALCULATION
               ? referenceColumns
               : balanceAndChangeColumns;
           const column = columns[colIdx];
@@ -287,7 +287,7 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
 
   // 参照科目用の変更ハンドラ
   const handleReferenceChange = useMemo(() => {
-    return createHandleChange(referenceAccounts, PARAMETER_TYPES.REFERENCE);
+    return createHandleChange(referenceAccounts, PARAMETER_TYPES.CALCULATION);
   }, [createHandleChange, referenceAccounts]);
 
   // 期末残高+/-変動科目用の変更ハンドラ
@@ -551,14 +551,14 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
       </div>
 
       <div className="table-group">
-        <h3>個別参照型</h3>
+        <h3>個別計算型</h3>
         <div className="hot-table-container">
           <HotTable {...referenceSettings} />
         </div>
       </div>
 
       <div className="table-group">
-        <h3>期末残高+/-変動型</h3>
+        <h3>期末残高＋当期変動型</h3>
         <div className="hot-table-container">
           <HotTable {...balanceAndChangeSettings} />
         </div>

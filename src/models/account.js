@@ -34,7 +34,6 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
   const newAggregatedMap = {};
 
   flattenedRows.forEach((row, idx) => {
-    // modelAccountの科目名をkeyとしてとってくる
     const key = mappingData[idx]?.modelAccount || row[0];
     if (!key) return;
 
@@ -42,7 +41,7 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
 
     if (!newAggregatedMap[key]) {
       const defaultMapping = DEFAULT_SHEET_TYPES[key] || {
-        sheetType: "",
+        sheetType: { sheet: "", attribute: null },
         parentAccount: "",
         parameterType: "NONE",
       };
@@ -50,7 +49,7 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
       newAggregatedMap[key] = {
         id: `account-${Object.keys(newAggregatedMap).length}`,
         accountName: key,
-        sheetType: defaultMapping.sheetType || "",
+        sheetType: defaultMapping.sheetType || { sheet: "", attribute: null },
         parentAccount: defaultMapping.parentAccount || "",
         parameterType: defaultMapping.parameterType,
         parameterValue: defaultMapping.parameterValue,

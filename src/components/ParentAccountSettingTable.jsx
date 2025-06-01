@@ -24,7 +24,7 @@ const ParentAccountSettingTable = ({ data, onChange }) => {
       data: data.map((account) => [
         account.accountName,
         account.parentAccount || "",
-        account.sheetType || "",
+        account.sheetType.sheet || "",
       ]),
       colHeaders: ["勘定科目", "親科目", "シート"],
       columns: [
