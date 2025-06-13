@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
+import { SUMMARY_ACCOUNTS } from "../utils/constants";
 
 /**
  * ソート済みアカウント表示テーブルコンポーネント
@@ -9,17 +10,46 @@ import "handsontable/dist/handsontable.full.min.css";
  * @returns {JSX.Element}
  */
 const SortedAccountsTable = ({ data }) => {
+  // アカウントIDからアカウント名へのマッピングを作成（SUMMARY_ACCOUNTSも含める）
+  const accountMap = useMemo(() => {
+    const dataMap = data.reduce((map, account) => {
+      map[account.id] = account.accountName;
+      return map;
+    }, {});
+
+    const summaryMap = Object.values(SUMMARY_ACCOUNTS).reduce(
+      (map, account) => {
+        map[account.id] = account.accountName;
+        return map;
+      },
+      {}
+    );
+
+    return { ...dataMap, ...summaryMap };
+  }, [data]);
+
   const tableSettings = useMemo(() => {
     return {
       data: data.map((account) => [
         account.id,
         account.order,
         account.accountName,
-        account.parentAccount || "",
-        account.sheetType.sheet || "",
+        account.parentAccountId
+          ? accountMap[account.parentAccountId] || ""
+          : "",
+        account.sheet.sheetType || "",
+        account.sheet.name || "",
       ]),
-      colHeaders: ["ID", "オーダー", "勘定科目", "親科目", "シート"],
+      colHeaders: [
+        "ID",
+        "オーダー",
+        "勘定科目",
+        "親科目",
+        "シートタイプ",
+        "シート",
+      ],
       columns: [
+        { type: "text", readOnly: true },
         { type: "text", readOnly: true },
         { type: "text", readOnly: true },
         { type: "text", readOnly: true },
@@ -32,7 +62,7 @@ const SortedAccountsTable = ({ data }) => {
       rowHeaders: true,
       licenseKey: "non-commercial-and-evaluation",
     };
-  }, [data]);
+  }, [data, accountMap]);
 
   return (
     <div className="hot-table-container">
