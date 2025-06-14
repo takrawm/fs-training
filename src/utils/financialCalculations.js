@@ -13,6 +13,7 @@ import {
   calculateStockAccountWithCFAdjustment,
   isCFAdjustmentTarget,
 } from "./balanceSheetCalculator";
+import { calculateCashBalance } from "./cashCalculator";
 
 /**
  * 親子関係のマップを作成する
@@ -101,6 +102,19 @@ export const calculateParameterAccount = (
   accounts
 ) => {
   try {
+    const parameterType = ParameterUtils.getParameterType(account);
+
+    // 現預金計算の特別処理
+    if (parameterType === PARAMETER_TYPES.CASH_CALCULATION) {
+      return calculateCashBalance(
+        account,
+        newPeriod,
+        lastPeriod,
+        values,
+        accounts
+      );
+    }
+
     // stock科目でパラメータがない場合の特別処理
     if (
       AccountUtils.isStockAccount(account) &&

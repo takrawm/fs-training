@@ -22,6 +22,11 @@ export const buildFormula = (account, period, accounts) => {
   const parameterReferenceAccounts =
     ParameterUtils.getParameterReferences(account);
 
+  // 現預金計算の特別処理
+  if (parameterType === PARAMETER_TYPES.CASH_CALCULATION) {
+    return buildCashCalculationFormula(account, accounts);
+  }
+
   // stock科目でパラメータがない場合の特別処理
   if (
     AccountUtils.isStockAccount(account) &&
@@ -228,11 +233,82 @@ export const buildFormula = (account, period, accounts) => {
       // 子要素の合計は別途calculateSummaryAccountValueで処理
       return null;
 
+    case PARAMETER_TYPES.BS_CHANGE:
+      // BS項目の当期と前期の差分を計算
+      if (!parameterReferenceAccounts) {
+        throw new Error(
+          `BS_CHANGE requires reference accounts for account: ${account.accountName}`
+        );
+      }
+
+      const bsRef = parameterReferenceAccounts;
+      const refId = bsRef.accountId || bsRef.id;
+
+      const changeNode = createNode(AST_OPERATIONS.SUB, {
+        args: [
+          createNode(AST_OPERATIONS.REF, {
+            id: refId,
+            lag: 0, // 当期
+          }),
+          createNode(AST_OPERATIONS.REF, {
+            id: refId,
+            lag: 1, // 前期
+          }),
+        ],
+      });
+
+      // 符号の調整（資産増加はマイナス、負債増加はプラス）
+      if (bsRef.operation === OPERATIONS.SUB) {
+        return createNode(AST_OPERATIONS.MUL, {
+          args: [createNode(AST_OPERATIONS.CONST, { value: -1 }), changeNode],
+        });
+      }
+      return changeNode;
+
+    case PARAMETER_TYPES.CF_ADJUSTMENT_CALC:
+      // CF調整計算：参照先の値に演算子を適用
+      if (!parameterReferenceAccounts) {
+        throw new Error(
+          `CF_ADJUSTMENT_CALC requires reference accounts for account: ${account.accountName}`
+        );
+      }
+
+      const cfRef = parameterReferenceAccounts;
+      const cfRefId = cfRef.accountId || cfRef.id;
+      const cfRefNode = createNode(AST_OPERATIONS.REF, {
+        id: cfRefId,
+        lag: 0,
+      });
+
+      // 演算子に応じて符号を調整
+      if (cfRef.operation === OPERATIONS.SUB) {
+        return createNode(AST_OPERATIONS.MUL, {
+          args: [createNode(AST_OPERATIONS.CONST, { value: -1 }), cfRefNode],
+        });
+      }
+      return cfRefNode;
+
     default:
       throw new Error(
         `Unknown parameter type: ${parameterType} for account: ${account.accountName}`
       );
   }
+};
+
+/**
+ * 現預金計算用のAST構築
+ * 複雑な計算のため、専用の構造を作成
+ * @param {Object} account - 現預金アカウント
+ * @param {Array} accounts - 全アカウント配列
+ * @returns {ASTNode} 構築されたAST
+ */
+const buildCashCalculationFormula = (account, accounts) => {
+  // この関数は概念的なもので、実際の計算はcalculateCashBalanceで行う
+  // ASTでは表現が複雑すぎるため、特別な処理フラグとして機能
+  return {
+    op: "CASH_CALC",
+    accountId: account.id,
+  };
 };
 
 /**

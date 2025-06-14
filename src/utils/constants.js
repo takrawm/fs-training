@@ -21,6 +21,7 @@ export const STOCK_SHEETS = {
 export const BS_TYPES = {
   ASSET: "ASSET",
   LIABILITY_EQUITY: "LIABILITY_EQUITY",
+  CASH: "CASH", // 新規追加：現預金専用タイプ
 };
 
 // CF区分の定義
@@ -61,6 +62,9 @@ export const PARAMETER_TYPES = {
   CHILDREN_SUM: "合計値",
   CALCULATION: "個別計算",
   REFERENCE: "参照",
+  CASH_CALCULATION: "現預金計算",
+  BS_CHANGE: "BS変動",
+  CF_ADJUSTMENT_CALC: "CF調整計算",
 };
 
 export const CF_ADJUSTMENT_TYPE = {
@@ -463,6 +467,36 @@ export const SUMMARY_ACCOUNTS = {
   },
 };
 
+// CF項目の定義
+export const CF_ITEMS = {
+  営業利益_間接法: {
+    id: "cf-operating-profit",
+    accountName: "営業利益（間接法CF）",
+    parentAccountId: "ope-cf-total",
+    sheet: {
+      sheetType: SHEET_TYPES.FLOW,
+      name: FLOW_SHEETS.FINANCING,
+    },
+    stockAttributes: null,
+    flowAttributes: {
+      parameter: {
+        paramType: PARAMETER_TYPES.REFERENCE,
+        paramValue: null,
+        paramReferences: {
+          accountId: "op-profit", // PLの営業利益を参照
+          operation: OPERATIONS.ADD,
+          lag: 0,
+        },
+      },
+      cfAdjustment: null,
+    },
+    displayOrder: {
+      order: "CF01",
+      prefix: "CF",
+    },
+  },
+};
+
 // 勘定科目デフォルトシートタイプマッピング（構造を改善）
 export const DEFAULT_SHEET_TYPES = {
   商品売上: {
@@ -731,9 +765,13 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "current-asset-total",
     stockAttributes: {
-      bsType: BS_TYPES.ASSET,
-      isParameterBased: false,
-      parameter: null,
+      bsType: BS_TYPES.CASH, // ASSETからCASHに変更
+      isParameterBased: true,
+      parameter: {
+        paramType: PARAMETER_TYPES.CASH_CALCULATION,
+        paramValue: null,
+        paramReferences: null,
+      },
     },
     flowAttributes: null,
   },
@@ -1047,148 +1085,148 @@ export const DEFAULT_SHEET_TYPES = {
       cfAdjustment: null,
     },
   },
-  営業利益_CF: {
-    sheet: {
-      sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
-    },
-    parentAccountId: "ope-cf-total",
-    stockAttributes: null,
-    flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.REFERENCE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "op-profit",
-          operation: OPERATIONS.ADD,
-          lag: 0,
-        },
-      },
-      cfAdjustment: {
-        category: CF_CATEGORIES.OPERATING,
-      },
-    },
-  },
-  減価償却費_CF: {
-    sheet: {
-      sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
-    },
-    parentAccountId: "ope-cf-total",
-    stockAttributes: null,
-    flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.REFERENCE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "depreciation-pl",
-          operation: OPERATIONS.ADD,
-          lag: 0,
-        },
-      },
-      cfAdjustment: {
-        category: CF_CATEGORIES.OPERATING,
-      },
-    },
-  },
-  無形固定資産償却費_CF: {
-    sheet: {
-      sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
-    },
-    parentAccountId: "ope-cf-total",
-    stockAttributes: null,
-    flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.REFERENCE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "intangible-depreciation-pl",
-          operation: OPERATIONS.ADD,
-          lag: 0,
-        },
-      },
-      cfAdjustment: {
-        category: CF_CATEGORIES.OPERATING,
-      },
-    },
-  },
-  運転資本増減: {
-    sheet: {
-      sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
-    },
-    parentAccountId: "ope-cf-total",
-    stockAttributes: null,
-    flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CALCULATION,
-        paramValue: null,
-        paramReferences: null,
-      },
-      cfAdjustment: {
-        category: CF_CATEGORIES.OPERATING,
-      },
-    },
-  },
-  営業CF合計: {
-    sheet: {
-      sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
-    },
-    parentAccountId: null,
-    stockAttributes: null,
-    flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
-      cfAdjustment: {
-        category: CF_CATEGORIES.OPERATING,
-      },
-    },
-  },
-  設備投資合計_CF: {
-    sheet: {
-      sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
-    },
-    parentAccountId: "inv-cf-total",
-    stockAttributes: null,
-    flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.REFERENCE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "capex-total",
-          operation: OPERATIONS.SUB,
-          lag: 0,
-        },
-      },
-      cfAdjustment: {
-        category: CF_CATEGORIES.INVESTING,
-      },
-    },
-  },
-  投資CF合計: {
-    sheet: {
-      sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
-    },
-    parentAccountId: null,
-    stockAttributes: null,
-    flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
-      cfAdjustment: {
-        category: CF_CATEGORIES.INVESTING,
-      },
-    },
-  },
+  // 営業利益_CF: {
+  //   sheet: {
+  //     sheetType: SHEET_TYPES.FLOW,
+  //     name: FLOW_SHEETS.FINANCING,
+  //   },
+  //   parentAccountId: "ope-cf-total",
+  //   stockAttributes: null,
+  //   flowAttributes: {
+  //     parameter: {
+  //       paramType: PARAMETER_TYPES.REFERENCE,
+  //       paramValue: null,
+  //       paramReferences: {
+  //         accountId: "op-profit",
+  //         operation: OPERATIONS.ADD,
+  //         lag: 0,
+  //       },
+  //     },
+  //     cfAdjustment: {
+  //       category: CF_CATEGORIES.OPERATING,
+  //     },
+  //   },
+  // },
+  // 減価償却費_CF: {
+  //   sheet: {
+  //     sheetType: SHEET_TYPES.FLOW,
+  //     name: FLOW_SHEETS.FINANCING,
+  //   },
+  //   parentAccountId: "ope-cf-total",
+  //   stockAttributes: null,
+  //   flowAttributes: {
+  //     parameter: {
+  //       paramType: PARAMETER_TYPES.REFERENCE,
+  //       paramValue: null,
+  //       paramReferences: {
+  //         accountId: "depreciation-pl",
+  //         operation: OPERATIONS.ADD,
+  //         lag: 0,
+  //       },
+  //     },
+  //     cfAdjustment: {
+  //       category: CF_CATEGORIES.OPERATING,
+  //     },
+  //   },
+  // },
+  // 無形固定資産償却費_CF: {
+  //   sheet: {
+  //     sheetType: SHEET_TYPES.FLOW,
+  //     name: FLOW_SHEETS.FINANCING,
+  //   },
+  //   parentAccountId: "ope-cf-total",
+  //   stockAttributes: null,
+  //   flowAttributes: {
+  //     parameter: {
+  //       paramType: PARAMETER_TYPES.REFERENCE,
+  //       paramValue: null,
+  //       paramReferences: {
+  //         accountId: "intangible-depreciation-pl",
+  //         operation: OPERATIONS.ADD,
+  //         lag: 0,
+  //       },
+  //     },
+  //     cfAdjustment: {
+  //       category: CF_CATEGORIES.OPERATING,
+  //     },
+  //   },
+  // },
+  // 運転資本増減: {
+  //   sheet: {
+  //     sheetType: SHEET_TYPES.FLOW,
+  //     name: FLOW_SHEETS.FINANCING,
+  //   },
+  //   parentAccountId: "ope-cf-total",
+  //   stockAttributes: null,
+  //   flowAttributes: {
+  //     parameter: {
+  //       paramType: PARAMETER_TYPES.CALCULATION,
+  //       paramValue: null,
+  //       paramReferences: null,
+  //     },
+  //     cfAdjustment: {
+  //       category: CF_CATEGORIES.OPERATING,
+  //     },
+  //   },
+  // },
+  // 営業CF合計: {
+  //   sheet: {
+  //     sheetType: SHEET_TYPES.FLOW,
+  //     name: FLOW_SHEETS.FINANCING,
+  //   },
+  //   parentAccountId: null,
+  //   stockAttributes: null,
+  //   flowAttributes: {
+  //     parameter: {
+  //       paramType: PARAMETER_TYPES.CHILDREN_SUM,
+  //       paramValue: null,
+  //       paramReferences: null,
+  //     },
+  //     cfAdjustment: {
+  //       category: CF_CATEGORIES.OPERATING,
+  //     },
+  //   },
+  // },
+  // 設備投資合計_CF: {
+  //   sheet: {
+  //     sheetType: SHEET_TYPES.FLOW,
+  //     name: FLOW_SHEETS.FINANCING,
+  //   },
+  //   parentAccountId: "inv-cf-total",
+  //   stockAttributes: null,
+  //   flowAttributes: {
+  //     parameter: {
+  //       paramType: PARAMETER_TYPES.REFERENCE,
+  //       paramValue: null,
+  //       paramReferences: {
+  //         accountId: "capex-total",
+  //         operation: OPERATIONS.SUB,
+  //         lag: 0,
+  //       },
+  //     },
+  //     cfAdjustment: {
+  //       category: CF_CATEGORIES.INVESTING,
+  //     },
+  //   },
+  // },
+  // 投資CF合計: {
+  //   sheet: {
+  //     sheetType: SHEET_TYPES.FLOW,
+  //     name: FLOW_SHEETS.FINANCING,
+  //   },
+  //   parentAccountId: null,
+  //   stockAttributes: null,
+  //   flowAttributes: {
+  //     parameter: {
+  //       paramType: PARAMETER_TYPES.CHILDREN_SUM,
+  //       paramValue: null,
+  //       paramReferences: null,
+  //     },
+  //     cfAdjustment: {
+  //       category: CF_CATEGORIES.INVESTING,
+  //     },
+  //   },
+  // },
 };
 
 // モデルの勘定科目リスト（元の勘定科目 + 集計科目）
