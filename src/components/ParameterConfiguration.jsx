@@ -10,6 +10,7 @@ import {
   DEFAULT_PARAMETER_REFERENCE,
   SUMMARY_ACCOUNTS,
 } from "../utils/constants";
+import { ParameterUtils } from "../utils/parameterUtils";
 
 /**
  * パラメータ設定確認コンポーネント
@@ -33,38 +34,13 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
     return { ...dataMap, ...summaryMap };
   }, [data]);
 
-  // パラメータタイプを取得するヘルパー関数
-  const getParameterType = (account) => {
-    if (account.stockAttributes?.parameter?.paramType) {
-      return account.stockAttributes.parameter.paramType;
-    }
-    if (account.flowAttributes?.parameter?.paramType) {
-      return account.flowAttributes.parameter.paramType;
-    }
-    return PARAMETER_TYPES.NONE;
-  };
-
-  // パラメータ値を取得するヘルパー関数
-  const getParameterValue = (account) => {
-    if (account.stockAttributes?.parameter?.paramValue !== undefined) {
-      return account.stockAttributes.parameter.paramValue;
-    }
-    if (account.flowAttributes?.parameter?.paramValue !== undefined) {
-      return account.flowAttributes.parameter.paramValue;
-    }
-    return null;
-  };
-
-  // パラメータ参照を取得するヘルパー関数
-  const getParameterReferences = (account) => {
-    if (account.stockAttributes?.parameter?.paramReferences) {
-      return account.stockAttributes.parameter.paramReferences;
-    }
-    if (account.flowAttributes?.parameter?.paramReferences) {
-      return account.flowAttributes.parameter.paramReferences;
-    }
-    return null;
-  };
+  // ParameterUtilsを使用してヘルパー関数を統一
+  const getParameterType = (account) =>
+    ParameterUtils.getParameterType(account);
+  const getParameterValue = (account) =>
+    ParameterUtils.getParameterValue(account);
+  const getParameterReferences = (account) =>
+    ParameterUtils.getParameterReferences(account);
 
   // 成長率科目の設定を抽出
   const growthRateAccounts = useMemo(() => {

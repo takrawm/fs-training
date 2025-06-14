@@ -1,6 +1,12 @@
-import { PARAMETER_TYPES, SHEET_ATTRIBUTES } from "./constants.js";
+import {
+  PARAMETER_TYPES,
+  SHEET_ATTRIBUTES,
+  STOCK_SHEETS,
+} from "./constants.js";
 import { buildCashflowFormula } from "./astBuilder.js";
 import { evalNode } from "./astEvaluator.js";
+import { AccountUtils } from "../models/account.js";
+import { ParameterUtils } from "./parameterUtils.js";
 
 /**
  * BSシートの科目の年度末残高の差分を計算する
@@ -12,10 +18,18 @@ import { evalNode } from "./astEvaluator.js";
 export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
   const { accounts, values } = model;
 
-  // BSシートの科目を抽出
-  const bsAccounts = accounts.filter(
-    (account) => account.sheetType.sheet === "BS"
-  );
+  // BSシートの科目を抽出（新しい構造に対応）
+  const bsAccounts = accounts.filter((account) => {
+    // 新しい構造
+    if (account.sheet?.name === STOCK_SHEETS.BS) {
+      return true;
+    }
+    // 旧構造との互換性
+    if (account.sheetType?.sheet === "BS") {
+      return true;
+    }
+    return false;
+  });
 
   // 値取得関数を定義
   const getValue = (accountId, periodId) => {
@@ -63,14 +77,33 @@ export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
 export const extractReferencedAccounts = (model) => {
   const { accounts } = model;
 
-  // BALANCE_AND_CHANGEタイプのアカウントを抽出
-  const balanceAndChangeAccounts = accounts.filter(
-    (account) => account.parameterType === PARAMETER_TYPES.BALANCE_AND_CHANGE
-  );
+  // BALANCE_AND_CHANGEタイプのアカウントを抽出（新しい構造に対応）
+  const balanceAndChangeAccounts = accounts.filter((account) => {
+    const parameterType = ParameterUtils.getParameterType(account);
+    return parameterType === PARAMETER_TYPES.BALANCE_AND_CHANGE;
+  });
 
-  // 参照されているアカウントのIDを収集
+  // 参照されているアカウントのIDを収集（新しい構造に対応）
   const referencedAccountIds = new Set();
   balanceAndChangeAccounts.forEach((account) => {
+    const parameterReferences = ParameterUtils.getParameterReferences(account);
+
+    if (Array.isArray(parameterReferences)) {
+      parameterReferences.forEach((ref) => {
+        const refId = ref.accountId || ref.id;
+        if (refId) {
+          referencedAccountIds.add(refId);
+        }
+      });
+    } else if (parameterReferences) {
+      // 単一オブジェクトの場合
+      const refId = parameterReferences.accountId || parameterReferences.id;
+      if (refId) {
+        referencedAccountIds.add(refId);
+      }
+    }
+
+    // 旧構造との互換性
     if (account.parameterReferenceAccounts) {
       account.parameterReferenceAccounts.forEach((ref) => {
         referencedAccountIds.add(ref.id);

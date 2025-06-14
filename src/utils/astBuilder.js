@@ -1,6 +1,12 @@
 import { AST_OPERATIONS, createNode } from "./astTypes";
-import { PARAMETER_TYPES } from "./constants";
+import { PARAMETER_TYPES, OPERATIONS } from "./constants";
 import { evalNode } from "./astEvaluator";
+import { ParameterUtils } from "./parameterUtils";
+import { AccountUtils } from "../models/account";
+import {
+  isCFAdjustmentTarget,
+  getCFAdjustmentAccounts,
+} from "./balanceSheetCalculator";
 
 /**
  * 勘定科目からASTを構築する
@@ -10,7 +16,31 @@ import { evalNode } from "./astEvaluator";
  * @returns {ASTNode|null} 構築されたAST（計算不要の場合はnull）
  */
 export const buildFormula = (account, period, accounts) => {
-  const { parameterType, parameterValue, parameterReferenceAccounts } = account;
+  // 新しいParameterUtilsを使用してパラメータを取得
+  const parameterType = ParameterUtils.getParameterType(account);
+  const parameterValue = ParameterUtils.getParameterValue(account);
+  const parameterReferenceAccounts =
+    ParameterUtils.getParameterReferences(account);
+
+  // stock科目でパラメータがない場合の特別処理
+  if (
+    AccountUtils.isStockAccount(account) &&
+    !ParameterUtils.hasParameter(account)
+  ) {
+    // CF調整による計算式を構築
+    if (isCFAdjustmentTarget(account, accounts)) {
+      return buildCFAdjustedFormula(account, accounts);
+    }
+    // CF調整もない場合は前期値をそのまま使用
+    return createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 });
+  }
+
+  // 旧形式との互換性のため、元の変数も保持
+  const {
+    parameterType: oldParameterType,
+    parameterValue: oldParameterValue,
+    parameterReferenceAccounts: oldParameterReferenceAccounts,
+  } = account;
 
   switch (parameterType) {
     case PARAMETER_TYPES.NONE:
@@ -28,18 +58,28 @@ export const buildFormula = (account, period, accounts) => {
       });
 
     case PARAMETER_TYPES.PERCENTAGE:
-      if (
-        !parameterReferenceAccounts ||
-        parameterReferenceAccounts.length === 0
-      ) {
+      // parameterReferenceAccountsが配列でない場合（新構造）の処理
+      let percentageRef;
+      if (Array.isArray(parameterReferenceAccounts)) {
+        if (parameterReferenceAccounts.length === 0) {
+          throw new Error(
+            `PERCENTAGE requires reference accounts for account: ${account.accountName}`
+          );
+        }
+        percentageRef = parameterReferenceAccounts[0];
+      } else if (parameterReferenceAccounts) {
+        // 単一オブジェクトの場合
+        percentageRef = parameterReferenceAccounts;
+      } else {
         throw new Error(
           `PERCENTAGE requires reference accounts for account: ${account.accountName}`
         );
       }
+
       return createNode(AST_OPERATIONS.MUL, {
         args: [
           createNode(AST_OPERATIONS.REF, {
-            id: parameterReferenceAccounts[0].id,
+            id: percentageRef.accountId || percentageRef.id,
             lag: 0,
           }),
           createNode(AST_OPERATIONS.CONST, { value: parameterValue || 0 }),
@@ -47,17 +87,26 @@ export const buildFormula = (account, period, accounts) => {
       });
 
     case PARAMETER_TYPES.PROPORTIONATE:
-      if (
-        !parameterReferenceAccounts ||
-        parameterReferenceAccounts.length === 0
-      ) {
+      // parameterReferenceAccountsが配列でない場合（新構造）の処理
+      let proportionateRef;
+      if (Array.isArray(parameterReferenceAccounts)) {
+        if (parameterReferenceAccounts.length === 0) {
+          throw new Error(
+            `PROPORTIONATE requires reference accounts for account: ${account.accountName}`
+          );
+        }
+        proportionateRef = parameterReferenceAccounts[0];
+      } else if (parameterReferenceAccounts) {
+        // 単一オブジェクトの場合
+        proportionateRef = parameterReferenceAccounts;
+      } else {
         throw new Error(
           `PROPORTIONATE requires reference accounts for account: ${account.accountName}`
         );
       }
 
       // 参照先アカウントの実際の成長率を計算
-      const refAccountId = parameterReferenceAccounts[0].id;
+      const refAccountId = proportionateRef.accountId || proportionateRef.id;
       const refAccount = accounts.find((acc) => acc.id === refAccountId);
 
       if (!refAccount) {
@@ -110,7 +159,9 @@ export const buildFormula = (account, period, accounts) => {
       }
 
       const firstRef = createNode(AST_OPERATIONS.REF, {
-        id: parameterReferenceAccounts[0].id,
+        id:
+          parameterReferenceAccounts[0].accountId ||
+          parameterReferenceAccounts[0].id,
         lag: 0,
       });
 
@@ -122,16 +173,17 @@ export const buildFormula = (account, period, accounts) => {
 
       for (let i = 1; i < parameterReferenceAccounts.length; i++) {
         const ref = parameterReferenceAccounts[i];
+        const refId = ref.accountId || ref.id;
         if (ref.operation === "ADD") {
           refAddArgs.push(
-            createNode(AST_OPERATIONS.REF, { id: ref.id, lag: 0 })
+            createNode(AST_OPERATIONS.REF, { id: refId, lag: 0 })
           );
         } else if (ref.operation === "SUB") {
           refAddArgs.push(
             createNode(AST_OPERATIONS.MUL, {
               args: [
                 createNode(AST_OPERATIONS.CONST, { value: -1 }),
-                createNode(AST_OPERATIONS.REF, { id: ref.id, lag: 0 }),
+                createNode(AST_OPERATIONS.REF, { id: refId, lag: 0 }),
               ],
             })
           );
@@ -148,16 +200,17 @@ export const buildFormula = (account, period, accounts) => {
 
       if (parameterReferenceAccounts && parameterReferenceAccounts.length > 0) {
         parameterReferenceAccounts.forEach((ref) => {
+          const refId = ref.accountId || ref.id;
           if (ref.operation === "ADD") {
             balanceAddArgs.push(
-              createNode(AST_OPERATIONS.REF, { id: ref.id, lag: 0 })
+              createNode(AST_OPERATIONS.REF, { id: refId, lag: 0 })
             );
           } else if (ref.operation === "SUB") {
             balanceAddArgs.push(
               createNode(AST_OPERATIONS.MUL, {
                 args: [
                   createNode(AST_OPERATIONS.CONST, { value: -1 }),
-                  createNode(AST_OPERATIONS.REF, { id: ref.id, lag: 0 }),
+                  createNode(AST_OPERATIONS.REF, { id: refId, lag: 0 }),
                 ],
               })
             );
@@ -180,6 +233,53 @@ export const buildFormula = (account, period, accounts) => {
         `Unknown parameter type: ${parameterType} for account: ${account.accountName}`
       );
   }
+};
+
+/**
+ * CF調整を適用したAST式を構築する
+ * @param {Object} account 対象のstock科目
+ * @param {Array} accounts 全アカウント配列
+ * @returns {ASTNode} CF調整を適用したAST
+ */
+const buildCFAdjustedFormula = (account, accounts) => {
+  console.log(`=== CF調整AST構築: ${account.accountName} ===`);
+
+  // 前期末残高
+  const args = [createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 })];
+
+  // CF調整を適用
+  const cfAdjustments = getCFAdjustmentAccounts(account, accounts);
+
+  console.log(`CF調整科目数: ${cfAdjustments.length}`);
+
+  cfAdjustments.forEach((cfAccount) => {
+    const cfAdj = AccountUtils.getCFAdjustment(cfAccount);
+    const cfNode = createNode(AST_OPERATIONS.REF, {
+      id: cfAccount.id,
+      lag: 0,
+    });
+
+    console.log(
+      `CF調整科目: ${cfAccount.accountName}, 演算: ${cfAdj.operation}`
+    );
+
+    const operation = cfAdj.operation;
+    if (operation === OPERATIONS.SUB) {
+      // 減算の場合は-1を掛けて加算に変換
+      args.push(
+        createNode(AST_OPERATIONS.MUL, {
+          args: [createNode(AST_OPERATIONS.CONST, { value: -1 }), cfNode],
+        })
+      );
+    } else {
+      // 加算の場合はそのまま追加
+      args.push(cfNode);
+    }
+  });
+
+  console.log(`=== CF調整AST構築完了 ===`);
+
+  return createNode(AST_OPERATIONS.ADD, { args });
 };
 
 /**

@@ -1,4 +1,5 @@
 import { FLOW_SHEETS, STOCK_SHEETS, PARAMETER_TYPES } from "../utils/constants";
+import { ParameterUtils } from "../utils/parameterUtils";
 
 /**
  * タブに基づいてフィルタリングされたデータを生成する
@@ -9,27 +10,11 @@ import { FLOW_SHEETS, STOCK_SHEETS, PARAMETER_TYPES } from "../utils/constants";
 export const getFilteredDataByTab = (tabName, financialModel) => {
   const { accounts, periods, values } = financialModel;
 
-  // パラメータタイプを取得するヘルパー関数
-  const getParameterType = (account) => {
-    if (account.stockAttributes?.parameter?.paramType) {
-      return account.stockAttributes.parameter.paramType;
-    }
-    if (account.flowAttributes?.parameter?.paramType) {
-      return account.flowAttributes.parameter.paramType;
-    }
-    return account.parameterType || PARAMETER_TYPES.NONE; // 旧形式との互換性
-  };
-
-  // パラメータ参照を取得するヘルパー関数
-  const getParameterReferences = (account) => {
-    if (account.stockAttributes?.parameter?.paramReferences) {
-      return account.stockAttributes.parameter.paramReferences;
-    }
-    if (account.flowAttributes?.parameter?.paramReferences) {
-      return account.flowAttributes.parameter.paramReferences;
-    }
-    return account.parameterReferenceAccounts || []; // 旧形式との互換性
-  };
+  // ParameterUtilsを使用してヘルパー関数を統一
+  const getParameterType = (account) =>
+    ParameterUtils.getParameterType(account);
+  const getParameterReferences = (account) =>
+    ParameterUtils.getParameterReferences(account);
 
   // 親科目名を取得するヘルパー関数
   const getParentAccountName = (account) => {

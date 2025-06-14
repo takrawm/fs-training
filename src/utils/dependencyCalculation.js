@@ -6,6 +6,10 @@
 
 import { buildFormula } from "./astBuilder";
 import { extractDependencies } from "./astEvaluator";
+import { ParameterUtils } from "./parameterUtils";
+import { AccountUtils } from "../models/account";
+import { getCFAdjustmentAccounts } from "./balanceSheetCalculator";
+import { PARAMETER_TYPES } from "./constants";
 
 /**
  * アカウントからAST式を構築し、依存関係を抽出する
@@ -15,20 +19,34 @@ import { extractDependencies } from "./astEvaluator";
 export function extractAccountDependencies(account) {
   const dependencies = [];
 
-  // 1. parameterReferenceAccountsからの依存関係
+  // 新しいParameterUtilsを使用
+  const parameterReferences = ParameterUtils.getParameterReferences(account);
+  const parameterType = ParameterUtils.getParameterType(account);
+
+  // 1. parameterReferencesからの依存関係
+  if (parameterReferences?.length > 0) {
+    parameterReferences.forEach((ref) => {
+      const refId = ref.accountId || ref.id; // 新旧形式対応
+      if (refId && !dependencies.includes(refId)) {
+        dependencies.push(refId);
+      }
+    });
+  }
+
+  // 2. 期末残高+/-変動型の場合、前期の自分自身への依存関係を追加
+  if (parameterType === PARAMETER_TYPES.BALANCE_AND_CHANGE) {
+    if (!dependencies.includes(account.id)) {
+      dependencies.push(account.id); // 前期の自分自身
+    }
+  }
+
+  // 旧形式との互換性
   if (account.parameterReferenceAccounts?.length > 0) {
     account.parameterReferenceAccounts.forEach((ref) => {
       if (ref.id && !dependencies.includes(ref.id)) {
         dependencies.push(ref.id);
       }
     });
-  }
-
-  // 2. 期末残高+/-変動型の場合、前期の自分自身への依存関係を追加
-  if (account.parameterType === "BALANCE_AND_CHANGE") {
-    if (!dependencies.includes(account.id)) {
-      dependencies.push(account.id); // 前期の自分自身
-    }
   }
 
   return dependencies;
@@ -49,11 +67,16 @@ export function buildDependencyGraph(accounts) {
 
   // 依存関係の追加
   accounts.forEach((account) => {
+    const parameterType = ParameterUtils.getParameterType(account);
+    const parameterReferences = ParameterUtils.getParameterReferences(account);
+
     // 1. 親子関係（合計）
-    if (account.parameterType === "CHILDREN_SUM") {
-      // 子アカウントを見つける
+    if (parameterType === PARAMETER_TYPES.CHILDREN_SUM) {
+      // 子アカウントを見つける（新しい構造対応）
       const childAccounts = accounts.filter(
-        (a) => a.parentAccount === account.accountName
+        (a) =>
+          a.parentAccountId === account.id ||
+          a.parentAccount === account.accountName
       );
       childAccounts.forEach((child) => {
         if (!graph[account.id].includes(child.id)) {
@@ -62,19 +85,41 @@ export function buildDependencyGraph(accounts) {
       });
     }
 
-    // 2. parameterReferenceAccountsによる依存関係
+    // 2. parameterReferencesによる依存関係
+    if (parameterReferences?.length > 0) {
+      parameterReferences.forEach((ref) => {
+        const refId = ref.accountId || ref.id; // 新旧形式対応
+        if (refId && !graph[account.id].includes(refId)) {
+          graph[account.id].push(refId);
+        }
+      });
+    }
+
+    // 3. 期末残高+/-変動型の場合、前期の自分自身への依存関係
+    if (parameterType === PARAMETER_TYPES.BALANCE_AND_CHANGE) {
+      // 前期の自分自身への依存は、計算時に特別に処理するため、
+      // ここでは依存関係グラフには追加しない（循環参照を避けるため）
+    }
+
+    // 4. CF調整による依存関係
+    const cfAdj = AccountUtils.getCFAdjustment(account);
+    if (cfAdj?.targetAccountId) {
+      // CF調整科目は対象BS科目より先に計算される必要がある
+      const targetAccount = accounts.find(
+        (a) => a.id === cfAdj.targetAccountId
+      );
+      if (targetAccount && !graph[targetAccount.id].includes(account.id)) {
+        graph[targetAccount.id].push(account.id);
+      }
+    }
+
+    // 旧形式との互換性
     if (account.parameterReferenceAccounts?.length > 0) {
       account.parameterReferenceAccounts.forEach((ref) => {
         if (ref.id && !graph[account.id].includes(ref.id)) {
           graph[account.id].push(ref.id);
         }
       });
-    }
-
-    // 3. 期末残高+/-変動型の場合、前期の自分自身への依存関係
-    if (account.parameterType === "BALANCE_AND_CHANGE") {
-      // 前期の自分自身への依存は、計算時に特別に処理するため、
-      // ここでは依存関係グラフには追加しない（循環参照を避けるため）
     }
   });
 

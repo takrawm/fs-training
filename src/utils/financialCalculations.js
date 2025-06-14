@@ -7,6 +7,12 @@ import {
   calculateBSDifference,
 } from "./cashflowCalc.js";
 import { createCashflowAccount } from "../models/cashflowAccount";
+import { ParameterUtils } from "./parameterUtils";
+import { AccountUtils } from "../models/account";
+import {
+  calculateStockAccountWithCFAdjustment,
+  isCFAdjustmentTarget,
+} from "./balanceSheetCalculator";
 
 /**
  * 親子関係のマップを作成する
@@ -95,6 +101,29 @@ export const calculateParameterAccount = (
   accounts
 ) => {
   try {
+    // stock科目でパラメータがない場合の特別処理
+    if (
+      AccountUtils.isStockAccount(account) &&
+      !ParameterUtils.hasParameter(account)
+    ) {
+      // CF調整がある場合
+      if (isCFAdjustmentTarget(account, accounts)) {
+        return calculateStockAccountWithCFAdjustment(
+          account,
+          newPeriod,
+          lastPeriod,
+          values,
+          accounts
+        );
+      }
+      // CF調整もない場合は前期値をそのまま使用
+      const lastPeriodValue =
+        values.find(
+          (v) => v.accountId === account.id && v.periodId === lastPeriod.id
+        )?.value || 0;
+      return lastPeriodValue;
+    }
+
     // AST構築
     const periodYear = parseInt(newPeriod.year, 10);
     const ast = buildFormula(account, periodYear, accounts);
@@ -112,10 +141,7 @@ export const calculateParameterAccount = (
     const getValue = createGetValueFunction(values, periodYear);
     return evalNode(ast, periodYear, getValue) || 0;
   } catch (error) {
-    console.warn(
-      `AST evaluation failed for ${account.accountName}:`,
-      error.message
-    );
+    console.error(`Calculation failed for ${account.accountName}:`, error);
     // フォールバック：既存の計算方法を使用
     return calculateParameterAccountFallback(
       account,
