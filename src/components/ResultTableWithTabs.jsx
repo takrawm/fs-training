@@ -4,6 +4,7 @@ import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
 import { getFilteredDataByTab } from "../display/financialDisplay";
 import TabTableForRelations from "./TabTableForRelations";
+import { PARAMETER_TYPES } from "../utils/constants";
 import "../styles/ResultTableWithTabs.css";
 
 // Handsontableのすべてのモジュールを登録
@@ -129,7 +130,19 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
       (acc) => acc.accountName === accountName
     );
 
-    if (account?.parameterType === "CHILDREN_SUM") {
+    if (!account) return {};
+
+    // 新しい構造でのパラメータタイプ取得
+    let parameterType = null;
+    if (account.stockAttributes?.parameter?.paramType) {
+      parameterType = account.stockAttributes.parameter.paramType;
+    } else if (account.flowAttributes?.parameter?.paramType) {
+      parameterType = account.flowAttributes.parameter.paramType;
+    } else {
+      parameterType = account.parameterType; // 旧形式との互換性
+    }
+
+    if (parameterType === PARAMETER_TYPES.CHILDREN_SUM) {
       return {
         fontWeight: "bold",
         backgroundColor: "#f0f8ff",

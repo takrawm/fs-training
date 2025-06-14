@@ -63,12 +63,19 @@ export const PARAMETER_TYPES = {
   REFERENCE: "参照",
 };
 
+export const CF_ADJUSTMENT_TYPE = {
+  BS_MAPPING: "BS_MAPPING",
+  RECLASSIFICATION: "RECLASSIFICATION",
+};
+
 // パラメータタイプの選択肢
 export const PARAM_OP_MAPPING = {
   [PARAMETER_TYPES.GROWTH_RATE]: ["CONST"],
   [PARAMETER_TYPES.PERCENTAGE]: ["CONST"],
   [PARAMETER_TYPES.CALCULATION]: ["ADD", "SUB"],
 };
+
+export const DEFAULT_PARAMETER_REFERENCE = "rev-total";
 
 export const DEFAULT_PARAMETER_VALUES = {
   GROWTH_RATE: 0.05,
@@ -533,9 +540,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: [
-          { accountId: "rev-total", operation: OPERATIONS.MUL, lag: 0 },
-        ],
+        paramReferences: {
+          accountId: "rev-total",
+          operation: OPERATIONS.MUL,
+          lag: 0,
+        },
       },
       cfAdjustment: null,
     },
@@ -618,7 +627,7 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: [{ accountId: "rev-total", operation: null, lag: 0 }],
+        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
       },
       cfAdjustment: null,
     },
@@ -636,7 +645,12 @@ export const DEFAULT_SHEET_TYPES = {
         paramValue: null,
         paramReferences: null,
       },
-      cfAdjustment: null,
+      cfAdjustment: {
+        type: CF_ADJUSTMENT_TYPE.BS_MAPPING,
+        targetAccountId: "account-19", //有形固定資産
+        operation: OPERATIONS.SUB,
+        cfCategory: CF_CATEGORIES.OPERATING,
+      },
     },
   },
   無形固定資産償却費_PL: {
@@ -666,9 +680,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PERCENTAGE,
         paramValue: 0.02,
-        paramReferences: [
-          { accountId: "rev-total", operation: OPERATIONS.MUL, lag: 0 },
-        ],
+        paramReferences: {
+          accountId: "rev-total",
+          operation: OPERATIONS.MUL,
+          lag: 0,
+        },
       },
       cfAdjustment: null,
     },
@@ -733,7 +749,7 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: [{ accountId: "rev-total", operation: null, lag: 0 }],
+        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
       },
     },
     flowAttributes: null,
@@ -832,7 +848,7 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: [{ accountId: "rev-total", operation: null, lag: 0 }],
+        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
       },
     },
     flowAttributes: null,
@@ -849,7 +865,7 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: [{ accountId: "rev-total", operation: null, lag: 0 }],
+        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
       },
     },
     flowAttributes: null,
@@ -1010,7 +1026,7 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: [{ accountId: "rev-total", operation: null, lag: 0 }],
+        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
       },
       cfAdjustment: null,
     },
@@ -1042,9 +1058,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.REFERENCE,
         paramValue: null,
-        paramReferences: [
-          { accountId: "op-profit", operation: OPERATIONS.ADD, lag: 0 },
-        ],
+        paramReferences: {
+          accountId: "op-profit",
+          operation: OPERATIONS.ADD,
+          lag: 0,
+        },
       },
       cfAdjustment: {
         category: CF_CATEGORIES.OPERATING,
@@ -1062,9 +1080,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.REFERENCE,
         paramValue: null,
-        paramReferences: [
-          { accountId: "depreciation-pl", operation: OPERATIONS.ADD, lag: 0 },
-        ],
+        paramReferences: {
+          accountId: "depreciation-pl",
+          operation: OPERATIONS.ADD,
+          lag: 0,
+        },
       },
       cfAdjustment: {
         category: CF_CATEGORIES.OPERATING,
@@ -1082,13 +1102,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.REFERENCE,
         paramValue: null,
-        paramReferences: [
-          {
-            accountId: "intangible-depreciation-pl",
-            operation: OPERATIONS.ADD,
-            lag: 0,
-          },
-        ],
+        paramReferences: {
+          accountId: "intangible-depreciation-pl",
+          operation: OPERATIONS.ADD,
+          lag: 0,
+        },
       },
       cfAdjustment: {
         category: CF_CATEGORIES.OPERATING,
@@ -1142,9 +1160,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.REFERENCE,
         paramValue: null,
-        paramReferences: [
-          { accountId: "capex-total", operation: OPERATIONS.SUB, lag: 0 },
-        ],
+        paramReferences: {
+          accountId: "capex-total",
+          operation: OPERATIONS.SUB,
+          lag: 0,
+        },
       },
       cfAdjustment: {
         category: CF_CATEGORIES.INVESTING,

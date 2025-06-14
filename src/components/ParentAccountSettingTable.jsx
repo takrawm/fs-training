@@ -7,6 +7,7 @@ import {
   SHEET_TYPES,
   FLOW_SHEETS,
   STOCK_SHEETS,
+  PARAMETER_TYPES,
 } from "../utils/constants";
 import { createAccountMap } from "../utils/accountMapping";
 
@@ -36,11 +37,17 @@ const ParentAccountSettingTable = ({ data, onChange }) => {
     .filter((account) => {
       // 新しい構造での集計科目の判定
       if (account.sheet?.sheetType === SHEET_TYPES.STOCK) {
-        return account.stockAttributes?.parameter?.paramType === "CHILDREN_SUM";
+        return (
+          account.stockAttributes?.parameter?.paramType ===
+          PARAMETER_TYPES.CHILDREN_SUM
+        );
       } else if (account.sheet?.sheetType === SHEET_TYPES.FLOW) {
-        return account.flowAttributes?.parameter?.paramType === "CHILDREN_SUM";
+        return (
+          account.flowAttributes?.parameter?.paramType ===
+          PARAMETER_TYPES.CHILDREN_SUM
+        );
       }
-      return account.parameterType === "CHILDREN_SUM"; // 旧形式との互換性
+      return account.parameterType === PARAMETER_TYPES.CHILDREN_SUM; // 旧形式との互換性
     })
     .map((account) => ({
       accountName: account.accountName,

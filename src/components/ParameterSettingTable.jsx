@@ -1,15 +1,7 @@
 import React, { useMemo } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
-import { PARAMETER_TYPES } from "../utils/constants";
-import { ReactSelectEditor, chipRenderer } from "./ReactSelectEditor";
-import { createAccountMap } from "../utils/accountMapping";
-
-// すべての勘定科目名を選択肢に使う
-const ALL_ACCOUNT_NAMES = (list) => list.map((a) => a.accountName);
-
-// 演算タイプの定義
-const OPERATION_TYPES = ["MUL", "DIV", "ADD", "SUB"];
+import { PARAMETER_TYPES, CF_ADJUSTMENT_TYPE } from "../utils/constants";
 
 /**
  * パラメータ設定テーブルコンポーネント
@@ -19,79 +11,38 @@ const OPERATION_TYPES = ["MUL", "DIV", "ADD", "SUB"];
  * @returns {JSX.Element}
  */
 const ParameterSettingTable = ({ data, onChange }) => {
-  // 科目IDと科目名のマッピングを作成
-  const accountMap = useMemo(() => createAccountMap(data), [data]);
-
-  // 選択肢の作成（IDと名前のペア）
-  const accountOptions = useMemo(() => {
-    return data.map((account) => ({
-      value: account.id,
-      label: account.accountName,
-    }));
-  }, [data]);
-
   const settings = useMemo(() => {
     console.log("1. Input data:", data);
 
-    const mappedData = data.map((account) => [
-      account.accountName,
-      account.parameterType || "NONE",
-      // 参照科目のID配列を文字列化
-      JSON.stringify(
-        account.parameterReferenceAccounts
-          ? account.parameterReferenceAccounts.map((a) => a.id)
-          : []
-      ),
-    ]);
+    const mappedData = data.map((account) => {
+      // paramTypeを取得（stockAttributesまたはflowAttributesから）
+      let paramType = PARAMETER_TYPES.NONE;
+      if (account.stockAttributes?.parameter?.paramType) {
+        paramType = account.stockAttributes.parameter.paramType;
+      } else if (account.flowAttributes?.parameter?.paramType) {
+        paramType = account.flowAttributes.parameter.paramType;
+      }
+
+      // cfAdjustment.typeを取得
+      const cfAdjustmentType = account.flowAttributes?.cfAdjustment?.type || "";
+
+      return [account.accountName, paramType, cfAdjustmentType];
+    });
 
     console.log("2. Mapped data for table:", mappedData);
 
     const settings = {
       data: mappedData,
-      colHeaders: ["勘定科目", "パラメータタイプ", "参照科目"],
+      colHeaders: ["勘定科目", "パラメータタイプ", "CF調整タイプ"],
       columns: [
         { type: "text", readOnly: true },
         {
           type: "dropdown",
-          source: PARAMETER_TYPES,
+          source: Object.values(PARAMETER_TYPES),
         },
         {
-          data: 2,
-          editor: ReactSelectEditor,
-          renderer: (instance, td, row, col, prop, value) => {
-            td.innerHTML = "";
-            let ids;
-            try {
-              ids = JSON.parse(value);
-            } catch {
-              ids = [];
-            }
-
-            if (!Array.isArray(ids) || ids.length === 0) {
-              td.textContent = "";
-              return td;
-            }
-
-            const chips = document.createElement("div");
-            chips.style.display = "flex";
-            chips.style.flexWrap = "wrap";
-            chips.style.gap = "4px";
-
-            ids.forEach((id) => {
-              const chip = document.createElement("div");
-              chip.textContent = accountMap[id] || id;
-              chip.style.background = "#e0e0e0";
-              chip.style.borderRadius = "12px";
-              chip.style.padding = "2px 8px";
-              chip.style.fontSize = "12px";
-              chips.appendChild(chip);
-            });
-
-            td.appendChild(chips);
-            return td;
-          },
-          source: accountOptions,
-          width: 120,
+          type: "dropdown",
+          source: Object.values(CF_ADJUSTMENT_TYPE),
         },
       ],
       width: "100%",
@@ -103,7 +54,7 @@ const ParameterSettingTable = ({ data, onChange }) => {
 
     console.log("ParameterSettingTable - settings:", settings);
     return settings;
-  }, [data, accountMap, accountOptions]);
+  }, [data]);
 
   const handleChange = (changes) => {
     if (!changes) return;
@@ -116,19 +67,34 @@ const ParameterSettingTable = ({ data, onChange }) => {
       const acc = { ...updated[rowIdx] };
 
       switch (colIdx) {
-        case 1:
-          acc.parameterType = newVal;
+        case 1: // パラメータタイプ
+          if (acc.stockAttributes?.parameter) {
+            acc.stockAttributes = {
+              ...acc.stockAttributes,
+              parameter: {
+                ...acc.stockAttributes.parameter,
+                paramType: newVal,
+              },
+            };
+          } else if (acc.flowAttributes?.parameter) {
+            acc.flowAttributes = {
+              ...acc.flowAttributes,
+              parameter: {
+                ...acc.flowAttributes.parameter,
+                paramType: newVal,
+              },
+            };
+          }
           break;
-        case 2: // 参照科目（IDの配列のみを扱う）
-          try {
-            const ids = JSON.parse(newVal); // 文字列 → 配列に戻す
-            acc.parameterReferenceAccounts = ids.map((id, idx) => ({
-              id,
-              operation: null,
-            }));
-          } catch (error) {
-            console.error("JSON parse error:", error);
-            acc.parameterReferenceAccounts = [];
+        case 2: // CF調整タイプ
+          if (acc.flowAttributes) {
+            acc.flowAttributes = {
+              ...acc.flowAttributes,
+              cfAdjustment: {
+                ...acc.flowAttributes.cfAdjustment,
+                type: newVal,
+              },
+            };
           }
           break;
       }

@@ -32,13 +32,13 @@ const SortedAccountsTable = ({ data }) => {
     return {
       data: data.map((account) => [
         account.id,
-        account.order,
+        account.displayOrder?.order || account.order || "",
         account.accountName,
         account.parentAccountId
           ? accountMap[account.parentAccountId] || ""
           : "",
-        account.sheet.sheetType || "",
-        account.sheet.name || "",
+        account.sheet?.sheetType || account.sheetType?.sheet || "",
+        account.sheet?.name || account.sheetType?.attribute || "",
       ]),
       colHeaders: [
         "ID",

@@ -196,16 +196,6 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
       // 値を追加
       account.values = [...values];
 
-      // 旧形式との互換性のため、一部のプロパティを追加
-      account.parameterType =
-        defaultConfig.parameterType || PARAMETER_TYPES.NONE;
-      account.parameterValue = defaultConfig.defaultParamValue;
-      account.parameterReferenceAccounts = convertParameterReferences(
-        defaultConfig.defaultReferences ||
-          defaultConfig.parameterReferenceAccounts ||
-          []
-      );
-
       newAggregatedMap[key] = account;
     } else {
       // 既存のアカウントに値を加算
@@ -302,8 +292,6 @@ export const createSortedAccounts = (accounts) => {
         order: `${prefix}${counterMap[parentAccountName]}`,
         prefix: prefix,
       },
-      // 旧形式との互換性
-      order: `${prefix}${counterMap[parentAccountName]}`,
     };
   });
 
@@ -316,10 +304,8 @@ export const createSortedAccounts = (accounts) => {
 
     sortedAccounts.push({
       ...summaryAccount,
-      // 旧形式との互換性
       sheetType: { sheet: summaryAccount.sheet.name, attribute: null },
       parentAccount: "SUMMARY_ACCOUNTS",
-      order: summaryAccount.displayOrder.order,
     });
   });
 
