@@ -6,9 +6,13 @@ import {
   extractReferencedAccounts,
   calculateBSDifference,
 } from "./cashflowCalc.js";
-import { createCashflowAccount } from "../models/cashflowAccount";
+import {
+  createCashflowAccount,
+  createCFAdjustmentAccount,
+  createBSChangeAccount,
+} from "../models/cashflowAccount";
 import { ParameterUtils } from "./parameterUtils";
-import { AccountUtils } from "../models/account";
+import { AccountUtils } from "./accountUtils.js";
 import {
   calculateStockAccountWithCFAdjustment,
   isCFAdjustmentTarget,
@@ -138,7 +142,7 @@ export const calculateParameterAccount = (
       return lastPeriodValue;
     }
 
-    // AST構築
+    // AST構築（GROWTH_RATEなどはここで処理）
     const periodYear = parseInt(newPeriod.year, 10);
     const ast = buildFormula(account, periodYear, accounts);
 
@@ -362,11 +366,111 @@ export const addNewPeriodToModel = (model) => {
 
   console.log("=== デバッグ終了 ===");
 
-  // BALANCE_AND_CHANGEタイプのアカウントから参照されているアカウントを抽出
+  // キャッシュフロー計算書の構築（改善版）
+  console.log("=== CF項目自動生成開始 ===");
 
-  calculateBSDifference(updatedModel, newPeriod, lastPeriod);
+  // 1. CF調整項目の生成
+  const cfAdjustmentAccounts = updatedModel.accounts.filter(
+    (acc) => AccountUtils.getCFAdjustment(acc) !== null
+  );
+  console.log("CF調整対象アカウント:", cfAdjustmentAccounts);
 
-  // キャッシュフロー計算書の構築
+  let cfOrderCounter = 1;
+
+  // CF調整項目のアカウントを作成
+  cfAdjustmentAccounts.forEach((account) => {
+    try {
+      const cfAccount = createCFAdjustmentAccount(account, cfOrderCounter++);
+
+      // 既存チェック
+      const exists = updatedModel.accounts.some(
+        (acc) => acc.id === cfAccount.id
+      );
+
+      if (!exists) {
+        updatedModel.accounts.push(cfAccount);
+        console.log("CF調整項目を追加:", cfAccount.accountName);
+
+        // 値の計算と追加
+        const sourceValue =
+          updatedModel.values.find(
+            (v) => v.accountId === account.id && v.periodId === newPeriod.id
+          )?.value || 0;
+
+        // CF調整の演算子を適用（反転済み）
+        const cfValue =
+          cfAccount.flowAttributes.parameter.paramReferences.operation === "ADD"
+            ? sourceValue
+            : -sourceValue;
+
+        updatedModel.values.push({
+          accountId: cfAccount.id,
+          periodId: newPeriod.id,
+          value: cfValue,
+          isCalculated: true,
+        });
+
+        console.log(`CF調整項目値: ${cfAccount.accountName} = ${cfValue}`);
+      }
+    } catch (error) {
+      console.warn(`CF調整項目生成エラー: ${account.accountName}`, error);
+    }
+  });
+
+  // 2. BS変動項目の生成（統合版）
+  const bsDifferences = calculateBSDifference(
+    updatedModel,
+    newPeriod,
+    lastPeriod
+  );
+  console.log("BS変動対象項目:", bsDifferences);
+
+  let bsOrderCounter = 1;
+
+  bsDifferences.forEach((bsDiff) => {
+    try {
+      // 有意な変動がある場合のみCF項目を作成
+      if (bsDiff.hasSignificantChange) {
+        const account = updatedModel.accounts.find(
+          (acc) => acc.id === bsDiff.accountId
+        );
+        const changeType = bsDiff.change > 0 ? "increase" : "decrease";
+        const cfAccount = createBSChangeAccount(
+          account,
+          changeType,
+          bsOrderCounter++
+        );
+
+        // 既存チェック
+        const exists = updatedModel.accounts.some(
+          (acc) => acc.id === cfAccount.id
+        );
+
+        if (!exists) {
+          updatedModel.accounts.push(cfAccount);
+          console.log("BS変動項目を追加:", cfAccount.accountName);
+
+          // キャッシュフロー影響額を使用
+          updatedModel.values.push({
+            accountId: cfAccount.id,
+            periodId: newPeriod.id,
+            value: bsDiff.cashflowImpact,
+            isCalculated: true,
+          });
+
+          console.log(
+            `BS変動項目値: ${cfAccount.accountName} = ${bsDiff.cashflowImpact}`
+          );
+        }
+      }
+    } catch (error) {
+      console.warn(`BS変動項目生成エラー: ${bsDiff.accountName}`, error);
+    }
+  });
+
+  console.log("=== CF項目自動生成終了 ===");
+
+  // 既存のキャッシュフロー計算書の構築（互換性のため残す）
   const referencedAccounts = extractReferencedAccounts(updatedModel) || [];
   console.log("CFreferencedAccounts", referencedAccounts);
   if (referencedAccounts.length > 0) {

@@ -1,6 +1,6 @@
 import { BS_TYPES, OPERATIONS } from "./constants";
 import { ParameterUtils } from "./parameterUtils";
-import { AccountUtils } from "../models/account";
+import { AccountUtils } from "./accountUtils.js";
 
 /**
  * 現預金の変動を計算する

@@ -465,6 +465,30 @@ export const SUMMARY_ACCOUNTS = {
       prefix: "S",
     },
   },
+  財務CF合計: {
+    id: "fin-cf-total",
+    accountName: "財務CF合計",
+    parentAccountId: null,
+    sheet: {
+      sheetType: SHEET_TYPES.FLOW,
+      name: FLOW_SHEETS.FINANCING,
+    },
+    stockAttributes: null,
+    flowAttributes: {
+      parameter: {
+        paramType: PARAMETER_TYPES.CHILDREN_SUM,
+        paramValue: null,
+        paramReferences: null,
+      },
+      cfAdjustment: {
+        category: CF_CATEGORIES.FINANCING,
+      },
+    },
+    displayOrder: {
+      order: "T99",
+      prefix: "T",
+    },
+  },
 };
 
 // CF項目の定義
@@ -1050,7 +1074,12 @@ export const DEFAULT_SHEET_TYPES = {
         paramValue: null,
         paramReferences: null,
       },
-      cfAdjustment: null,
+      cfAdjustment: {
+        type: CF_ADJUSTMENT_TYPE.BS_MAPPING,
+        targetAccountId: "account-19", //有形固定資産
+        operation: OPERATIONS.ADD,
+        cfCategory: CF_CATEGORIES.INVESTING,
+      },
     },
   },
   無形資産投資: {

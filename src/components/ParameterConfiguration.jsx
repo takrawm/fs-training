@@ -70,6 +70,21 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
     );
   }, [data]);
 
+  // CF調整計算科目の設定を抽出
+  const cfAdjustmentAccounts = useMemo(() => {
+    return data.filter(
+      (account) =>
+        getParameterType(account) === PARAMETER_TYPES.CF_ADJUSTMENT_CALC
+    );
+  }, [data]);
+
+  // BS変動科目の設定を抽出
+  const bsChangeAccounts = useMemo(() => {
+    return data.filter(
+      (account) => getParameterType(account) === PARAMETER_TYPES.BS_CHANGE
+    );
+  }, [data]);
+
   // 成長率科目のテーブルデータの作成
   const growthRateTableData = useMemo(() => {
     return growthRateAccounts.map((account) => {
@@ -145,6 +160,44 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
       return row;
     });
   }, [calculationAccounts, accountMap]);
+
+  // CF調整計算科目のテーブルデータの作成
+  const cfAdjustmentTableData = useMemo(() => {
+    return cfAdjustmentAccounts.map((account) => {
+      const paramReferences = getParameterReferences(account);
+      const referenceAccount = paramReferences
+        ? paramReferences
+        : { accountId: "", operation: "ADD", lag: 0 };
+
+      return [
+        account.accountName,
+        getParameterType(account),
+        OPERATION_SYMBOLS[referenceAccount.operation] ||
+          referenceAccount.operation ||
+          "",
+        accountMap[referenceAccount.accountId] || referenceAccount.accountId,
+      ];
+    });
+  }, [cfAdjustmentAccounts, accountMap]);
+
+  // BS変動科目のテーブルデータの作成
+  const bsChangeTableData = useMemo(() => {
+    return bsChangeAccounts.map((account) => {
+      const paramReferences = getParameterReferences(account);
+      const referenceAccount = paramReferences
+        ? paramReferences
+        : { accountId: "", operation: "SUB", lag: 0 };
+
+      return [
+        account.accountName,
+        getParameterType(account),
+        OPERATION_SYMBOLS[referenceAccount.operation] ||
+          referenceAccount.operation ||
+          "",
+        accountMap[referenceAccount.accountId] || referenceAccount.accountId,
+      ];
+    });
+  }, [bsChangeAccounts, accountMap]);
 
   // 成長率科目のテーブル設定
   const growthRateSettings = {
@@ -244,6 +297,40 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
     licenseKey: "non-commercial-and-evaluation",
   };
 
+  // CF調整計算科目のテーブル設定
+  const cfAdjustmentSettings = {
+    data: cfAdjustmentTableData,
+    colHeaders: ["勘定科目", "パラメータタイプ", "演算子", "参照科目"],
+    columns: [
+      { type: "text", readOnly: true },
+      { type: "text", readOnly: true },
+      { type: "text", readOnly: true },
+      { type: "text", readOnly: true },
+    ],
+    width: "100%",
+    height: 300,
+    stretchH: "all",
+    rowHeaders: true,
+    licenseKey: "non-commercial-and-evaluation",
+  };
+
+  // BS変動科目のテーブル設定
+  const bsChangeSettings = {
+    data: bsChangeTableData,
+    colHeaders: ["勘定科目", "パラメータタイプ", "演算子", "参照科目"],
+    columns: [
+      { type: "text", readOnly: true },
+      { type: "text", readOnly: true },
+      { type: "text", readOnly: true },
+      { type: "text", readOnly: true },
+    ],
+    width: "100%",
+    height: 300,
+    stretchH: "all",
+    rowHeaders: true,
+    licenseKey: "non-commercial-and-evaluation",
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div className="table-group">
@@ -271,6 +358,20 @@ const ParameterConfiguration = ({ data, financialModel, onChange }) => {
         <h3>個別計算型</h3>
         <div className="hot-table-container">
           <HotTable {...calculationSettings} />
+        </div>
+      </div>
+
+      <div className="table-group">
+        <h3>CF調整計算型</h3>
+        <div className="hot-table-container">
+          <HotTable {...cfAdjustmentSettings} />
+        </div>
+      </div>
+
+      <div className="table-group">
+        <h3>BS変動型</h3>
+        <div className="hot-table-container">
+          <HotTable {...bsChangeSettings} />
         </div>
       </div>
     </div>

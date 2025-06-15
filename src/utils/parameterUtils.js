@@ -17,17 +17,6 @@ export const ParameterUtils = {
     if (account.flowAttributes?.parameter) {
       return account.flowAttributes.parameter;
     }
-    // 旧形式との互換性
-    if (
-      account.parameterType &&
-      account.parameterType !== PARAMETER_TYPES.NONE
-    ) {
-      return {
-        paramType: account.parameterType,
-        paramValue: account.parameterValue,
-        paramReferences: account.parameterReferenceAccounts || [],
-      };
-    }
     return null;
   },
 
@@ -109,11 +98,6 @@ export const ParameterUtils = {
         ...updatedAccount.flowAttributes,
         parameter,
       };
-    } else {
-      // 旧形式との互換性
-      updatedAccount.parameterType = paramType;
-      updatedAccount.parameterValue = paramValue;
-      updatedAccount.parameterReferenceAccounts = paramReferences;
     }
 
     return updatedAccount;

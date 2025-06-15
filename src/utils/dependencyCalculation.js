@@ -7,7 +7,7 @@
 import { buildFormula } from "./astBuilder";
 import { extractDependencies } from "./astEvaluator";
 import { ParameterUtils } from "./parameterUtils";
-import { AccountUtils } from "../models/account";
+import { AccountUtils } from "./accountUtils.js";
 import { getCFAdjustmentAccounts } from "./balanceSheetCalculator";
 import { PARAMETER_TYPES } from "./constants";
 

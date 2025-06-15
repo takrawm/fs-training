@@ -2,7 +2,7 @@ import { AST_OPERATIONS, createNode } from "./astTypes";
 import { PARAMETER_TYPES, OPERATIONS } from "./constants";
 import { evalNode } from "./astEvaluator";
 import { ParameterUtils } from "./parameterUtils";
-import { AccountUtils } from "../models/account";
+import { AccountUtils } from "./accountUtils.js";
 import {
   isCFAdjustmentTarget,
   getCFAdjustmentAccounts,
@@ -196,34 +196,6 @@ export const buildFormula = (account, period, accounts) => {
       }
 
       return createNode(AST_OPERATIONS.ADD, { args: refAddArgs });
-
-    case PARAMETER_TYPES.BALANCE_AND_CHANGE:
-      // 期末残高+/-変動型：前期残高 + 当期変動
-      const balanceAddArgs = [
-        createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 }),
-      ];
-
-      if (parameterReferenceAccounts && parameterReferenceAccounts.length > 0) {
-        parameterReferenceAccounts.forEach((ref) => {
-          const refId = ref.accountId || ref.id;
-          if (ref.operation === "ADD") {
-            balanceAddArgs.push(
-              createNode(AST_OPERATIONS.REF, { id: refId, lag: 0 })
-            );
-          } else if (ref.operation === "SUB") {
-            balanceAddArgs.push(
-              createNode(AST_OPERATIONS.MUL, {
-                args: [
-                  createNode(AST_OPERATIONS.CONST, { value: -1 }),
-                  createNode(AST_OPERATIONS.REF, { id: refId, lag: 0 }),
-                ],
-              })
-            );
-          }
-        });
-      }
-
-      return createNode(AST_OPERATIONS.ADD, { args: balanceAddArgs });
 
     case PARAMETER_TYPES.FIXED_VALUE:
       // 横置きは前期値をそのまま使用

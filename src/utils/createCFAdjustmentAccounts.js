@@ -4,7 +4,7 @@ import {
   SHEET_TYPES,
   FLOW_SHEETS,
 } from "./constants";
-import { AccountUtils } from "../models/account";
+import { AccountUtils } from "./accountUtils.js";
 
 /**
  * CF調整項目を自動生成する

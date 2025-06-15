@@ -5,30 +5,29 @@ import {
 } from "./constants.js";
 import { buildCashflowFormula } from "./astBuilder.js";
 import { evalNode } from "./astEvaluator.js";
-import { AccountUtils } from "../models/account.js";
+import { AccountUtils } from "./accountUtils.js";
 import { ParameterUtils } from "./parameterUtils.js";
 
 /**
- * BSシートの科目の年度末残高の差分を計算する
+ * BSシートの科目の年度末残高の差分を計算し、キャッシュフロー影響を算出する
  * @param {Object} model - 財務モデルオブジェクト
  * @param {Object} newPeriod - 新しい期間
  * @param {Object} lastPeriod - 前の期間
- * @returns {Array} 差分値の配列
+ * @returns {Array} キャッシュフロー影響の配列
  */
 export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
   const { accounts, values } = model;
 
-  // BSシートの科目を抽出（新しい構造に対応）
-  const bsAccounts = accounts.filter((account) => {
-    // 新しい構造
-    if (account.sheet?.name === STOCK_SHEETS.BS) {
-      return true;
-    }
-    // 旧構造との互換性
-    if (account.sheetType?.sheet === "BS") {
-      return true;
-    }
-    return false;
+  // 対象となるBS科目を抽出
+  // 1. isParameterBasedがtrue
+  // 2. bsTypeがASSETまたはLIABILITY_EQUITY
+  const targetBSAccounts = accounts.filter((account) => {
+    return (
+      AccountUtils.isStockAccount(account) &&
+      account.stockAttributes?.isParameterBased === true &&
+      (account.stockAttributes?.bsType === "ASSET" ||
+        account.stockAttributes?.bsType === "LIABILITY_EQUITY")
+    );
   });
 
   // 値取得関数を定義
@@ -39,34 +38,42 @@ export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
     );
   };
 
-  const differences = bsAccounts.map((account) => {
-    // キャッシュフロー計算用のASTを構築
-    const ast = buildCashflowFormula(account);
-
-    // 当年度の値を計算
+  const bsDifferences = targetBSAccounts.map((account) => {
+    // 当年度と前年度の値を取得
     const currentValue = getValue(account.id, newPeriod.id);
     const previousValue = getValue(account.id, lastPeriod.id);
+    const change = currentValue - previousValue;
 
-    // ASTを評価して差分を計算
-    const difference = evalNode(ast, newPeriod.id, (id, periodId) =>
-      getValue(id, periodId)
-    );
+    // キャッシュフロー影響を計算
+    let cashflowImpact = 0;
+    if (Math.abs(change) > 0.01) {
+      if (account.stockAttributes.bsType === "ASSET") {
+        // 資産の場合：増加はマイナス、減少はプラス
+        cashflowImpact = -change;
+      } else if (account.stockAttributes.bsType === "LIABILITY_EQUITY") {
+        // 負債・資本の場合：増加はプラス、減少はマイナス
+        cashflowImpact = change;
+      }
+    }
 
     return {
       accountId: account.id,
       accountName: account.accountName,
+      bsType: account.stockAttributes.bsType,
       currentPeriod: newPeriod.year,
       previousPeriod: lastPeriod.year,
       currentValue,
       previousValue,
-      difference,
+      change,
+      cashflowImpact,
+      hasSignificantChange: Math.abs(change) > 0.01,
     };
   });
 
   // 結果をコンソールに表示
-  console.log("Differences", differences);
+  console.log("BS Differences with Cashflow Impact:", bsDifferences);
 
-  return differences;
+  return bsDifferences;
 };
 
 /**

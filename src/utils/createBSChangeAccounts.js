@@ -5,7 +5,7 @@ import {
   FLOW_SHEETS,
   BS_TYPES,
 } from "./constants";
-import { AccountUtils } from "../models/account";
+import { AccountUtils } from "./accountUtils.js";
 
 /**
  * BS変動項目を自動生成する

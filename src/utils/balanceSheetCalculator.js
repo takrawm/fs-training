@@ -1,5 +1,5 @@
 import { OPERATIONS, SHEET_TYPES } from "./constants";
-import { AccountUtils } from "../models/account";
+import { AccountUtils } from "./accountUtils.js";
 
 /**
  * CF調整を考慮したBS科目計算ユーティリティ
@@ -30,17 +30,17 @@ export const calculateStockAccountWithCFAdjustment = (
   console.log(`=== CF調整計算: ${account.accountName} ===`);
   console.log(`前期末残高: ${lastPeriodValue}`);
 
-  // このstock科目を対象としているCF調整を探す
-  const cfAdjustments = accounts.filter((acc) => {
+  // このstock科目を対象としているCF調整科目を探す
+  const cfAdjustmentAccounts = accounts.filter((acc) => {
     const cfAdj = AccountUtils.getCFAdjustment(acc);
     return cfAdj?.targetAccountId === account.id;
   });
 
-  console.log(`CF調整対象科目数: ${cfAdjustments.length}`);
+  console.log(`CF調整対象科目数: ${cfAdjustmentAccounts}`);
 
   // CF調整を適用
   let adjustedValue = lastPeriodValue;
-  cfAdjustments.forEach((cfAccount) => {
+  cfAdjustmentAccounts.forEach((cfAccount) => {
     const cfValue =
       values.find(
         (v) => v.accountId === cfAccount.id && v.periodId === newPeriod.id
