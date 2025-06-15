@@ -7,6 +7,7 @@ import { buildCashflowFormula } from "./astBuilder.js";
 import { evalNode } from "./astEvaluator.js";
 import { AccountUtils } from "./accountUtils.js";
 import { ParameterUtils } from "./parameterUtils.js";
+import { getValue } from "./financialCalculations.js";
 
 /**
  * BSシートの科目の年度末残高の差分を計算し、キャッシュフロー影響を算出する
@@ -30,18 +31,10 @@ export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
     );
   });
 
-  // 値取得関数を定義
-  const getValue = (accountId, periodId) => {
-    return (
-      values.find((v) => v.accountId === accountId && v.periodId === periodId)
-        ?.value || 0
-    );
-  };
-
   const bsDifferences = targetBSAccounts.map((account) => {
     // 当年度と前年度の値を取得
-    const currentValue = getValue(account.id, newPeriod.id);
-    const previousValue = getValue(account.id, lastPeriod.id);
+    const currentValue = getValue(values, account.id, newPeriod.id);
+    const previousValue = getValue(values, account.id, lastPeriod.id);
     const change = currentValue - previousValue;
 
     // キャッシュフロー影響を計算

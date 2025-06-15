@@ -40,13 +40,6 @@ export const buildFormula = (account, period, accounts) => {
     return createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 });
   }
 
-  // 旧形式との互換性のため、元の変数も保持
-  const {
-    parameterType: oldParameterType,
-    parameterValue: oldParameterValue,
-    parameterReferenceAccounts: oldParameterReferenceAccounts,
-  } = account;
-
   switch (parameterType) {
     case PARAMETER_TYPES.NONE:
     case "NONE":

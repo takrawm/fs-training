@@ -1,13 +1,14 @@
 import { getCalculationOrder } from "./dependencyCalculation";
 import { buildFormula, buildCashflowFormula } from "./astBuilder";
 import { evalNode } from "./astEvaluator";
-import { PARAMETER_TYPES } from "./constants";
 import {
-  extractReferencedAccounts,
-  calculateBSDifference,
-} from "./cashflowCalc.js";
+  PARAMETER_TYPES,
+  SHEET_TYPES,
+  FLOW_SHEETS,
+  OPERATIONS,
+} from "./constants";
+import { calculateBSDifference } from "./cashflowCalc.js";
 import {
-  createCashflowAccount,
   createCFAdjustmentAccount,
   createBSChangeAccount,
 } from "../models/cashflowAccount";
@@ -74,6 +75,20 @@ export const calculateSummaryAccountValue = (
 };
 
 /**
+ * 値の配列から指定されたアカウントと期間の値を取得する
+ * @param {Array} values 値の配列
+ * @param {string} accountId アカウントID
+ * @param {string} periodId 期間ID
+ * @returns {number} 値（見つからない場合は0）
+ */
+export const getValue = (values, accountId, periodId) => {
+  return (
+    values.find((v) => v.accountId === accountId && v.periodId === periodId)
+      ?.value || 0
+  );
+};
+
+/**
  * AST評価用の値取得関数を作成
  * @param {Array} values 値の配列
  * @param {number} targetPeriod 対象期間の年
@@ -82,10 +97,7 @@ export const calculateSummaryAccountValue = (
 export const createGetValueFunction = (values, targetPeriod) => {
   return (accountId, period) => {
     const periodId = `p-${period}`;
-    const value = values.find(
-      (v) => v.accountId === accountId && v.periodId === periodId
-    );
-    return value?.value || 0;
+    return getValue(values, accountId, periodId);
   };
 };
 
@@ -135,10 +147,7 @@ export const calculateParameterAccount = (
         );
       }
       // CF調整もない場合は前期値をそのまま使用
-      const lastPeriodValue =
-        values.find(
-          (v) => v.accountId === account.id && v.periodId === lastPeriod.id
-        )?.value || 0;
+      const lastPeriodValue = getValue(values, account.id, lastPeriod.id);
       return lastPeriodValue;
     }
 
@@ -148,137 +157,26 @@ export const calculateParameterAccount = (
 
     // ASTがnullの場合（計算不要）は前期値を返す
     if (!ast) {
-      const lastPeriodValue =
-        values.find(
-          (v) => v.accountId === account.id && v.periodId === lastPeriod.id
-        )?.value || 0;
+      const lastPeriodValue = getValue(values, account.id, lastPeriod.id);
       return lastPeriodValue;
     }
 
     // AST評価
-    const getValue = createGetValueFunction(values, periodYear);
-    return evalNode(ast, periodYear, getValue) || 0;
+    const getValueFunction = createGetValueFunction(values, periodYear);
+    const result = evalNode(ast, periodYear, getValueFunction);
+
+    if (result === undefined || result === null) {
+      throw new Error(
+        `AST evaluation failed for account ${account.accountName}`
+      );
+    }
+
+    return result;
   } catch (error) {
     console.error(`Calculation failed for ${account.accountName}:`, error);
-    // フォールバック：既存の計算方法を使用
-    return calculateParameterAccountFallback(
-      account,
-      newPeriod,
-      lastPeriod,
-      values,
-      accounts
+    throw new Error(
+      `Failed to calculate value for ${account.accountName}: ${error.message}`
     );
-  }
-};
-
-/**
- * パラメータタイプに基づいてアカウントの値を計算する（フォールバック）
- * @param {Object} account アカウント
- * @param {Object} newPeriod 新しい期間
- * @param {Object} lastPeriod 最後の期間
- * @param {Array} values 値の配列
- * @param {Array} accounts アカウント配列
- * @returns {number} 計算された値
- */
-export const calculateParameterAccountFallback = (
-  account,
-  newPeriod,
-  lastPeriod,
-  values,
-  accounts
-) => {
-  const lastPeriodValue =
-    values.find(
-      (v) => v.accountId === account.id && v.periodId === lastPeriod.id
-    )?.value || 0;
-
-  switch (account.parameterType) {
-    case PARAMETER_TYPES.GROWTH_RATE:
-      const growthRate = account.parameterValue || 0.0;
-      return lastPeriodValue * (1 + growthRate);
-
-    case PARAMETER_TYPES.PERCENTAGE:
-      const percentage = account.parameterValue || 0.0;
-      if (account.parameterReferenceAccounts?.length > 0) {
-        const refAccount = account.parameterReferenceAccounts[0];
-        const referenceValue =
-          values.find(
-            (v) => v.accountId === refAccount.id && v.periodId === newPeriod.id
-          )?.value || 0;
-        return referenceValue * percentage;
-      }
-      return lastPeriodValue;
-
-    case PARAMETER_TYPES.PROPORTIONATE:
-      if (account.parameterReferenceAccounts?.length > 0) {
-        const refAccount = account.parameterReferenceAccounts[0];
-        return (
-          values.find(
-            (v) => v.accountId === refAccount.id && v.periodId === newPeriod.id
-          )?.value || 0
-        );
-      }
-      return lastPeriodValue;
-
-    case PARAMETER_TYPES.CALCULATION:
-      // 個別計算型：AST式を使用して計算
-      if (account.parameterReferenceAccounts?.length > 0) {
-        let result = 0;
-        account.parameterReferenceAccounts.forEach((ref) => {
-          const refValue =
-            values.find(
-              (v) => v.accountId === ref.id && v.periodId === newPeriod.id
-            )?.value || 0;
-
-          switch (ref.operation) {
-            case "ADD":
-              result += refValue;
-              break;
-            case "SUB":
-              result -= refValue;
-              break;
-            case "MUL":
-              result *= refValue;
-              break;
-            case "DIV":
-              if (refValue !== 0) result /= refValue;
-              break;
-            default:
-              result += refValue;
-          }
-        });
-        return result;
-      }
-      return lastPeriodValue;
-
-    case PARAMETER_TYPES.BALANCE_AND_CHANGE:
-      // 期末残高+/-変動型：前期残高 + 当期変動
-      let balanceResult = lastPeriodValue; // 前期残高
-
-      if (account.parameterReferenceAccounts?.length > 0) {
-        account.parameterReferenceAccounts.forEach((ref) => {
-          const refValue =
-            values.find(
-              (v) => v.accountId === ref.id && v.periodId === newPeriod.id
-            )?.value || 0;
-
-          switch (ref.operation) {
-            case "ADD":
-              balanceResult += refValue;
-              break;
-            case "SUB":
-              balanceResult -= refValue;
-              break;
-            default:
-              balanceResult += refValue;
-          }
-        });
-      }
-      return balanceResult;
-
-    case "NONE":
-    default:
-      return lastPeriodValue;
   }
 };
 
@@ -306,31 +204,15 @@ export const createNewPeriod = (lastPeriod) => {
  * @returns {Object} 更新された財務モデル
  */
 export const addNewPeriodToModel = (model) => {
-  // 更新用のモデルを作成
-  const updatedModel = {
-    accounts: [...model.accounts],
-    periods: [...model.periods],
-    values: [...model.values],
-  };
-
-  // 期間の追加
+  const updatedModel = { ...model };
   const lastPeriod = updatedModel.periods[updatedModel.periods.length - 1];
   const newPeriod = createNewPeriod(lastPeriod);
+
+  // 新しい期間を追加
   updatedModel.periods.push(newPeriod);
 
-  console.log("=== 期間追加デバッグ ===");
-  // 以下のようなnewPeriodオブジェクトがfinancialModel.periodsに追加される
-  // {id: 'p-2028', year: '2028', isActual: false, isFromExcel: false, order: 10}
-  console.log("新しい期間:", newPeriod);
-
-  // 計算順序を取得
-  const calculationOrder = getCalculationOrder(updatedModel.accounts);
-  console.log("計算順序:", calculationOrder);
-
-  // 計算順序に従って各アカウントの新しい期間の値を計算
-  calculationOrder.forEach((accountId) => {
-    // 並び替えられたaccountのidから、accountを取得
-    const account = updatedModel.accounts.find((a) => a.id === accountId);
+  // パラメータベースのアカウントの値を計算
+  updatedModel.accounts.forEach((account) => {
     if (!account) return;
 
     let newValue = 0;
@@ -388,145 +270,148 @@ export const addNewPeriodToModel = (model) => {
       );
 
       if (!exists) {
+        // まずアカウントを追加（重要：値計算の前に！）
         updatedModel.accounts.push(cfAccount);
         console.log("CF調整項目を追加:", cfAccount.accountName);
 
-        // 値の計算と追加
-        const sourceValue =
-          updatedModel.values.find(
-            (v) => v.accountId === account.id && v.periodId === newPeriod.id
-          )?.value || 0;
+        // ASTを構築
+        const periodYear = parseInt(newPeriod.year, 10);
+        const ast = buildFormula(cfAccount, periodYear, updatedModel.accounts);
 
-        // CF調整の演算子を適用（反転済み）
-        const cfValue =
-          cfAccount.flowAttributes.parameter.paramReferences.operation === "ADD"
-            ? sourceValue
-            : -sourceValue;
+        if (ast) {
+          // AST評価で値を計算
+          const getValueFunction = createGetValueFunction(
+            updatedModel.values,
+            periodYear
+          );
+          const cfValue = evalNode(ast, periodYear, getValueFunction) || 0;
 
-        updatedModel.values.push({
-          accountId: cfAccount.id,
-          periodId: newPeriod.id,
-          value: cfValue,
-          isCalculated: true,
-        });
+          // 計算された値を追加
+          updatedModel.values.push({
+            accountId: cfAccount.id,
+            periodId: newPeriod.id,
+            value: cfValue,
+            isCalculated: true,
+          });
 
-        console.log(`CF調整項目値: ${cfAccount.accountName} = ${cfValue}`);
+          console.log(
+            `CF調整項目値 (AST評価): ${cfAccount.accountName} = ${cfValue}`
+          );
+        } else {
+          console.warn(`CF調整項目のAST構築に失敗: ${cfAccount.accountName}`);
+        }
       }
     } catch (error) {
       console.warn(`CF調整項目生成エラー: ${account.accountName}`, error);
     }
   });
 
-  // 2. BS変動項目の生成（統合版）
-  const bsDifferences = calculateBSDifference(
-    updatedModel,
-    newPeriod,
-    lastPeriod
-  );
-  console.log("BS変動対象項目:", bsDifferences);
+  // 2. BS変動項目の生成（新仕様）
+  console.log("=== BS変動項目生成開始 ===");
 
-  let bsOrderCounter = 1;
+  // isParameterBased === trueのBS科目を抽出
+  const parameterBasedBSAccounts = updatedModel.accounts.filter((account) => {
+    return (
+      AccountUtils.isStockAccount(account) &&
+      account.stockAttributes?.isParameterBased === true &&
+      (account.stockAttributes?.bsType === "ASSET" ||
+        account.stockAttributes?.bsType === "LIABILITY_EQUITY")
+    );
+  });
 
-  bsDifferences.forEach((bsDiff) => {
+  console.log("パラメータベースBS科目:", parameterBasedBSAccounts);
+
+  let bsChangeOrderCounter = 1;
+
+  // 各BS科目に対してキャッシュフロー科目を作成
+  parameterBasedBSAccounts.forEach((bsAccount) => {
     try {
-      // 有意な変動がある場合のみCF項目を作成
-      if (bsDiff.hasSignificantChange) {
-        const account = updatedModel.accounts.find(
-          (acc) => acc.id === bsDiff.accountId
-        );
-        const changeType = bsDiff.change > 0 ? "increase" : "decrease";
-        const cfAccount = createBSChangeAccount(
-          account,
-          changeType,
-          bsOrderCounter++
+      // BS変動科目を作成
+      const bsChangeAccount = {
+        id: `bs-change-${bsAccount.id}`,
+        accountName: `${bsAccount.accountName}の増減`,
+        parentAccountId: "ope-cf-total",
+        sheet: {
+          sheetType: SHEET_TYPES.FLOW,
+          name: FLOW_SHEETS.FINANCING,
+        },
+        stockAttributes: null,
+        flowAttributes: {
+          parameter: {
+            paramType: PARAMETER_TYPES.BS_CHANGE,
+            paramValue: null,
+            paramReferences: {
+              accountId: bsAccount.id,
+              operation:
+                bsAccount.stockAttributes.bsType === "ASSET"
+                  ? OPERATIONS.SUB
+                  : OPERATIONS.ADD,
+              lag: 0,
+            },
+          },
+        },
+        bsChangeAttributes:
+          bsAccount.stockAttributes.bsType === "ASSET" ? 1 : -1,
+        displayOrder: {
+          order: `BS${bsChangeOrderCounter.toString().padStart(2, "0")}`,
+          prefix: "BS",
+        },
+      };
+
+      // 既存チェック
+      const exists = updatedModel.accounts.some(
+        (acc) => acc.id === bsChangeAccount.id
+      );
+
+      if (!exists) {
+        // まずアカウントを追加（重要：値計算の前に！）
+        updatedModel.accounts.push(bsChangeAccount);
+        console.log("BS変動項目を追加:", bsChangeAccount.accountName);
+
+        // ASTを構築して評価
+        const periodYear = parseInt(newPeriod.year, 10);
+        const ast = buildFormula(
+          bsChangeAccount,
+          periodYear,
+          updatedModel.accounts
         );
 
-        // 既存チェック
-        const exists = updatedModel.accounts.some(
-          (acc) => acc.id === cfAccount.id
-        );
+        if (ast) {
+          // AST評価で値を計算
+          const getValueFunction = createGetValueFunction(
+            updatedModel.values,
+            periodYear
+          );
+          const bsChangeValue =
+            evalNode(ast, periodYear, getValueFunction) || 0;
 
-        if (!exists) {
-          updatedModel.accounts.push(cfAccount);
-          console.log("BS変動項目を追加:", cfAccount.accountName);
-
-          // キャッシュフロー影響額を使用
+          // 値を追加
           updatedModel.values.push({
-            accountId: cfAccount.id,
+            id: `v-${bsChangeAccount.id}-${newPeriod.id}`,
+            accountId: bsChangeAccount.id,
             periodId: newPeriod.id,
-            value: bsDiff.cashflowImpact,
+            value: bsChangeValue,
             isCalculated: true,
           });
 
           console.log(
-            `BS変動項目値: ${cfAccount.accountName} = ${bsDiff.cashflowImpact}`
+            `BS変動項目値 (AST評価): ${bsChangeAccount.accountName} = ${bsChangeValue}`
+          );
+        } else {
+          console.warn(
+            `BS変動項目のAST構築に失敗: ${bsChangeAccount.accountName}`
           );
         }
       }
+
+      bsChangeOrderCounter++;
     } catch (error) {
-      console.warn(`BS変動項目生成エラー: ${bsDiff.accountName}`, error);
+      console.warn(`BS変動項目生成エラー: ${bsAccount.accountName}`, error);
     }
   });
 
+  console.log("=== BS変動項目生成終了 ===");
   console.log("=== CF項目自動生成終了 ===");
-
-  // 既存のキャッシュフロー計算書の構築（互換性のため残す）
-  const referencedAccounts = extractReferencedAccounts(updatedModel) || [];
-  console.log("CFreferencedAccounts", referencedAccounts);
-  if (referencedAccounts.length > 0) {
-    // 新しいアカウントと値を保持する配列
-    const newCfAccounts = [];
-    const newCfValues = [];
-
-    // 既存のCFアカウントを取得
-    const existingCfAccounts = updatedModel.accounts.filter(
-      (acc) => acc.sheetType?.sheet === "CF"
-    );
-
-    // referencedAccountsをループ
-    referencedAccounts.forEach((referencedAccount) => {
-      // 既存のCFアカウントをチェック
-      let cfAccount = existingCfAccounts.find(
-        (acc) => acc.accountName === referencedAccount.accountName
-      );
-
-      // CFアカウントが存在しない場合のみ新規作成
-      if (!cfAccount) {
-        cfAccount = createCashflowAccount(referencedAccount);
-        newCfAccounts.push(cfAccount);
-      }
-
-      // キャッシュフロー計算用のASTを構築（単純参照モード）
-      const ast = buildCashflowFormula(referencedAccount, true);
-      console.log("ast: ", ast);
-
-      // 値を計算（単純参照モード）
-      const value = evalNode(ast, newPeriod.order, (accountId, period) => {
-        // periodIdは直接newPeriod.idを使用
-        const valueObj = updatedModel.values.find(
-          (v) => v.accountId === accountId && v.periodId === newPeriod.id
-        );
-        console.log("valueObj for", accountId, ":", valueObj);
-        return valueObj ? valueObj.value : 0;
-      });
-
-      // 新しい値を追加（既存のCFアカウントでも新しい期間の値は追加）
-      newCfValues.push({
-        id: `v-${cfAccount.id}-${newPeriod.id}`,
-        accountId: cfAccount.id,
-        periodId: newPeriod.id,
-        value: value,
-      });
-    });
-
-    // 新しいアカウントのみをモデルに追加
-    if (newCfAccounts.length > 0) {
-      updatedModel.accounts = [...updatedModel.accounts, ...newCfAccounts];
-    }
-
-    // 新しい値をモデルに追加
-    updatedModel.values = [...updatedModel.values, ...newCfValues];
-  }
 
   return updatedModel;
 };

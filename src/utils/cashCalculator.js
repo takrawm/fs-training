@@ -1,6 +1,7 @@
 import { BS_TYPES, OPERATIONS } from "./constants";
 import { ParameterUtils } from "./parameterUtils";
 import { AccountUtils } from "./accountUtils.js";
+import { getValue } from "./financialCalculations.js";
 
 /**
  * 現預金の変動を計算する
@@ -50,11 +51,7 @@ const getOperatingProfit = (accounts, values, period) => {
     return 0;
   }
 
-  const value = values.find(
-    (v) => v.accountId === opAccount.id && v.periodId === period.id
-  );
-
-  return value?.value || 0;
+  return getValue(values, opAccount.id, period.id);
 };
 
 /**
@@ -71,9 +68,7 @@ const calculateCFAdjustments = (accounts, values, period) => {
 
   cfAdjustmentAccounts.forEach((account) => {
     const cfAdj = AccountUtils.getCFAdjustment(account);
-    const value =
-      values.find((v) => v.accountId === account.id && v.periodId === period.id)
-        ?.value || 0;
+    const value = getValue(values, account.id, period.id);
 
     console.log(
       `CF調整科目: ${account.accountName}, 値: ${value}, 演算: ${cfAdj.operation}`
@@ -109,15 +104,8 @@ const calculateBSChanges = (accounts, values, newPeriod, lastPeriod) => {
 
   bsAccounts.forEach((account) => {
     // 当期と前期の値を取得
-    const currentValue =
-      values.find(
-        (v) => v.accountId === account.id && v.periodId === newPeriod.id
-      )?.value || 0;
-
-    const previousValue =
-      values.find(
-        (v) => v.accountId === account.id && v.periodId === lastPeriod.id
-      )?.value || 0;
+    const currentValue = getValue(values, account.id, newPeriod.id);
+    const previousValue = getValue(values, account.id, lastPeriod.id);
 
     const change = currentValue - previousValue;
     const bsType = account.stockAttributes.bsType;
@@ -151,10 +139,7 @@ export const calculateCashBalance = (
   accounts
 ) => {
   // 前期末残高を取得
-  const lastPeriodCash =
-    values.find(
-      (v) => v.accountId === account.id && v.periodId === lastPeriod.id
-    )?.value || 0;
+  const lastPeriodCash = getValue(values, account.id, lastPeriod.id);
 
   console.log(`前期末現預金: ${lastPeriodCash}`);
 
