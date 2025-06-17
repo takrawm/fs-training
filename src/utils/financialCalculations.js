@@ -8,10 +8,7 @@ import {
   OPERATIONS,
 } from "./constants";
 import { calculateBSDifference } from "./cashflowCalc.js";
-import {
-  createCFAdjustmentAccount,
-  createBSChangeAccount,
-} from "../models/cashflowAccount";
+import { createCFAdjustmentAccount } from "../models/cashflowAccount";
 import { ParameterUtils } from "./parameterUtils";
 import { AccountUtils } from "./accountUtils.js";
 import {
@@ -19,6 +16,12 @@ import {
   isCFAdjustmentTarget,
 } from "./balanceSheetCalculator";
 import { calculateCashBalance } from "./cashCalculator";
+import {
+  createBSChangeAccount,
+  calculateCFItemValue,
+  isCFItem,
+} from "./cfItemUtils.js";
+import { FinancialModel } from "../models/FinancialModel.js";
 
 /**
  * 親子関係のマップを作成する
@@ -200,19 +203,23 @@ export const createNewPeriod = (lastPeriod) => {
 
 /**
  * 財務モデルに新しい期間を追加する
- * @param {Object} model 財務モデル
- * @returns {Object} 更新された財務モデル
+ * @param {Object|FinancialModel} model 財務モデル
+ * @returns {FinancialModel} 更新された財務モデル
  */
 export const addNewPeriodToModel = (model) => {
-  const updatedModel = { ...model };
+  // 古いモデル形式を新しいFinancialModelに変換
+  const updatedModel =
+    model instanceof FinancialModel
+      ? model
+      : FinancialModel.fromOldModel(model);
   const lastPeriod = updatedModel.periods[updatedModel.periods.length - 1];
   const newPeriod = createNewPeriod(lastPeriod);
 
   // 新しい期間を追加
-  updatedModel.periods.push(newPeriod);
+  updatedModel.addPeriod(newPeriod);
 
-  // パラメータベースのアカウントの値を計算
-  updatedModel.accounts.forEach((account) => {
+  // 通常科目の値を計算（CF項目は後で処理）
+  updatedModel.accounts.getRegular().forEach((account) => {
     if (!account) return;
 
     let newValue = 0;
@@ -223,7 +230,7 @@ export const addNewPeriodToModel = (model) => {
       newValue = calculateSummaryAccountValue(
         account,
         newPeriod,
-        createParentChildMap(updatedModel.accounts),
+        createParentChildMap(updatedModel.accounts.getAll()),
         updatedModel.values
       );
     } else {
@@ -232,13 +239,13 @@ export const addNewPeriodToModel = (model) => {
         newPeriod,
         lastPeriod,
         updatedModel.values,
-        updatedModel.accounts
+        updatedModel.accounts.getAll()
       );
       isCalculated = false;
     }
 
     // 新しい値を追加
-    updatedModel.values.push({
+    updatedModel.addValue({
       accountId: account.id,
       periodId: newPeriod.id,
       value: newValue,
@@ -252,9 +259,9 @@ export const addNewPeriodToModel = (model) => {
   console.log("=== CF項目自動生成開始 ===");
 
   // 1. CF調整項目の生成
-  const cfAdjustmentAccounts = updatedModel.accounts.filter(
-    (acc) => AccountUtils.getCFAdjustment(acc) !== null
-  );
+  const cfAdjustmentAccounts = updatedModel.accounts
+    .getRegular()
+    .filter((acc) => AccountUtils.getCFAdjustment(acc) !== null);
   console.log("CF調整対象アカウント:", cfAdjustmentAccounts);
 
   let cfOrderCounter = 1;
@@ -265,18 +272,20 @@ export const addNewPeriodToModel = (model) => {
       const cfAccount = createCFAdjustmentAccount(account, cfOrderCounter++);
 
       // 既存チェック
-      const exists = updatedModel.accounts.some(
-        (acc) => acc.id === cfAccount.id
-      );
+      const exists = updatedModel.accounts.exists(cfAccount.id);
 
       if (!exists) {
         // まずアカウントを追加（重要：値計算の前に！）
-        updatedModel.accounts.push(cfAccount);
+        updatedModel.accounts.addCFItem(cfAccount);
         console.log("CF調整項目を追加:", cfAccount.accountName);
 
         // ASTを構築
         const periodYear = parseInt(newPeriod.year, 10);
-        const ast = buildFormula(cfAccount, periodYear, updatedModel.accounts);
+        const ast = buildFormula(
+          cfAccount,
+          periodYear,
+          updatedModel.accounts.getAll()
+        );
 
         if (ast) {
           // AST評価で値を計算
@@ -287,7 +296,7 @@ export const addNewPeriodToModel = (model) => {
           const cfValue = evalNode(ast, periodYear, getValueFunction) || 0;
 
           // 計算された値を追加
-          updatedModel.values.push({
+          updatedModel.addValue({
             accountId: cfAccount.id,
             periodId: newPeriod.id,
             value: cfValue,
@@ -310,14 +319,16 @@ export const addNewPeriodToModel = (model) => {
   console.log("=== BS変動項目生成開始 ===");
 
   // isParameterBased === trueのBS科目を抽出
-  const parameterBasedBSAccounts = updatedModel.accounts.filter((account) => {
-    return (
-      AccountUtils.isStockAccount(account) &&
-      account.stockAttributes?.isParameterBased === true &&
-      (account.stockAttributes?.bsType === "ASSET" ||
-        account.stockAttributes?.bsType === "LIABILITY_EQUITY")
-    );
-  });
+  const parameterBasedBSAccounts = updatedModel.accounts
+    .getRegular()
+    .filter((account) => {
+      return (
+        AccountUtils.isStockAccount(account) &&
+        account.stockAttributes?.isParameterBased === true &&
+        (account.stockAttributes?.bsType === "ASSET" ||
+          account.stockAttributes?.bsType === "LIABILITY_EQUITY")
+      );
+    });
 
   console.log("パラメータベースBS科目:", parameterBasedBSAccounts);
 
@@ -326,92 +337,90 @@ export const addNewPeriodToModel = (model) => {
   // 各BS科目に対してキャッシュフロー科目を作成
   parameterBasedBSAccounts.forEach((bsAccount) => {
     try {
-      // BS変動科目を作成
-      const bsChangeAccount = {
-        id: `bs-change-${bsAccount.id}`,
-        accountName: `${bsAccount.accountName}の増減`,
-        parentAccountId: "ope-cf-total",
-        sheet: {
-          sheetType: SHEET_TYPES.FLOW,
-          name: FLOW_SHEETS.FINANCING,
-        },
-        stockAttributes: null,
-        flowAttributes: {
-          parameter: {
-            paramType: PARAMETER_TYPES.BS_CHANGE,
-            paramValue: null,
-            paramReferences: {
-              accountId: bsAccount.id,
-              operation:
-                bsAccount.stockAttributes.bsType === "ASSET"
-                  ? OPERATIONS.SUB
-                  : OPERATIONS.ADD,
-              lag: 0,
-            },
-          },
-        },
-        bsChangeAttributes:
-          bsAccount.stockAttributes.bsType === "ASSET" ? 1 : -1,
-        displayOrder: {
-          order: `BS${bsChangeOrderCounter.toString().padStart(2, "0")}`,
-          prefix: "BS",
-        },
-      };
+      // cfItemUtils.jsの標準化された関数を使用
+      const bsChangeAccount = createBSChangeAccount(
+        bsAccount,
+        bsChangeOrderCounter++
+      );
 
       // 既存チェック
-      const exists = updatedModel.accounts.some(
-        (acc) => acc.id === bsChangeAccount.id
-      );
+      const exists = updatedModel.accounts.exists(bsChangeAccount.id);
 
       if (!exists) {
         // まずアカウントを追加（重要：値計算の前に！）
-        updatedModel.accounts.push(bsChangeAccount);
+        updatedModel.accounts.addCFItem(bsChangeAccount);
         console.log("BS変動項目を追加:", bsChangeAccount.accountName);
 
-        // ASTを構築して評価
-        const periodYear = parseInt(newPeriod.year, 10);
-        const ast = buildFormula(
+        // CF項目専用の計算関数を使用
+        const cfValue = calculateCFItemValue(
           bsChangeAccount,
-          periodYear,
-          updatedModel.accounts
+          newPeriod,
+          lastPeriod,
+          updatedModel.values,
+          updatedModel.accounts.getAll()
         );
 
-        if (ast) {
-          // AST評価で値を計算
-          const getValueFunction = createGetValueFunction(
-            updatedModel.values,
-            periodYear
-          );
-          const bsChangeValue =
-            evalNode(ast, periodYear, getValueFunction) || 0;
+        // 値を追加
+        updatedModel.addValue({
+          accountId: bsChangeAccount.id,
+          periodId: newPeriod.id,
+          value: cfValue,
+          isCalculated: true,
+        });
 
-          // 値を追加
-          updatedModel.values.push({
-            id: `v-${bsChangeAccount.id}-${newPeriod.id}`,
-            accountId: bsChangeAccount.id,
-            periodId: newPeriod.id,
-            value: bsChangeValue,
-            isCalculated: true,
-          });
-
-          console.log(
-            `BS変動項目値 (AST評価): ${bsChangeAccount.accountName} = ${bsChangeValue}`
-          );
-        } else {
-          console.warn(
-            `BS変動項目のAST構築に失敗: ${bsChangeAccount.accountName}`
-          );
-        }
+        console.log(
+          `BS変動項目値 (CF専用計算): ${bsChangeAccount.accountName} = ${cfValue}`
+        );
       }
-
-      bsChangeOrderCounter++;
     } catch (error) {
-      console.warn(`BS変動項目生成エラー: ${bsAccount.accountName}`, error);
+      console.error(`BS変動項目生成エラー: ${bsAccount.accountName}`, error);
     }
   });
 
   console.log("=== BS変動項目生成終了 ===");
+
+  // 4. CF項目専用の計算処理（通常科目とは別に処理）
+  console.log("=== CF項目値計算開始 ===");
+
+  const existingCFItems = updatedModel.accounts.getCFItems();
+  existingCFItems.forEach((cfAccount) => {
+    // 既に値が計算されていない場合のみ処理
+    const existingValue = updatedModel.getValue(cfAccount.id, newPeriod.id);
+    if (existingValue === 0) {
+      try {
+        const cfValue = calculateCFItemValue(
+          cfAccount,
+          newPeriod,
+          lastPeriod,
+          updatedModel.values,
+          updatedModel.accounts.getAll()
+        );
+
+        updatedModel.addValue({
+          accountId: cfAccount.id,
+          periodId: newPeriod.id,
+          value: cfValue,
+          isCalculated: true,
+        });
+
+        console.log(`CF項目値計算: ${cfAccount.accountName} = ${cfValue}`);
+      } catch (error) {
+        console.error(`CF項目値計算エラー: ${cfAccount.accountName}`, error);
+      }
+    }
+  });
+
+  console.log("=== CF項目値計算終了 ===");
   console.log("=== CF項目自動生成終了 ===");
+
+  // モデル検証
+  const validation = updatedModel.validate();
+  if (!validation.isValid) {
+    console.warn("モデル検証エラー:", validation.errors);
+    validation.warnings.forEach((warning) => console.warn("警告:", warning));
+  } else {
+    console.log("モデル検証成功:", validation.stats);
+  }
 
   return updatedModel;
 };
