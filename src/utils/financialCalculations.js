@@ -203,15 +203,16 @@ export const createNewPeriod = (lastPeriod) => {
 
 /**
  * 財務モデルに新しい期間を追加する
- * @param {Object|FinancialModel} model 財務モデル
+ * @param {FinancialModel} model 財務モデル（新構造）
  * @returns {FinancialModel} 更新された財務モデル
  */
 export const addNewPeriodToModel = (model) => {
-  // 古いモデル形式を新しいFinancialModelに変換
-  const updatedModel =
-    model instanceof FinancialModel
-      ? model
-      : FinancialModel.fromOldModel(model);
+  // 既に新構造のFinancialModelとして処理
+  if (!(model instanceof FinancialModel)) {
+    throw new Error("Model must be an instance of FinancialModel");
+  }
+
+  const updatedModel = model;
   const lastPeriod = updatedModel.periods[updatedModel.periods.length - 1];
   const newPeriod = createNewPeriod(lastPeriod);
 

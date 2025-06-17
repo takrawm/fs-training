@@ -17,9 +17,25 @@ registerAllModules();
  */
 const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
   const hotTableRef = useRef(null);
-  const { accounts, periods, values } = financialModel || {};
+  const { periods, values } = financialModel || {};
   const [activeTab, setActiveTab] = useState("PL");
   const [filteredData, setFilteredData] = useState([]);
+
+  // アカウント取得のヘルパー関数（新構造と古い構造の両方に対応）
+  const getAccounts = useCallback(() => {
+    if (!financialModel) return [];
+
+    if (financialModel.accounts?.getAll) {
+      // 新構造: AccountManagerインスタンス
+      return financialModel.accounts.getAll();
+    } else if (Array.isArray(financialModel.accounts)) {
+      // 古い構造: 配列
+      return financialModel.accounts;
+    }
+
+    console.warn("Unknown accounts structure:", financialModel.accounts);
+    return [];
+  }, [financialModel]);
 
   // デバッグ情報：financialModelの受け取りを確認
   useEffect(() => {
@@ -47,9 +63,15 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
       });
 
       console.log("期間ごとの値の詳細:", periodValueCounts);
+      console.log("アカウント構造:", {
+        type: financialModel.accounts?.getAll
+          ? "新構造(AccountManager)"
+          : "古い構造(配列)",
+        count: getAccounts().length,
+      });
       console.log("=== デバッグ情報終了 ===");
     }
-  }, [financialModel]);
+  }, [financialModel, getAccounts]);
 
   // データが変更された場合にも再描画
   useEffect(() => {
@@ -127,9 +149,9 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
     const accountName = filteredData[row]?.[0];
     if (!accountName) return {};
 
-    const account = financialModel?.accounts.find(
-      (acc) => acc.accountName === accountName
-    );
+    // 新構造と古い構造の両方に対応
+    const accounts = getAccounts();
+    const account = accounts.find((acc) => acc.accountName === accountName);
 
     if (!account) return {};
 
@@ -200,13 +222,13 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
   useEffect(() => {
     if (financialModel) {
       console.log("=== 財務モデル ===");
-      console.log("アカウント:", financialModel.accounts);
+      console.log("アカウント:", getAccounts());
       console.log("期間:", financialModel.periods);
       console.log("値:", financialModel.values);
       console.log("=== 財務モデルのログ終了 ===");
       handleTabChange("PL");
     }
-  }, [financialModel, handleTabChange]);
+  }, [financialModel, handleTabChange, getAccounts]);
 
   return (
     <>

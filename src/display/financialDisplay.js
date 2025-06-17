@@ -8,7 +8,20 @@ import { ParameterUtils } from "../utils/parameterUtils";
  * @returns {Array} フィルタリングされたデータ
  */
 export const getFilteredDataByTab = (tabName, financialModel) => {
-  const { accounts, periods, values } = financialModel;
+  const { periods, values } = financialModel;
+
+  // 新構造と古い構造の両方に対応
+  let accounts;
+  if (financialModel.accounts?.getAll) {
+    // 新構造: AccountManagerインスタンス
+    accounts = financialModel.accounts.getAll();
+  } else if (Array.isArray(financialModel.accounts)) {
+    // 古い構造: 配列
+    accounts = financialModel.accounts;
+  } else {
+    console.warn("Unknown accounts structure:", financialModel.accounts);
+    return [];
+  }
 
   // ParameterUtilsを使用してヘルパー関数を統一
   const getParameterType = (account) =>

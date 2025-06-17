@@ -18,6 +18,8 @@ import {
 import { createAccountValues } from "../models/accountValue";
 import { createPeriods } from "../models/period";
 import { addNewPeriodToModel } from "../utils/financialCalculations";
+import { FinancialModel } from "../models/FinancialModel";
+import { isCFItem } from "../utils/cfItemUtils";
 import "../styles/FinancialModelBuilder.css";
 
 // Handsontableのすべてのモジュールを登録
@@ -39,7 +41,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
   const flattenedRows = flattenedData?.dataRows || [];
   // マッピングデータ
   const [mappingData, setMappingData] = useState([]);
-  // 財務モデル
+  // 財務モデル（最初からFinancialModelクラスを使用）
   const [financialModel, setFinancialModel] = useState(null);
   // 集計マップ
   const [aggregatedMap, setAggregatedMap] = useState(null);
@@ -74,10 +76,22 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
   const handleParentAccountChange = useCallback(
     (updatedAccounts) => {
       if (!financialModel) return;
-      setFinancialModel({
-        ...financialModel,
-        accounts: updatedAccounts,
+
+      // 新構造での更新
+      const newModel = new FinancialModel();
+      newModel.periods = [...financialModel.periods];
+      newModel.values = [...financialModel.values];
+
+      // アカウントを適切に分類
+      updatedAccounts.forEach((account) => {
+        if (isCFItem(account)) {
+          newModel.accounts.addCFItem(account);
+        } else {
+          newModel.accounts.addRegular(account);
+        }
       });
+
+      setFinancialModel(newModel);
       console.log("親科目設定が更新されました:", updatedAccounts);
     },
     [financialModel]
@@ -87,10 +101,22 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
   const handleParamChange = useCallback(
     (updatedAccounts) => {
       if (!financialModel) return;
-      setFinancialModel({
-        ...financialModel,
-        accounts: updatedAccounts,
+
+      // 新構造での更新
+      const newModel = new FinancialModel();
+      newModel.periods = [...financialModel.periods];
+      newModel.values = [...financialModel.values];
+
+      // アカウントを適切に分類
+      updatedAccounts.forEach((account) => {
+        if (isCFItem(account)) {
+          newModel.accounts.addCFItem(account);
+        } else {
+          newModel.accounts.addRegular(account);
+        }
       });
+
+      setFinancialModel(newModel);
       console.log("パラメータ設定が更新されました:", updatedAccounts);
     },
     [financialModel]
@@ -138,14 +164,18 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       console.log("newAggregatedMap: ", newAggregatedMap);
       setAggregatedMap(newAggregatedMap);
 
-      // 財務モデルを作成（集計マップから直接作成）
-      const newFinancialModel = {
-        accounts: Object.values(newAggregatedMap).map(
-          ({ values, ...rest }) => rest
-        ),
-        periods: [],
-        values: [],
-      };
+      // 最初からFinancialModelクラスを使用
+      const newFinancialModel = new FinancialModel();
+
+      // 集計マップからアカウントを分類して追加
+      Object.values(newAggregatedMap).forEach(({ values, ...account }) => {
+        if (isCFItem(account)) {
+          newFinancialModel.accounts.addCFItem(account);
+        } else {
+          newFinancialModel.accounts.addRegular(account);
+        }
+      });
+
       setFinancialModel(newFinancialModel);
 
       // 次のステップへ
@@ -154,8 +184,9 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       // ステップ1：親科目設定完了 → ソート済みアカウント確認へ
       if (!financialModel || !aggregatedMap) return;
 
-      // ソートされたアカウントリストを作成
-      const sortedAccounts = createSortedAccounts(financialModel.accounts);
+      // 全アカウントを取得してソート
+      const allAccounts = financialModel.accounts.getAll();
+      const sortedAccounts = createSortedAccounts(allAccounts);
       console.log("sortedAccounts:", sortedAccounts);
 
       // 期間情報を作成
@@ -169,24 +200,38 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       );
       console.log("newAccountValues:", newAccountValues);
 
-      // 財務モデルを更新
-      setFinancialModel({
-        ...financialModel,
-        accounts: sortedAccounts,
-        periods: newPeriods,
-        values: newAccountValues,
+      // FinancialModelを更新
+      const newModel = new FinancialModel();
+      newModel.periods = newPeriods;
+      newModel.values = newAccountValues;
+
+      // ソートされたアカウントを分類して追加
+      sortedAccounts.forEach((account) => {
+        if (isCFItem(account)) {
+          newModel.accounts.addCFItem(account);
+        } else {
+          newModel.accounts.addRegular(account);
+        }
       });
+
+      setFinancialModel(newModel);
 
       // 次のステップへ
       setStep(2);
     } else if (step === 2) {
       // ステップ2：ソート済みアカウント確認完了 → パラメータ分類設定へ
-      console.log("ステップ2完了時のアカウント:", financialModel?.accounts);
+      console.log(
+        "ステップ2完了時のアカウント:",
+        financialModel?.accounts.getAll()
+      );
       // 次のステップへ進むだけ
       setStep(3);
     } else if (step === 3) {
       // ステップ3：パラメータ分類設定完了 → パラメータ設定確認へ
-      console.log("ステップ3完了時のアカウント:", financialModel?.accounts);
+      console.log(
+        "ステップ3完了時のアカウント:",
+        financialModel?.accounts.getAll()
+      );
       // 次のステップへ進むだけ
       setStep(4);
     } else if (step === 4) {
@@ -195,7 +240,8 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       // ボタン押下（Next）時に accounts 配列へ確定反映させる
       if (!financialModel) return;
 
-      const updatedAccounts = financialModel.accounts.map((account) => {
+      const allAccounts = financialModel.accounts.getAll();
+      const updatedAccounts = allAccounts.map((account) => {
         const newAccount = { ...account };
 
         // 1. 単一値パラメータ型（成長率 / 他科目割合）
@@ -233,10 +279,20 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       });
 
       // FinancialModel に確定値を保存
-      setFinancialModel({
-        ...financialModel,
-        accounts: updatedAccounts,
+      const newModel = new FinancialModel();
+      newModel.periods = [...financialModel.periods];
+      newModel.values = [...financialModel.values];
+
+      // 更新されたアカウントを分類して追加
+      updatedAccounts.forEach((account) => {
+        if (isCFItem(account)) {
+          newModel.accounts.addCFItem(account);
+        } else {
+          newModel.accounts.addRegular(account);
+        }
       });
+
+      setFinancialModel(newModel);
 
       console.log("ステップ4でパラメータ設定を確定:", updatedAccounts);
 
@@ -244,7 +300,10 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       setStep(5);
     } else if (step === 5) {
       // ステップ5：CF調整設定完了 → 集計結果確認へ
-      console.log("ステップ5完了時のアカウント:", financialModel?.accounts);
+      console.log(
+        "ステップ5完了時のアカウント:",
+        financialModel?.accounts.getAll()
+      );
       // 次のステップへ進むだけ
       setStep(6);
     } else if (step === 6) {
@@ -254,8 +313,9 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
   };
 
   const handleParameterTypeChange = (accountId, newType) => {
+    const allAccounts = financialModel.accounts.getAll();
     const newAccount = {
-      ...financialModel.accounts.find((a) => a.id === accountId),
+      ...allAccounts.find((a) => a.id === accountId),
     };
     newAccount.parameterType = newType;
 
@@ -268,13 +328,24 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       newAccount.parameterReferenceAccounts = [];
     }
 
-    const updatedAccounts = financialModel.accounts.map((a) =>
+    const updatedAccounts = allAccounts.map((a) =>
       a.id === accountId ? newAccount : a
     );
-    setFinancialModel({
-      ...financialModel,
-      accounts: updatedAccounts,
+
+    // 新構造での更新
+    const newModel = new FinancialModel();
+    newModel.periods = [...financialModel.periods];
+    newModel.values = [...financialModel.values];
+
+    updatedAccounts.forEach((account) => {
+      if (isCFItem(account)) {
+        newModel.accounts.addCFItem(account);
+      } else {
+        newModel.accounts.addRegular(account);
+      }
     });
+
+    setFinancialModel(newModel);
   };
 
   return (
@@ -295,29 +366,29 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
         ) : step === 1 ? (
           // ステップ1：親科目設定
           <ParentAccountSettingTable
-            data={financialModel?.accounts || []}
+            data={financialModel?.accounts.getAll() || []}
             onChange={handleParentAccountChange}
           />
         ) : step === 2 ? (
           // ステップ2：ソート済みアカウント確認
-          <SortedAccountsTable data={financialModel?.accounts || []} />
+          <SortedAccountsTable data={financialModel?.accounts.getAll() || []} />
         ) : step === 3 ? (
           // ステップ3：パラメータ分類設定
           <ParameterSettingTable
-            data={financialModel?.accounts || []}
+            data={financialModel?.accounts.getAll() || []}
             onChange={handleParamChange}
           />
         ) : step === 4 ? (
           // ステップ4：パラメータ設定確認
           <ParameterConfiguration
-            data={financialModel?.accounts || []}
+            data={financialModel?.accounts.getAll() || []}
             financialModel={financialModel}
             onChange={handleParamChange}
           />
         ) : step === 5 ? (
           // ステップ5：CF調整設定
           <CFAdjustmentTable
-            data={financialModel?.accounts || []}
+            data={financialModel?.accounts.getAll() || []}
             onChange={handleParamChange}
           />
         ) : step === 6 ? (
