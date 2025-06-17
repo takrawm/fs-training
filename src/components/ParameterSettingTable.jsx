@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
 import { PARAMETER_TYPES, CF_ADJUSTMENT_TYPE } from "../utils/constants";
+import { ParameterUtils } from "../utils/parameterUtils";
 
 /**
  * パラメータ設定テーブルコンポーネント
@@ -15,13 +16,16 @@ const ParameterSettingTable = ({ data, onChange }) => {
     console.log("1. Input data:", data);
 
     const mappedData = data.map((account) => {
-      // paramTypeを取得（stockAttributesまたはflowAttributesから）
-      let paramType = PARAMETER_TYPES.NONE;
-      if (account.stockAttributes?.parameter?.paramType) {
-        paramType = account.stockAttributes.parameter.paramType;
-      } else if (account.flowAttributes?.parameter?.paramType) {
-        paramType = account.flowAttributes.parameter.paramType;
-      }
+      // デバッグログを追加
+      console.log("Account details:", {
+        accountName: account.accountName,
+        stockAttributes: account.stockAttributes,
+        flowAttributes: account.flowAttributes,
+      });
+
+      // ParameterUtilsを使用してパラメータタイプを取得
+      const paramType = ParameterUtils.getParameterType(account);
+      console.log(`Parameter type for ${account.accountName}: ${paramType}`);
 
       // cfAdjustment.typeを取得
       const cfAdjustmentType = account.flowAttributes?.cfAdjustment?.type || "";

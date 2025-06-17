@@ -41,23 +41,57 @@ export const ParameterUtils = {
   },
 
   /**
-   * パラメータ参照を取得
+   * パラメータ参照を取得（新構造のみ対応）
+   * 旧構造の場合はエラーを投げる
    * @param {Object} account アカウント
-   * @returns {Array|Object} パラメータ参照（配列または単一オブジェクト）
+   * @returns {Object|Array|null} パラメータ参照
    */
   getParameterReferences(account) {
     const param = this.getParameter(account);
-    if (!param?.paramReferences) {
-      return [];
-    }
+    if (!param) return null;
 
-    // 既に配列の場合はそのまま返す
-    if (Array.isArray(param.paramReferences)) {
+    const paramType = param.paramType;
+
+    // 新構造：単一参照（PROPORTIONATE, PERCENTAGE, REFERENCE）
+    if (
+      [
+        PARAMETER_TYPES.PROPORTIONATE,
+        PARAMETER_TYPES.PERCENTAGE,
+        PARAMETER_TYPES.REFERENCE,
+      ].includes(paramType)
+    ) {
+      if (!param.paramReferences) {
+        throw new Error(
+          `${paramType}タイプには'paramReferences'プロパティが必要です。` +
+            `アカウント: ${account.accountName || account.id}`
+        );
+      }
+
+      // 配列形式の旧構造を検出
+      if (Array.isArray(param.paramReferences)) {
+        throw new Error(
+          `旧構造が検出されました。${paramType}タイプで配列形式の'paramReferences'が使用されています。` +
+            `単一オブジェクト形式を使用するように修正してください。` +
+            `アカウント: ${account.accountName || account.id}`
+        );
+      }
+
       return param.paramReferences;
     }
 
-    // 単一オブジェクトの場合はそのまま返す（配列に変換しない）
-    return param.paramReferences;
+    // 新構造：複数参照（CALCULATION）
+    if (paramType === PARAMETER_TYPES.CALCULATION) {
+      if (!Array.isArray(param.paramReferences)) {
+        throw new Error(
+          `CALCULATIONタイプには'paramReferences'配列が必要です。` +
+            `アカウント: ${account.accountName || account.id}`
+        );
+      }
+
+      return param.paramReferences;
+    }
+
+    return null;
   },
 
   /**
@@ -101,5 +135,29 @@ export const ParameterUtils = {
     }
 
     return updatedAccount;
+  },
+
+  /**
+   * 参照が単一か複数かを判定
+   * @param {Object} account アカウント
+   * @returns {boolean} 単一参照の場合true
+   */
+  isSingleReference(account) {
+    const paramType = this.getParameterType(account);
+    return [
+      PARAMETER_TYPES.PROPORTIONATE,
+      PARAMETER_TYPES.PERCENTAGE,
+      PARAMETER_TYPES.REFERENCE,
+    ].includes(paramType);
+  },
+
+  /**
+   * 参照が複数（配列）かを判定
+   * @param {Object} account アカウント
+   * @returns {boolean} 複数参照の場合true
+   */
+  isMultipleReferences(account) {
+    const paramType = this.getParameterType(account);
+    return paramType === PARAMETER_TYPES.CALCULATION;
   },
 };

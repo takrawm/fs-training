@@ -7,6 +7,7 @@ import {
   isCFAdjustmentTarget,
   getCFAdjustmentAccounts,
 } from "./balanceSheetCalculator";
+import { isCFItem, getCFItemType } from "./cfItemUtils.js";
 
 /**
  * 勘定科目からASTを構築する
@@ -16,6 +17,11 @@ import {
  * @returns {ASTNode|null} 構築されたAST（計算不要の場合はnull）
  */
 export const buildFormula = (account, period, accounts) => {
+  // CF項目は専用の処理に委譲（ASTではなく専用の計算ロジックを使用）
+  if (isCFItem(account)) {
+    return null; // CF項目は calculateCFItemValue で処理される
+  }
+
   // 新しいParameterUtilsを使用してパラメータを取得
   const parameterType = ParameterUtils.getParameterType(account);
   const parameterValue = ParameterUtils.getParameterValue(account);
@@ -56,28 +62,21 @@ export const buildFormula = (account, period, accounts) => {
       });
 
     case PARAMETER_TYPES.PERCENTAGE:
-      // parameterReferenceAccountsが配列でない場合（新構造）の処理
-      let percentageRef;
-      if (Array.isArray(parameterReferenceAccounts)) {
-        if (parameterReferenceAccounts.length === 0) {
-          throw new Error(
-            `PERCENTAGE requires reference accounts for account: ${account.accountName}`
-          );
-        }
-        percentageRef = parameterReferenceAccounts[0];
-      } else if (parameterReferenceAccounts) {
-        // 単一オブジェクトの場合
-        percentageRef = parameterReferenceAccounts;
-      } else {
+      // 新構造のみ対応：単一参照として処理
+      if (
+        !parameterReferenceAccounts ||
+        !parameterReferenceAccounts.accountId
+      ) {
         throw new Error(
-          `PERCENTAGE requires reference accounts for account: ${account.accountName}`
+          `PERCENTAGE requires reference account for: ${account.accountName}`
         );
       }
 
+      // 単一オブジェクトとして直接使用
       return createNode(AST_OPERATIONS.MUL, {
         args: [
           createNode(AST_OPERATIONS.REF, {
-            id: percentageRef.accountId || percentageRef.id,
+            id: parameterReferenceAccounts.accountId,
             lag: 0,
           }),
           createNode(AST_OPERATIONS.CONST, { value: parameterValue || 0 }),
@@ -85,41 +84,34 @@ export const buildFormula = (account, period, accounts) => {
       });
 
     case PARAMETER_TYPES.PROPORTIONATE:
-      // parameterReferenceAccountsが配列でない場合（新構造）の処理
-      let proportionateRef;
-      if (Array.isArray(parameterReferenceAccounts)) {
-        if (parameterReferenceAccounts.length === 0) {
-          throw new Error(
-            `PROPORTIONATE requires reference accounts for account: ${account.accountName}`
-          );
-        }
-        proportionateRef = parameterReferenceAccounts[0];
-      } else if (parameterReferenceAccounts) {
-        // 単一オブジェクトの場合
-        proportionateRef = parameterReferenceAccounts;
-      } else {
+      // 新構造のみ対応：単一参照として処理
+      if (
+        !parameterReferenceAccounts ||
+        !parameterReferenceAccounts.accountId
+      ) {
         throw new Error(
-          `PROPORTIONATE requires reference accounts for account: ${account.accountName}`
+          `PROPORTIONATE requires reference account for: ${account.accountName}`
         );
       }
 
-      // 参照先アカウントの実際の成長率を計算
-      const refAccountId = proportionateRef.accountId || proportionateRef.id;
-      const refAccount = accounts.find((acc) => acc.id === refAccountId);
+      // 参照先アカウントの検証
+      const refAccount = accounts.find(
+        (acc) => acc.id === parameterReferenceAccounts.accountId
+      );
 
       if (!refAccount) {
         throw new Error(
-          `Reference account not found: ${refAccountId} for account: ${account.accountName}`
+          `Reference account not found: ${parameterReferenceAccounts.accountId} for account: ${account.accountName}`
         );
       }
 
-      // 参照先アカウントの前期値と当期値を取得するためのノードを作成
+      // 参照先の成長率計算用ノード
       const refLastYearNode = createNode(AST_OPERATIONS.REF, {
-        id: refAccountId,
+        id: parameterReferenceAccounts.accountId,
         lag: 1,
       });
       const refCurrentYearNode = createNode(AST_OPERATIONS.REF, {
-        id: refAccountId,
+        id: parameterReferenceAccounts.accountId,
         lag: 0,
       });
 
@@ -147,19 +139,19 @@ export const buildFormula = (account, period, accounts) => {
       });
 
     case PARAMETER_TYPES.CALCULATION:
+      // 複数参照（配列）として処理
       if (
-        !parameterReferenceAccounts ||
+        !Array.isArray(parameterReferenceAccounts) ||
         parameterReferenceAccounts.length === 0
       ) {
         throw new Error(
-          `CALCULATION requires reference accounts for account: ${account.accountName}`
+          `CALCULATION requires reference accounts array for: ${account.accountName}`
         );
       }
 
+      // 既存のロジックをそのまま使用
       const firstRef = createNode(AST_OPERATIONS.REF, {
-        id:
-          parameterReferenceAccounts[0].accountId ||
-          parameterReferenceAccounts[0].id,
+        id: parameterReferenceAccounts[0].accountId,
         lag: 0,
       });
 
@@ -171,24 +163,47 @@ export const buildFormula = (account, period, accounts) => {
 
       for (let i = 1; i < parameterReferenceAccounts.length; i++) {
         const ref = parameterReferenceAccounts[i];
-        const refId = ref.accountId || ref.id;
-        if (ref.operation === "ADD") {
+        if (ref.operation === OPERATIONS.ADD) {
           refAddArgs.push(
-            createNode(AST_OPERATIONS.REF, { id: refId, lag: 0 })
+            createNode(AST_OPERATIONS.REF, {
+              id: ref.accountId,
+              lag: 0,
+            })
           );
-        } else if (ref.operation === "SUB") {
+        } else if (ref.operation === OPERATIONS.SUB) {
           refAddArgs.push(
             createNode(AST_OPERATIONS.MUL, {
               args: [
                 createNode(AST_OPERATIONS.CONST, { value: -1 }),
-                createNode(AST_OPERATIONS.REF, { id: refId, lag: 0 }),
+                createNode(AST_OPERATIONS.REF, {
+                  id: ref.accountId,
+                  lag: 0,
+                }),
               ],
             })
           );
         }
+        // MULとDIVの処理も追加可能
       }
 
       return createNode(AST_OPERATIONS.ADD, { args: refAddArgs });
+
+    case PARAMETER_TYPES.REFERENCE:
+      // 新構造のみ対応：単一参照として処理
+      if (
+        !parameterReferenceAccounts ||
+        !parameterReferenceAccounts.accountId
+      ) {
+        throw new Error(
+          `REFERENCE requires reference account for: ${account.accountName}`
+        );
+      }
+
+      // 値をそのまま参照
+      return createNode(AST_OPERATIONS.REF, {
+        id: parameterReferenceAccounts.accountId,
+        lag: 0,
+      });
 
     case PARAMETER_TYPES.FIXED_VALUE:
       // 横置きは前期値をそのまま使用

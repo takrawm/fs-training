@@ -10,43 +10,71 @@ import { ParameterUtils } from "./parameterUtils";
 import { AccountUtils } from "./accountUtils.js";
 import { getCFAdjustmentAccounts } from "./balanceSheetCalculator";
 import { PARAMETER_TYPES } from "./constants";
+import { isCFItem, extractCFItemDependencies } from "./cfItemUtils.js";
 
 /**
- * アカウントからAST式を構築し、依存関係を抽出する
+ * アカウントからAST式を構築し、依存関係を抽出する（新構造のみ対応）
  * @param {Object} account アカウント
  * @returns {Array} 依存するアカウントIDの配列
  */
 export function extractAccountDependencies(account) {
+  // CF項目は専用の依存関係抽出を使用
+  if (isCFItem(account)) {
+    return extractCFItemDependencies(account);
+  }
+
   const dependencies = [];
 
-  // 新しいParameterUtilsを使用
-  const parameterReferences = ParameterUtils.getParameterReferences(account);
-  const parameterType = ParameterUtils.getParameterType(account);
+  try {
+    const parameterReferences = ParameterUtils.getParameterReferences(account);
+    const parameterType = ParameterUtils.getParameterType(account);
 
-  // 1. parameterReferencesからの依存関係
-  if (parameterReferences?.length > 0) {
-    parameterReferences.forEach((ref) => {
-      const refId = ref.accountId || ref.id; // 新旧形式対応
-      if (refId && !dependencies.includes(refId)) {
-        dependencies.push(refId);
+    // 単一参照の場合
+    if (ParameterUtils.isSingleReference(account) && parameterReferences) {
+      const accountId = parameterReferences.accountId;
+      if (!accountId) {
+        throw new Error(
+          `参照アカウントIDが見つかりません。アカウント: ${
+            account.accountName || account.id
+          }`
+        );
       }
-    });
-  }
-
-  // 2. 期末残高+/-変動型の場合、前期の自分自身への依存関係を追加
-  if (parameterType === PARAMETER_TYPES.BALANCE_AND_CHANGE) {
-    if (!dependencies.includes(account.id)) {
-      dependencies.push(account.id); // 前期の自分自身
+      if (!dependencies.includes(accountId)) {
+        dependencies.push(accountId);
+      }
     }
-  }
+    // 複数参照の場合
+    else if (
+      ParameterUtils.isMultipleReferences(account) &&
+      parameterReferences
+    ) {
+      parameterReferences.forEach((ref, index) => {
+        const accountId = ref.accountId;
+        if (!accountId) {
+          throw new Error(
+            `参照アカウントIDが見つかりません。アカウント: ${
+              account.accountName || account.id
+            }, インデックス: ${index}`
+          );
+        }
+        if (!dependencies.includes(accountId)) {
+          dependencies.push(accountId);
+        }
+      });
+    }
 
-  // 旧形式との互換性
-  if (account.parameterReferenceAccounts?.length > 0) {
-    account.parameterReferenceAccounts.forEach((ref) => {
-      if (ref.id && !dependencies.includes(ref.id)) {
-        dependencies.push(ref.id);
+    // PROPORTIONATE の特別処理（自分自身への依存）
+    if (parameterType === PARAMETER_TYPES.PROPORTIONATE) {
+      if (!dependencies.includes(account.id)) {
+        dependencies.push(account.id); // 前期の自分自身
       }
-    });
+    }
+  } catch (error) {
+    // エラー情報を拡張して再throw
+    error.message = `依存関係抽出エラー [${
+      account.accountName || account.id
+    }]: ${error.message}`;
+    throw error;
   }
 
   return dependencies;
@@ -85,18 +113,29 @@ export function buildDependencyGraph(accounts) {
       });
     }
 
-    // 2. parameterReferencesによる依存関係
-    if (parameterReferences?.length > 0) {
+    // 2. parameterReferencesによる依存関係（新構造対応）
+    // 単一参照の場合
+    if (ParameterUtils.isSingleReference(account) && parameterReferences) {
+      const refId = parameterReferences.accountId;
+      if (refId && !graph[account.id].includes(refId)) {
+        graph[account.id].push(refId);
+      }
+    }
+    // 複数参照の場合
+    else if (
+      ParameterUtils.isMultipleReferences(account) &&
+      parameterReferences
+    ) {
       parameterReferences.forEach((ref) => {
-        const refId = ref.accountId || ref.id; // 新旧形式対応
+        const refId = ref.accountId;
         if (refId && !graph[account.id].includes(refId)) {
           graph[account.id].push(refId);
         }
       });
     }
 
-    // 3. 期末残高+/-変動型の場合、前期の自分自身への依存関係
-    if (parameterType === PARAMETER_TYPES.BALANCE_AND_CHANGE) {
+    // 3. PROPORTIONATE の場合、前期の自分自身への依存関係
+    if (parameterType === PARAMETER_TYPES.PROPORTIONATE) {
       // 前期の自分自身への依存は、計算時に特別に処理するため、
       // ここでは依存関係グラフには追加しない（循環参照を避けるため）
     }
@@ -111,15 +150,6 @@ export function buildDependencyGraph(accounts) {
       if (targetAccount && !graph[targetAccount.id].includes(account.id)) {
         graph[targetAccount.id].push(account.id);
       }
-    }
-
-    // 旧形式との互換性
-    if (account.parameterReferenceAccounts?.length > 0) {
-      account.parameterReferenceAccounts.forEach((ref) => {
-        if (ref.id && !graph[account.id].includes(ref.id)) {
-          graph[account.id].push(ref.id);
-        }
-      });
     }
   });
 

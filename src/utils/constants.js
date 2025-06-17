@@ -492,6 +492,7 @@ export const SUMMARY_ACCOUNTS = {
 };
 
 // CF項目の定義
+// CF項目の定義（新しい cfItemAttributes 構造を使用）
 export const CF_ITEMS = {
   営業利益_間接法: {
     id: "cf-operating-profit",
@@ -503,16 +504,24 @@ export const CF_ITEMS = {
     },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.REFERENCE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "op-profit", // PLの営業利益を参照
-          operation: OPERATIONS.ADD,
-          lag: 0,
+      // parameterは使用しない（CF項目は派生的存在のため）
+      parameter: null,
+      cfAdjustment: null,
+
+      // CF項目専用の属性
+      cfItemAttributes: {
+        cfItemType: "PL_ADJUSTMENT",
+        sourceAccount: {
+          accountId: "op-profit",
+          accountName: "営業利益",
+        },
+        calculationMethod: "DERIVED",
+        cfImpact: {
+          multiplier: 1, // PLの値をそのまま使用
+          formula: "営業利益[当期] × 1",
+          description: "PL項目をCFに転記",
         },
       },
-      cfAdjustment: null,
     },
     displayOrder: {
       order: "CF01",
@@ -685,7 +694,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
+        paramReferences: {
+          accountId: "rev-total",
+          operation: OPERATIONS.MUL,
+          lag: 0,
+        },
       },
       cfAdjustment: null,
     },
@@ -811,7 +824,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
+        paramReferences: {
+          accountId: "rev-total",
+          operation: OPERATIONS.MUL,
+          lag: 0,
+        },
       },
     },
     flowAttributes: null,
@@ -910,7 +927,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
+        paramReferences: {
+          accountId: "rev-total",
+          operation: OPERATIONS.MUL,
+          lag: 0,
+        },
       },
     },
     flowAttributes: null,
@@ -927,7 +948,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
+        paramReferences: {
+          accountId: "rev-total",
+          operation: OPERATIONS.MUL,
+          lag: 0,
+        },
       },
     },
     flowAttributes: null,
@@ -1093,7 +1118,11 @@ export const DEFAULT_SHEET_TYPES = {
       parameter: {
         paramType: PARAMETER_TYPES.PROPORTIONATE,
         paramValue: null,
-        paramReferences: { accountId: "rev-total", operation: null, lag: 0 },
+        paramReferences: {
+          accountId: "rev-total",
+          operation: OPERATIONS.MUL,
+          lag: 0,
+        },
       },
       cfAdjustment: null,
     },
