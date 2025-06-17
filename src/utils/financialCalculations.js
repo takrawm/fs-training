@@ -414,13 +414,13 @@ export const addNewPeriodToModel = (model) => {
   console.log("=== CF項目値計算終了 ===");
   console.log("=== CF項目自動生成終了 ===");
 
-  // モデル検証
+  // CF項目の構造検証
   const validation = updatedModel.validate();
   if (!validation.isValid) {
-    console.warn("モデル検証エラー:", validation.errors);
+    console.warn("CF項目構造検証エラー:", validation.errors);
     validation.warnings.forEach((warning) => console.warn("警告:", warning));
   } else {
-    console.log("モデル検証成功:", validation.stats);
+    console.log("CF項目構造検証成功:", validation.stats);
   }
 
   return updatedModel;
