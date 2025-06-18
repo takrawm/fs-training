@@ -12,9 +12,9 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
 
   // 新構造と古い構造の両方に対応
   let accounts;
-  if (financialModel.accounts?.getAll) {
+  if (financialModel.accounts?.getAllAccounts) {
     // 新構造: AccountManagerインスタンス
-    accounts = financialModel.accounts.getAll();
+    accounts = financialModel.accounts.getAllAccounts();
   } else if (Array.isArray(financialModel.accounts)) {
     // 古い構造: 配列
     accounts = financialModel.accounts;

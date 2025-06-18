@@ -25,9 +25,9 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
   const getAccounts = useCallback(() => {
     if (!financialModel) return [];
 
-    if (financialModel.accounts?.getAll) {
+    if (financialModel.accounts?.getAllAccounts) {
       // 新構造: AccountManagerインスタンス
-      return financialModel.accounts.getAll();
+      return financialModel.accounts.getAllAccounts();
     } else if (Array.isArray(financialModel.accounts)) {
       // 古い構造: 配列
       return financialModel.accounts;
@@ -64,7 +64,7 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
 
       console.log("期間ごとの値の詳細:", periodValueCounts);
       console.log("アカウント構造:", {
-        type: financialModel.accounts?.getAll
+        type: financialModel.accounts?.getAllAccounts
           ? "新構造(AccountManager)"
           : "古い構造(配列)",
         count: getAccounts().length,

@@ -7,15 +7,15 @@ import { isCFItem } from "../utils/cfItemUtils.js";
 export class FinancialModel {
   constructor() {
     this.accounts = {
-      regular: [], // 通常の勘定科目
+      regularItems: [], // 通常の勘定科目
       cfItems: [], // CF項目
 
       /**
        * 全ての科目を取得（通常科目 + CF項目）
        * @returns {Array} 全科目の配列
        */
-      getAll() {
-        return [...this.regular, ...this.cfItems];
+      getAllAccounts() {
+        return [...this.regularItems, ...this.cfItems];
       },
 
       /**
@@ -24,15 +24,15 @@ export class FinancialModel {
        * @returns {Object|undefined} 見つかった科目
        */
       findById(id) {
-        return this.getAll().find((acc) => acc.id === id);
+        return this.getAllAccounts().find((acc) => acc.id === id);
       },
 
       /**
        * 通常科目のみを取得
        * @returns {Array} 通常科目の配列
        */
-      getRegular() {
-        return this.regular;
+      getRegularItems() {
+        return this.regularItems;
       },
 
       /**
@@ -44,19 +44,18 @@ export class FinancialModel {
       },
 
       /**
-       * 通常科目を追加
-       * @param {Object} account 追加する科目
-       * @throws {Error} CF項目を追加しようとした場合
+       * 通常の勘定科目を追加
+       * @param {Object} account - 追加する勘定科目
        */
-      addRegular(account) {
-        if (isCFItem(account)) {
+      addRegularItem(account) {
+        if (account.type === "cf") {
           throw new Error(
-            `CF項目はaddCFItem()を使用してください: ${
-              account.accountName || account.id
+            `通常の科目はaddRegularItem()を使用してください: ${
+              account.name || account.id
             }`
           );
         }
-        this.regular.push(account);
+        this.regularItems.push(account);
       },
 
       /**
@@ -67,7 +66,7 @@ export class FinancialModel {
       addCFItem(cfAccount) {
         if (!isCFItem(cfAccount)) {
           throw new Error(
-            `通常の科目はaddRegular()を使用してください: ${
+            `通常の科目はaddRegularItem()を使用してください: ${
               cfAccount.accountName || cfAccount.id
             }`
           );
@@ -76,11 +75,11 @@ export class FinancialModel {
       },
 
       /**
-       * 複数の通常科目を一括追加
-       * @param {Array} accounts 追加する科目の配列
+       * 複数の通常の勘定科目を一括追加
+       * @param {Array} accounts - 追加する勘定科目の配列
        */
       addRegularBatch(accounts) {
-        accounts.forEach((account) => this.addRegular(account));
+        accounts.forEach((account) => this.addRegularItem(account));
       },
 
       /**
@@ -110,7 +109,7 @@ export class FinancialModel {
           if (isCFItem(account)) {
             this.cfItems.push(account);
           } else {
-            this.regular.push(account);
+            this.regularItems.push(account);
           }
         });
       },
@@ -121,13 +120,12 @@ export class FinancialModel {
        */
       getStats() {
         return {
-          regularCount: this.regular.length,
+          regularItemsCount: this.regularItems.length,
           cfItemCount: this.cfItems.length,
-          totalCount: this.getAll().length,
+          totalCount: this.getAllAccounts().length,
           breakdown: {
-            regular: this.regular.map((acc) => ({
-              id: acc.id,
-              name: acc.accountName,
+            regularItems: this.regularItems.map((acc) => ({
+              ...acc,
               type: "regular",
             })),
             cfItems: this.cfItems.map((acc) => ({
@@ -204,7 +202,7 @@ export class FinancialModel {
     });
 
     // 通常科目がCF項目属性を持っていないかチェック
-    this.accounts.getRegular().forEach((account) => {
+    this.accounts.getRegularItems().forEach((account) => {
       if (account.flowAttributes?.cfItemAttributes) {
         errors.push(
           `通常科目がcfItemAttributesを持っています: ${account.accountName}`
@@ -227,7 +225,7 @@ export class FinancialModel {
   toJSON() {
     return {
       accounts: {
-        regular: this.accounts.regular,
+        regularItems: this.accounts.regularItems,
         cfItems: this.accounts.cfItems,
         stats: this.accounts.getStats(),
       },

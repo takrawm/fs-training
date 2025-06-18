@@ -220,7 +220,7 @@ export const addNewPeriodToModel = (model) => {
   updatedModel.addPeriod(newPeriod);
 
   // 通常科目の値を計算（CF項目は後で処理）
-  updatedModel.accounts.getRegular().forEach((account) => {
+  updatedModel.accounts.getRegularItems().forEach((account) => {
     if (!account) return;
 
     let newValue = 0;
@@ -231,7 +231,7 @@ export const addNewPeriodToModel = (model) => {
       newValue = calculateSummaryAccountValue(
         account,
         newPeriod,
-        createParentChildMap(updatedModel.accounts.getAll()),
+        createParentChildMap(updatedModel.accounts.getAllAccounts()),
         updatedModel.values
       );
     } else {
@@ -240,7 +240,7 @@ export const addNewPeriodToModel = (model) => {
         newPeriod,
         lastPeriod,
         updatedModel.values,
-        updatedModel.accounts.getAll()
+        updatedModel.accounts.getAllAccounts()
       );
       isCalculated = false;
     }
@@ -261,7 +261,7 @@ export const addNewPeriodToModel = (model) => {
 
   // 1. CF調整項目の生成
   const cfAdjustmentAccounts = updatedModel.accounts
-    .getRegular()
+    .getRegularItems()
     .filter((acc) => AccountUtils.getCFAdjustment(acc) !== null);
   console.log("CF調整対象アカウント:", cfAdjustmentAccounts);
 
@@ -285,7 +285,7 @@ export const addNewPeriodToModel = (model) => {
         const ast = buildFormula(
           cfAccount,
           periodYear,
-          updatedModel.accounts.getAll()
+          updatedModel.accounts.getAllAccounts()
         );
 
         if (ast) {
@@ -321,7 +321,7 @@ export const addNewPeriodToModel = (model) => {
 
   // isParameterBased === trueのBS科目を抽出
   const parameterBasedBSAccounts = updatedModel.accounts
-    .getRegular()
+    .getRegularItems()
     .filter((account) => {
       return (
         AccountUtils.isStockAccount(account) &&
@@ -358,7 +358,7 @@ export const addNewPeriodToModel = (model) => {
           newPeriod,
           lastPeriod,
           updatedModel.values,
-          updatedModel.accounts.getAll()
+          updatedModel.accounts.getAllAccounts()
         );
 
         // 値を追加
@@ -394,7 +394,7 @@ export const addNewPeriodToModel = (model) => {
           newPeriod,
           lastPeriod,
           updatedModel.values,
-          updatedModel.accounts.getAll()
+          updatedModel.accounts.getAllAccounts()
         );
 
         updatedModel.addValue({
