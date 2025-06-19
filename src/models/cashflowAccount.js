@@ -4,7 +4,6 @@ import {
   PARAMETER_TYPES,
   CF_CATEGORIES,
   OPERATIONS,
-  BS_TYPES,
 } from "../utils/constants";
 import { AccountUtils } from "../utils/accountUtils.js";
 import { CF_ITEM_TYPES } from "../utils/cfItemUtils.js";
@@ -30,7 +29,7 @@ export const createCFAdjustmentAccount = (sourceAccount, order = null) => {
     parentAccountId: getCFParentId(cfAdj.cfCategory),
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
+      name: FLOW_SHEETS.CF,
     },
     stockAttributes: null,
     flowAttributes: {
@@ -45,17 +44,9 @@ export const createCFAdjustmentAccount = (sourceAccount, order = null) => {
           accountName: sourceAccount.accountName,
           plCategory: "depreciation", // または適切なカテゴリ
         },
-        calculationMethod: "DERIVED",
         cfImpact: {
           // PLでマイナス（費用）ならCFではプラス（加算）
           multiplier: cfAdj.operation === OPERATIONS.SUB ? 1 : -1,
-          formula: `${sourceAccount.accountName}[当期] × ${
-            cfAdj.operation === OPERATIONS.SUB ? 1 : -1
-          }`,
-          description:
-            cfAdj.operation === OPERATIONS.SUB
-              ? "非資金費用のため加算"
-              : "非資金収益のため減算",
         },
       },
     },
@@ -81,10 +72,10 @@ export const createBSChangeAccount = (bsAccount, changeType, order = null) => {
   const accountName = `${bsAccount.accountName}の${
     changeType === "increase" ? "増加" : "減少"
   }`;
-  const bsType = bsAccount.stockAttributes.bsType;
+  const isCredit = bsAccount.isCredit;
 
   // 資産の増加はCFマイナス、負債の増加はCFプラス
-  const operation = determineOperationForBSChange(bsType, changeType);
+  const operation = determineOperationForBSChange(isCredit, changeType);
 
   return {
     id: `cf-bs-${bsAccount.id}-${changeType}`,
@@ -92,7 +83,7 @@ export const createBSChangeAccount = (bsAccount, changeType, order = null) => {
     parentAccountId: "ope-cf-total", // 運転資本変動は営業CFに含まれる
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
+      name: FLOW_SHEETS.CF,
     },
     stockAttributes: null,
     flowAttributes: {
@@ -137,12 +128,12 @@ const getCFParentId = (cfCategory) => {
 
 /**
  * BS変動のCF演算子を決定する
- * @param {string} bsType - BSタイプ（ASSET/LIABILITY_EQUITY）
+ * @param {boolean} isCredit - 貸方科目かどうか（false: 資産、true: 負債・純資産）
  * @param {string} changeType - 変動タイプ（increase/decrease）
  * @returns {string} 演算子
  */
-const determineOperationForBSChange = (bsType, changeType) => {
-  if (bsType === BS_TYPES.ASSET) {
+const determineOperationForBSChange = (isCredit, changeType) => {
+  if (isCredit === false) {
     // 資産の増加はCFマイナス、減少はプラス
     return changeType === "increase" ? OPERATIONS.SUB : OPERATIONS.ADD;
   } else {

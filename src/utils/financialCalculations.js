@@ -235,10 +235,6 @@ export const addNewPeriodToModel = (model) => {
   const regularAccounts = updatedModel.accounts.getRegularItems();
   const calculationOrder = getCalculationOrder(regularAccounts);
 
-  console.log("=== 計算順序情報 ===");
-  console.log("計算対象科目数:", regularAccounts.length);
-  console.log("依存関係順序数:", calculationOrder.length);
-
   // 依存関係順序に従って計算
   calculationOrder.forEach((accountId) => {
     const account = regularAccounts.find((acc) => acc.id === accountId);
@@ -359,8 +355,7 @@ export const addNewPeriodToModel = (model) => {
       return (
         AccountUtils.isStockAccount(account) &&
         account.stockAttributes?.isParameterBased === true &&
-        (account.stockAttributes?.bsType === "ASSET" ||
-          account.stockAttributes?.bsType === "LIABILITY_EQUITY")
+        account.isCredit !== null // 現預金ではないBS科目
       );
     });
 
@@ -440,7 +435,7 @@ export const addNewPeriodToModel = (model) => {
       parentAccountId: "inv-cf-total", // 投資CFの親科目
       sheet: {
         sheetType: SHEET_TYPES.FLOW,
-        name: FLOW_SHEETS.FINANCING,
+        name: FLOW_SHEETS.CF,
       },
       stockAttributes: null,
       flowAttributes: {
@@ -455,7 +450,6 @@ export const addNewPeriodToModel = (model) => {
           calculationMethod: "DERIVED",
           cfImpact: {
             multiplier: -1, // 投資はキャッシュアウトフロー
-            formula: `${capexAccount.accountName}[当期] × -1`,
             description: "設備投資によるキャッシュアウトフロー",
           },
         },

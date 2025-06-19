@@ -21,13 +21,12 @@ export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
 
   // 対象となるBS科目を抽出
   // 1. isParameterBasedがtrue
-  // 2. bsTypeがASSETまたはLIABILITY_EQUITY
+  // 2. isCreditがnullでない（現預金以外のBS科目）
   const targetBSAccounts = accounts.filter((account) => {
     return (
       AccountUtils.isStockAccount(account) &&
       account.stockAttributes?.isParameterBased === true &&
-      (account.stockAttributes?.bsType === "ASSET" ||
-        account.stockAttributes?.bsType === "LIABILITY_EQUITY")
+      account.isCredit !== null // 現預金以外のBS科目
     );
   });
 
@@ -40,10 +39,10 @@ export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
     // キャッシュフロー影響を計算
     let cashflowImpact = 0;
     if (Math.abs(change) > 0.01) {
-      if (account.stockAttributes.bsType === "ASSET") {
+      if (account.isCredit === false) {
         // 資産の場合：増加はマイナス、減少はプラス
         cashflowImpact = -change;
-      } else if (account.stockAttributes.bsType === "LIABILITY_EQUITY") {
+      } else if (account.isCredit === true) {
         // 負債・資本の場合：増加はプラス、減少はマイナス
         cashflowImpact = change;
       }
@@ -52,7 +51,7 @@ export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
     return {
       accountId: account.id,
       accountName: account.accountName,
-      bsType: account.stockAttributes.bsType,
+      isCredit: account.isCredit,
       currentPeriod: newPeriod.year,
       previousPeriod: lastPeriod.year,
       currentValue,

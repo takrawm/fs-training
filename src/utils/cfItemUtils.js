@@ -2,7 +2,7 @@
 // CF項目（BS変動項目）専用ユーティリティ
 // ========================================
 
-import { SHEET_TYPES, FLOW_SHEETS, BS_TYPES, OPERATIONS } from "./constants.js";
+import { SHEET_TYPES, FLOW_SHEETS, OPERATIONS } from "./constants.js";
 
 /**
  * CF項目のタイプ定義
@@ -36,19 +36,13 @@ export const createCFItemAttributes = (
         ...baseAttributes,
         sourceAccount: {
           ...baseAttributes.sourceAccount,
-          bsType: sourceAccount.stockAttributes?.bsType,
+          isCredit: sourceAccount.isCredit,
         },
         cfImpact: {
           // 資産増加は-1（現金減少）、負債増加は+1（現金増加）
-          multiplier:
-            sourceAccount.stockAttributes?.bsType === BS_TYPES.ASSET ? -1 : 1,
-          formula: `(${sourceAccount.accountName}[当期] - ${
-            sourceAccount.accountName
-          }[前期]) × ${
-            sourceAccount.stockAttributes?.bsType === BS_TYPES.ASSET ? -1 : 1
-          }`,
+          multiplier: sourceAccount.isCredit === false ? -1 : 1,
           description:
-            sourceAccount.stockAttributes?.bsType === BS_TYPES.ASSET
+            sourceAccount.isCredit === false
               ? "資産増加により現金減少"
               : "負債増加により現金増加",
         },
@@ -63,9 +57,6 @@ export const createCFItemAttributes = (
         },
         cfImpact: {
           multiplier: options.multiplier || 1,
-          formula: `${sourceAccount.accountName}[当期] × ${
-            options.multiplier || 1
-          }`,
           description: options.description || "PL項目の非資金調整",
         },
       };
@@ -92,7 +83,7 @@ export const createBSChangeAccount = (bsAccount, orderCounter) => {
     // シート情報
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
+      name: FLOW_SHEETS.CF,
     },
 
     // ストック属性は持たない（フロー科目なので）
@@ -135,7 +126,7 @@ export const createPLAdjustmentAccount = (plAccount, options = {}) => {
 
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
-      name: FLOW_SHEETS.FINANCING,
+      name: FLOW_SHEETS.CF,
     },
 
     stockAttributes: null,
@@ -285,7 +276,7 @@ export const shouldCreateCFItem = (bsAccount) => {
   const hasParameter = bsAccount.stockAttributes?.isParameterBased === true;
 
   // 現預金は除外（別途計算される）
-  const isCash = bsAccount.stockAttributes?.bsType === BS_TYPES.CASH;
+  const isCash = bsAccount.id === "cash-total";
 
   return hasParameter && !isCash;
 };

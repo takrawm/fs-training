@@ -1,4 +1,4 @@
-import { BS_TYPES, OPERATIONS } from "./constants";
+import { OPERATIONS } from "./constants";
 import { ParameterUtils } from "./parameterUtils";
 import { AccountUtils } from "./accountUtils.js";
 import { getValue } from "./financialCalculations.js";
@@ -99,7 +99,7 @@ const calculateBSChanges = (accounts, values, newPeriod, lastPeriod) => {
     (acc) =>
       AccountUtils.isStockAccount(acc) &&
       acc.stockAttributes?.isParameterBased === true &&
-      acc.stockAttributes?.bsType !== BS_TYPES.CASH
+      acc.id !== "cash-total"
   );
 
   bsAccounts.forEach((account) => {
@@ -108,7 +108,7 @@ const calculateBSChanges = (accounts, values, newPeriod, lastPeriod) => {
     const previousValue = getValue(values, account.id, lastPeriod.id);
 
     const change = currentValue - previousValue;
-    const bsType = account.stockAttributes.bsType;
+    const isCredit = account.isCredit;
 
     console.log(`BS科目: ${account.accountName}`);
     console.log(
@@ -116,10 +116,10 @@ const calculateBSChanges = (accounts, values, newPeriod, lastPeriod) => {
     );
 
     // 資産の増加はキャッシュの減少、負債・資本の増加はキャッシュの増加
-    if (bsType === BS_TYPES.ASSET) {
+    if (isCredit === false) {
       bsImpact -= change; // 資産増加はマイナス
       console.log(`  → 資産増加のため、キャッシュフロー: -${change}`);
-    } else if (bsType === BS_TYPES.LIABILITY_EQUITY) {
+    } else if (isCredit === true) {
       bsImpact += change; // 負債・資本増加はプラス
       console.log(`  → 負債・資本増加のため、キャッシュフロー: +${change}`);
     }

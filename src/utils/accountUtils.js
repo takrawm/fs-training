@@ -41,4 +41,71 @@ export const AccountUtils = {
     }
     return [];
   },
+
+  /**
+   * 資産科目かどうかを判定
+   * @param {Object} account 勘定科目
+   * @returns {boolean} 資産科目の場合true
+   */
+  isAssetAccount(account) {
+    return account.isCredit === false && this.isStockAccount(account);
+  },
+
+  /**
+   * 負債科目かどうかを判定
+   * @param {Object} account 勘定科目
+   * @returns {boolean} 負債科目の場合true
+   */
+  isLiabilityAccount(account) {
+    return account.isCredit === true && this.isStockAccount(account);
+  },
+
+  /**
+   * 純資産科目かどうかを判定
+   * @param {Object} account 勘定科目
+   * @returns {boolean} 純資産科目の場合true
+   */
+  isEquityAccount(account) {
+    return account.isCredit === true && this.isStockAccount(account);
+  },
+
+  /**
+   * 収益科目かどうかを判定
+   * @param {Object} account 勘定科目
+   * @returns {boolean} 収益科目の場合true
+   */
+  isRevenueAccount(account) {
+    return account.isCredit === true && this.isFlowAccount(account);
+  },
+
+  /**
+   * 費用科目かどうかを判定
+   * @param {Object} account 勘定科目
+   * @returns {boolean} 費用科目の場合true
+   */
+  isExpenseAccount(account) {
+    return account.isCredit === false && this.isFlowAccount(account);
+  },
+
+  /**
+   * CAPEX科目かどうかを判定
+   * @param {Object} account 勘定科目
+   * @returns {boolean} CAPEX科目の場合true
+   */
+  isCAPEXAccount(account) {
+    return account.isCredit === null && this.isFlowAccount(account);
+  },
+
+  /**
+   * CF項目かどうかを判定
+   * @param {Object} account 勘定科目
+   * @returns {boolean} CF項目の場合true
+   */
+  isCFAccount(account) {
+    return (
+      account.isCredit === null &&
+      this.isFlowAccount(account) &&
+      account.sheet?.name === "cf"
+    );
+  },
 };

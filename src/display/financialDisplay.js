@@ -63,7 +63,7 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
         );
       case "CF":
         return (
-          account.sheet?.name === FLOW_SHEETS.FINANCING ||
+          account.sheet?.name === FLOW_SHEETS.CF ||
           account.sheetType?.sheet === "CF"
         );
       case "パラメータ":
