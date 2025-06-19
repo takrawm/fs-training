@@ -19,7 +19,7 @@ import { createAccountValues } from "../models/accountValue";
 import { createPeriods } from "../models/period";
 import { addNewPeriodToModel } from "../utils/financialCalculations";
 import { FinancialModel } from "../models/FinancialModel";
-import { isCFItem } from "../utils/cfItemUtils";
+import { AccountUtils } from "../utils/accountUtils";
 import "../styles/FinancialModelBuilder.css";
 
 // Handsontableのすべてのモジュールを登録
@@ -84,7 +84,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
 
       // アカウントを適切に分類
       updatedAccounts.forEach((account) => {
-        if (isCFItem(account)) {
+        if (AccountUtils.isCFItem(account)) {
           newModel.accounts.addCFItem(account);
         } else {
           newModel.accounts.addRegularItem(account);
@@ -109,7 +109,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
 
       // アカウントを適切に分類
       updatedAccounts.forEach((account) => {
-        if (isCFItem(account)) {
+        if (AccountUtils.isCFItem(account)) {
           newModel.accounts.addCFItem(account);
         } else {
           newModel.accounts.addRegularItem(account);
@@ -205,7 +205,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
 
       // 完成されたソート済みアカウントを一度だけ追加
       sortedAccounts.forEach((account) => {
-        if (isCFItem(account)) {
+        if (AccountUtils.isCFItem(account)) {
           newFinancialModel.accounts.addCFItem(account);
         } else {
           newFinancialModel.accounts.addRegularItem(account);
@@ -278,7 +278,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
 
       // アカウントリストを更新
       updatedAccounts.forEach((account) => {
-        if (isCFItem(account)) {
+        if (AccountUtils.isCFItem(account)) {
           updatedModel.accounts.addCFItem(account);
         } else {
           updatedModel.accounts.addRegularItem(account);
@@ -328,7 +328,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
     newModel.values = [...financialModel.values];
 
     updatedAccounts.forEach((account) => {
-      if (isCFItem(account)) {
+      if (AccountUtils.isCFItem(account)) {
         newModel.accounts.addCFItem(account);
       } else {
         newModel.accounts.addRegularItem(account);

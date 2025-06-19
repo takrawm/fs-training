@@ -1,4 +1,4 @@
-import { isCFItem } from "../utils/cfItemUtils.js";
+import { AccountUtils } from "../utils/accountUtils.js";
 
 /**
  * 財務モデルクラス
@@ -24,6 +24,7 @@ export class FinancialModel {
        * @returns {Object|undefined} 見つかった科目
        */
       findById(id) {
+        // findメソッドは、条件を最初に満たした要素を返す
         return this.getAllAccounts().find((acc) => acc.id === id);
       },
 
@@ -64,7 +65,7 @@ export class FinancialModel {
        * @throws {Error} 通常科目を追加しようとした場合
        */
       addCFItem(cfAccount) {
-        if (!isCFItem(cfAccount)) {
+        if (!AccountUtils.isCFItem(cfAccount)) {
           throw new Error(
             `通常の科目はaddRegularItem()を使用してください: ${
               cfAccount.accountName || cfAccount.id
@@ -106,7 +107,7 @@ export class FinancialModel {
        */
       migrateFromArray(accountsArray) {
         accountsArray.forEach((account) => {
-          if (isCFItem(account)) {
+          if (AccountUtils.isCFItem(account)) {
             this.cfItems.push(account);
           } else {
             this.regularItems.push(account);
@@ -189,23 +190,56 @@ export class FinancialModel {
     const errors = [];
     const warnings = [];
 
-    // CF項目が正しい構造を持っているかチェック
+    // CF項目が正しいシンプル構造を持っているかチェック
     this.accounts.getCFItems().forEach((cfAccount) => {
-      if (!cfAccount.flowAttributes?.cfItemAttributes) {
-        errors.push(`CF項目にcfItemAttributesが不足: ${cfAccount.accountName}`);
+      // 新しいシンプル構造の検証
+      if (cfAccount.sheet !== null) {
+        errors.push(
+          `CF項目のsheetはnullである必要があります: ${cfAccount.accountName}`
+        );
       }
-      if (cfAccount.flowAttributes?.parameter !== null) {
+      if (cfAccount.flowAttributes !== null) {
+        errors.push(
+          `CF項目のflowAttributesはnullである必要があります: ${cfAccount.accountName}`
+        );
+      }
+      if (cfAccount.stockAttributes !== null) {
+        errors.push(
+          `CF項目のstockAttributesはnullである必要があります: ${cfAccount.accountName}`
+        );
+      }
+      if (cfAccount.isCredit !== null) {
+        errors.push(
+          `CF項目のisCreditはnullである必要があります: ${cfAccount.accountName}`
+        );
+      }
+
+      // 必須プロパティの存在チェック
+      if (!cfAccount.displayOrder?.order) {
+        warnings.push(`CF項目にdisplayOrderが不足: ${cfAccount.accountName}`);
+      }
+      if (!cfAccount.parentAccountId) {
         warnings.push(
-          `CF項目がparameterを持っています: ${cfAccount.accountName}`
+          `CF項目にparentAccountIdが不足: ${cfAccount.accountName}`
         );
       }
     });
 
     // 通常科目がCF項目属性を持っていないかチェック
     this.accounts.getRegularItems().forEach((account) => {
-      if (account.flowAttributes?.cfItemAttributes) {
+      // 通常科目は適切なsheet情報を持つべき
+      if (!account.sheet?.sheetType) {
+        warnings.push(`通常科目にsheet情報が不足: ${account.accountName}`);
+      }
+
+      // 通常科目がCF項目のような構造を持っていないかチェック
+      if (
+        account.sheet === null &&
+        account.flowAttributes === null &&
+        account.stockAttributes === null
+      ) {
         errors.push(
-          `通常科目がcfItemAttributesを持っています: ${account.accountName}`
+          `通常科目がCF項目のような構造を持っています: ${account.accountName}`
         );
       }
     });

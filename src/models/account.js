@@ -84,7 +84,10 @@ export const createSortedAccounts = (accounts) => {
 
   const prefixMap = {};
   Object.values(SUMMARY_ACCOUNTS).forEach((account) => {
-    prefixMap[account.accountName] = account.displayOrder.prefix;
+    // displayOrderが存在する場合のみprefixを取得
+    if (account.displayOrder && account.displayOrder.prefix) {
+      prefixMap[account.accountName] = account.displayOrder.prefix;
+    }
   });
 
   const counterMap = {};

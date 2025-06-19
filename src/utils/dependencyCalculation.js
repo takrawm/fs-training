@@ -10,7 +10,6 @@ import { ParameterUtils } from "./parameterUtils";
 import { AccountUtils } from "./accountUtils.js";
 import { getCFAdjustmentAccounts } from "./balanceSheetCalculator";
 import { PARAMETER_TYPES } from "./constants";
-import { isCFItem, extractCFItemDependencies } from "./cfItemUtils.js";
 
 /**
  * アカウントからAST式を構築し、依存関係を抽出する（新構造のみ対応）
@@ -18,9 +17,9 @@ import { isCFItem, extractCFItemDependencies } from "./cfItemUtils.js";
  * @returns {Array} 依存するアカウントIDの配列
  */
 export function extractAccountDependencies(account) {
-  // CF項目は専用の依存関係抽出を使用
-  if (isCFItem(account)) {
-    return extractCFItemDependencies(account);
+  // CF項目は依存関係を持たない（統合設計では作成時に値も計算される）
+  if (AccountUtils.isCFItem(account)) {
+    return [];
   }
 
   const dependencies = [];
@@ -104,10 +103,7 @@ export function buildDependencyGraph(accounts) {
       const childAccounts = accounts.filter(
         (a) => a.parentAccountId === account.id
       );
-      console.log(`親子関係チェック: ${account.accountName} (${account.id})`);
-      console.log(`  子アカウント数: ${childAccounts.length}`);
       childAccounts.forEach((child) => {
-        console.log(`  子: ${child.accountName} (${child.id})`);
         if (!graph[account.id].includes(child.id)) {
           graph[account.id].push(child.id); // 親は子に依存する
         }
@@ -210,8 +206,6 @@ export function topologicalSort(graph) {
  */
 export function getCalculationOrder(accounts) {
   const graph = buildDependencyGraph(accounts);
-  console.log("依存関係グラフ:", graph);
   const order = topologicalSort(graph);
-  console.log("計算順序:", order);
   return order;
 }

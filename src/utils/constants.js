@@ -729,7 +729,7 @@ export const DEFAULT_SHEET_TYPES = {
       cfAdjustment: null,
     },
   },
-  減価償却費_PL: {
+  減価償却費: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.PL,
@@ -751,7 +751,7 @@ export const DEFAULT_SHEET_TYPES = {
       },
     },
   },
-  無形固定資産償却費_PL: {
+  無形固定資産償却費: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.PL,
@@ -826,7 +826,7 @@ export const DEFAULT_SHEET_TYPES = {
       cfAdjustment: null,
     },
   },
-  現預金: {
+  現預金合計: {
     sheet: {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,

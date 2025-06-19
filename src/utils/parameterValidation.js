@@ -1,6 +1,6 @@
 import { PARAMETER_TYPES } from "./constants.js";
 import { ParameterUtils } from "./parameterUtils.js";
-import { isCFItem, getCFItemType } from "./cfItemUtils.js";
+import { AccountUtils } from "./accountUtils.js";
 
 /**
  * 旧構造を検出してエラーを投げる
@@ -106,7 +106,7 @@ export function extractAccountDependencies(account) {
 
   try {
     // CF項目は専用の依存関係抽出を使用
-    if (isCFItem(account)) {
+    if (AccountUtils.isCFItem(account)) {
       const cfAttrs = account.flowAttributes?.cfItemAttributes;
       if (cfAttrs?.sourceAccount?.accountId) {
         dependencies.push(cfAttrs.sourceAccount.accountId);

@@ -108,4 +108,20 @@ export const AccountUtils = {
       account.sheet?.name === "cf"
     );
   },
+
+  /**
+   * CF項目かどうかを判定（新しいシンプル化設計版）
+   * 新しい設計では、CF項目はsheetプロパティがnullで、
+   * flowAttributesとstockAttributesもnullとなります
+   * @param {Object} account 勘定科目
+   * @returns {boolean} CF項目の場合true
+   */
+  isCFItem(account) {
+    return (
+      account.sheet === null &&
+      account.flowAttributes === null &&
+      account.stockAttributes === null &&
+      account.isCredit === null
+    );
+  },
 };

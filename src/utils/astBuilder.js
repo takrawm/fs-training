@@ -7,7 +7,6 @@ import {
   isCFAdjustmentTarget,
   getCFAdjustmentAccounts,
 } from "./balanceSheetCalculator";
-import { isCFItem, getCFItemType } from "./cfItemUtils.js";
 
 /**
  * 勘定科目からASTを構築する
@@ -18,7 +17,7 @@ import { isCFItem, getCFItemType } from "./cfItemUtils.js";
  */
 export const buildFormula = (account, period, accounts) => {
   // CF項目は専用の処理に委譲（ASTではなく専用の計算ロジックを使用）
-  if (isCFItem(account)) {
+  if (AccountUtils.isCFItem(account)) {
     return null; // CF項目は calculateCFItemValue で処理される
   }
 
