@@ -105,6 +105,11 @@ export const buildFormula = (account, period, accounts) => {
         );
       }
 
+      console.log(`=== PROPORTIONATE AST構築: ${account.accountName} ===`);
+      console.log(
+        `参照先: ${refAccount.accountName} (${parameterReferenceAccounts.accountId})`
+      );
+
       // 参照先の成長率計算用ノード
       const refLastYearNode = createNode(AST_OPERATIONS.REF, {
         id: parameterReferenceAccounts.accountId,
@@ -126,7 +131,7 @@ export const buildFormula = (account, period, accounts) => {
       });
 
       // 自分の前期値 × (1 + 成長率)
-      return createNode(AST_OPERATIONS.MUL, {
+      const proportionateNode = createNode(AST_OPERATIONS.MUL, {
         args: [
           createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 }),
           createNode(AST_OPERATIONS.ADD, {
@@ -137,6 +142,9 @@ export const buildFormula = (account, period, accounts) => {
           }),
         ],
       });
+
+      console.log("=== PROPORTIONATE AST構築完了 ===");
+      return proportionateNode;
 
     case PARAMETER_TYPES.CALCULATION:
       // 複数参照（配列）として処理

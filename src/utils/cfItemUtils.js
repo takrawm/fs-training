@@ -215,6 +215,23 @@ export const calculateCFItemValue = (
       return cfImpact;
     }
 
+    case CF_ITEM_TYPES.OTHER: {
+      // その他のCF項目（CAPEX投資CFなど）
+      const currentValue = getValue(
+        values,
+        cfAttrs.sourceAccount.accountId,
+        newPeriod.id
+      );
+      const cfImpact = currentValue * cfAttrs.cfImpact.multiplier;
+
+      console.log(`その他CF計算: ${cfAccount.accountName}`);
+      console.log(`  元科目: ${cfAttrs.sourceAccount.accountName}`);
+      console.log(`  当期値: ${currentValue}`);
+      console.log(`  CF影響: ${cfImpact} (×${cfAttrs.cfImpact.multiplier})`);
+
+      return cfImpact;
+    }
+
     default:
       throw new Error(`未知のCF項目タイプ: ${cfAttrs.cfItemType}`);
   }

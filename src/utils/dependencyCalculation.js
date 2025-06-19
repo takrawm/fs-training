@@ -100,13 +100,14 @@ export function buildDependencyGraph(accounts) {
 
     // 1. 親子関係（合計）
     if (parameterType === PARAMETER_TYPES.CHILDREN_SUM) {
-      // 子アカウントを見つける（新しい構造対応）
+      // 子アカウントを見つける（現在の構造対応）
       const childAccounts = accounts.filter(
-        (a) =>
-          a.parentAccountId === account.id ||
-          a.parentAccount === account.accountName
+        (a) => a.parentAccountId === account.id
       );
+      console.log(`親子関係チェック: ${account.accountName} (${account.id})`);
+      console.log(`  子アカウント数: ${childAccounts.length}`);
       childAccounts.forEach((child) => {
+        console.log(`  子: ${child.accountName} (${child.id})`);
         if (!graph[account.id].includes(child.id)) {
           graph[account.id].push(child.id); // 親は子に依存する
         }

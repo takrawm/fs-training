@@ -7,6 +7,7 @@ import {
   BS_TYPES,
 } from "../utils/constants";
 import { AccountUtils } from "../utils/accountUtils.js";
+import { CF_ITEM_TYPES } from "../utils/cfItemUtils.js";
 
 /**
  * CF調整項目用のアカウントを生成する
@@ -20,35 +21,42 @@ export const createCFAdjustmentAccount = (sourceAccount, order = null) => {
     throw new Error("Source account does not have cfAdjustment");
   }
 
-  // CF調整項目の名前を生成（例：「減価償却費（非資金項目）」）
+  // CF調整項目の名前を生成
   const accountName = `${sourceAccount.accountName}（非資金項目）`;
 
   return {
     id: `cf-adj-${sourceAccount.id}`,
     accountName: accountName,
-    parentAccountId: getCFParentId(cfAdj.category), // 営業CF合計などの親科目
+    parentAccountId: getCFParentId(cfAdj.cfCategory),
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.FINANCING,
     },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CF_ADJUSTMENT_CALC,
-        paramValue: null,
-        paramReferences: {
+      parameter: null, // CF項目はparameterを持たない
+      cfAdjustment: null, // これ自体がCF項目なので不要
+
+      // 新しい仕様：cfItemAttributesを追加
+      cfItemAttributes: {
+        cfItemType: CF_ITEM_TYPES.PL_ADJUSTMENT,
+        sourceAccount: {
           accountId: sourceAccount.id,
-          // 演算子を反転（重要：PLでマイナスならCFではプラス）
-          operation:
-            cfAdj.operation === OPERATIONS.SUB
-              ? OPERATIONS.ADD
-              : OPERATIONS.SUB,
-          lag: 0,
+          accountName: sourceAccount.accountName,
+          plCategory: "depreciation", // または適切なカテゴリ
         },
-      },
-      cfAdjustment: {
-        category: cfAdj.category,
-        sourceType: "PL_ADJUSTMENT",
+        calculationMethod: "DERIVED",
+        cfImpact: {
+          // PLでマイナス（費用）ならCFではプラス（加算）
+          multiplier: cfAdj.operation === OPERATIONS.SUB ? 1 : -1,
+          formula: `${sourceAccount.accountName}[当期] × ${
+            cfAdj.operation === OPERATIONS.SUB ? 1 : -1
+          }`,
+          description:
+            cfAdj.operation === OPERATIONS.SUB
+              ? "非資金費用のため加算"
+              : "非資金収益のため減算",
+        },
       },
     },
     displayOrder: {

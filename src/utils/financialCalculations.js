@@ -20,6 +20,7 @@ import {
   createBSChangeAccount,
   calculateCFItemValue,
   isCFItem,
+  CF_ITEM_TYPES,
 } from "./cfItemUtils.js";
 import { FinancialModel } from "../models/FinancialModel.js";
 
@@ -31,18 +32,19 @@ import { FinancialModel } from "../models/FinancialModel.js";
 export const createParentChildMap = (accounts) => {
   const parentChildMap = {};
   accounts.forEach((account) => {
-    if (account.parentAccount) {
+    if (account.parentAccountId) {
       // parentChildMap = {
-      // "売上高": [] or ["account-0"]
-      // ←parentChildMap[account.parentAccount]があるときは["account-0"]が返り、ないときは空配列
-      // "売上原価": []
+      // "rev-total": [] or ["account-0"]
+      // ←parentChildMap[account.parentAccountId]があるときは["account-0"]が返り、ないときは空配列
+      // "cogs-total": []
       // ...
       // }
-      parentChildMap[account.parentAccount] =
-        parentChildMap[account.parentAccount] || [];
-      parentChildMap[account.parentAccount].push(account.id);
+      parentChildMap[account.parentAccountId] =
+        parentChildMap[account.parentAccountId] || [];
+      parentChildMap[account.parentAccountId].push(account.id);
     }
   });
+  console.log("=== 親子関係マップ ===", parentChildMap);
   return parentChildMap;
 };
 
@@ -62,7 +64,12 @@ export const calculateSummaryAccountValue = (
 ) => {
   let sumValue = 0;
   // summaryAccountを親科目に持つ科目のIdが入っている配列
-  const childAccounts = parentChildMap[summaryAccount.accountName] || [];
+  const childAccounts = parentChildMap[summaryAccount.id] || [];
+
+  console.log(
+    `=== 合計値計算: ${summaryAccount.accountName} (${summaryAccount.id}) ===`
+  );
+  console.log(`子科目数: ${childAccounts.length}`);
 
   childAccounts.forEach((childId) => {
     // 子科目のidからaccountValuesを特定し、そのvalueを抽出する
@@ -70,10 +77,14 @@ export const calculateSummaryAccountValue = (
       (v) => v.accountId === childId && v.periodId === period.id
     );
     if (childValue) {
+      console.log(`  子科目 ${childId}: ${childValue.value}`);
       sumValue += childValue.value;
+    } else {
+      console.log(`  子科目 ${childId}: 値が見つかりません`);
     }
   });
 
+  console.log(`合計値: ${sumValue}`);
   return sumValue;
 };
 
@@ -220,38 +231,70 @@ export const addNewPeriodToModel = (model) => {
   updatedModel.addPeriod(newPeriod);
 
   // 通常科目の値を計算（CF項目は後で処理）
-  updatedModel.accounts.getRegularItems().forEach((account) => {
-    if (!account) return;
+  // 依存関係を考慮した計算順序を取得
+  const regularAccounts = updatedModel.accounts.getRegularItems();
+  const calculationOrder = getCalculationOrder(regularAccounts);
+
+  console.log("=== 計算順序情報 ===");
+  console.log("計算対象科目数:", regularAccounts.length);
+  console.log("依存関係順序数:", calculationOrder.length);
+
+  // 依存関係順序に従って計算
+  calculationOrder.forEach((accountId) => {
+    const account = regularAccounts.find((acc) => acc.id === accountId);
+    if (!account) {
+      console.warn(`計算順序にあるアカウントが見つかりません: ${accountId}`);
+      return;
+    }
 
     let newValue = 0;
     let isCalculated = true;
 
-    // パラメータタイプに応じて値を計算
-    if (account.parameterType === PARAMETER_TYPES.CHILDREN_SUM) {
-      newValue = calculateSummaryAccountValue(
-        account,
-        newPeriod,
-        createParentChildMap(updatedModel.accounts.getAllAccounts()),
-        updatedModel.values
-      );
-    } else {
-      newValue = calculateParameterAccount(
-        account,
-        newPeriod,
-        lastPeriod,
-        updatedModel.values,
-        updatedModel.accounts.getAllAccounts()
-      );
-      isCalculated = false;
-    }
+    try {
+      // パラメータタイプに応じて値を計算
+      const parameterType = ParameterUtils.getParameterType(account);
+      if (parameterType === PARAMETER_TYPES.CHILDREN_SUM) {
+        newValue = calculateSummaryAccountValue(
+          account,
+          newPeriod,
+          createParentChildMap(updatedModel.accounts.getAllAccounts()),
+          updatedModel.values
+        );
+      } else {
+        newValue = calculateParameterAccount(
+          account,
+          newPeriod,
+          lastPeriod,
+          updatedModel.values,
+          updatedModel.accounts.getAllAccounts()
+        );
+        isCalculated = false;
+      }
 
-    // 新しい値を追加
-    updatedModel.addValue({
-      accountId: account.id,
-      periodId: newPeriod.id,
-      value: newValue,
-      isCalculated,
-    });
+      // 新しい値を追加
+      updatedModel.addValue({
+        accountId: account.id,
+        periodId: newPeriod.id,
+        value: newValue,
+        isCalculated,
+      });
+
+      console.log(`計算完了: ${account.accountName} = ${newValue}`);
+    } catch (error) {
+      console.error(`計算エラー: ${account.accountName}`, error);
+      // エラーの場合は前期値を使用
+      const lastValue = getValue(
+        updatedModel.values,
+        account.id,
+        lastPeriod.id
+      );
+      updatedModel.addValue({
+        accountId: account.id,
+        periodId: newPeriod.id,
+        value: lastValue,
+        isCalculated: false,
+      });
+    }
   });
 
   console.log("=== デバッグ終了 ===");
@@ -280,36 +323,26 @@ export const addNewPeriodToModel = (model) => {
         updatedModel.accounts.addCFItem(cfAccount);
         console.log("CF調整項目を追加:", cfAccount.accountName);
 
-        // ASTを構築
-        const periodYear = parseInt(newPeriod.year, 10);
-        const ast = buildFormula(
+        // CF項目専用の計算関数を使用
+        const cfValue = calculateCFItemValue(
           cfAccount,
-          periodYear,
+          newPeriod,
+          lastPeriod,
+          updatedModel.values,
           updatedModel.accounts.getAllAccounts()
         );
 
-        if (ast) {
-          // AST評価で値を計算
-          const getValueFunction = createGetValueFunction(
-            updatedModel.values,
-            periodYear
-          );
-          const cfValue = evalNode(ast, periodYear, getValueFunction) || 0;
+        // 計算された値を追加
+        updatedModel.addValue({
+          accountId: cfAccount.id,
+          periodId: newPeriod.id,
+          value: cfValue,
+          isCalculated: true,
+        });
 
-          // 計算された値を追加
-          updatedModel.addValue({
-            accountId: cfAccount.id,
-            periodId: newPeriod.id,
-            value: cfValue,
-            isCalculated: true,
-          });
-
-          console.log(
-            `CF調整項目値 (AST評価): ${cfAccount.accountName} = ${cfValue}`
-          );
-        } else {
-          console.warn(`CF調整項目のAST構築に失敗: ${cfAccount.accountName}`);
-        }
+        console.log(
+          `CF調整項目値 (CF専用計算): ${cfAccount.accountName} = ${cfValue}`
+        );
       }
     } catch (error) {
       console.warn(`CF調整項目生成エラー: ${account.accountName}`, error);
@@ -379,6 +412,87 @@ export const addNewPeriodToModel = (model) => {
   });
 
   console.log("=== BS変動項目生成終了 ===");
+
+  // 3. CAPEX項目のCF項目生成
+  console.log("=== CAPEX CF項目生成開始 ===");
+
+  const capexAccountsWithCF = updatedModel.accounts
+    .getRegularItems()
+    .filter((acc) => {
+      // CAPEXシートかつcfAdjustmentを持つ項目
+      return (
+        acc.sheet?.name === FLOW_SHEETS.PPE &&
+        AccountUtils.getCFAdjustment(acc) !== null
+      );
+    });
+
+  console.log("CAPEX with CF adjustment:", capexAccountsWithCF);
+
+  let capexOrderCounter = 1;
+
+  capexAccountsWithCF.forEach((capexAccount) => {
+    const cfAdj = AccountUtils.getCFAdjustment(capexAccount);
+
+    // 投資CF項目を作成
+    const capexCFAccount = {
+      id: `cf-capex-${capexAccount.id}`,
+      accountName: `${capexAccount.accountName}（投資CF）`,
+      parentAccountId: "inv-cf-total", // 投資CFの親科目
+      sheet: {
+        sheetType: SHEET_TYPES.FLOW,
+        name: FLOW_SHEETS.FINANCING,
+      },
+      stockAttributes: null,
+      flowAttributes: {
+        parameter: null,
+        cfAdjustment: null,
+        cfItemAttributes: {
+          cfItemType: CF_ITEM_TYPES.OTHER,
+          sourceAccount: {
+            accountId: capexAccount.id,
+            accountName: capexAccount.accountName,
+          },
+          calculationMethod: "DERIVED",
+          cfImpact: {
+            multiplier: -1, // 投資はキャッシュアウトフロー
+            formula: `${capexAccount.accountName}[当期] × -1`,
+            description: "設備投資によるキャッシュアウトフロー",
+          },
+        },
+      },
+      displayOrder: {
+        order: `CF3${capexOrderCounter.toString().padStart(2, "0")}`,
+        prefix: "CF",
+      },
+    };
+
+    capexOrderCounter++;
+
+    // アカウントを追加して値を計算
+    if (!updatedModel.accounts.exists(capexCFAccount.id)) {
+      updatedModel.accounts.addCFItem(capexCFAccount);
+      console.log("CAPEX CF項目を追加:", capexCFAccount.accountName);
+
+      const cfValue = calculateCFItemValue(
+        capexCFAccount,
+        newPeriod,
+        lastPeriod,
+        updatedModel.values,
+        updatedModel.accounts.getAllAccounts()
+      );
+
+      updatedModel.addValue({
+        accountId: capexCFAccount.id,
+        periodId: newPeriod.id,
+        value: cfValue,
+        isCalculated: true,
+      });
+
+      console.log(`CAPEX CF項目値: ${capexCFAccount.accountName} = ${cfValue}`);
+    }
+  });
+
+  console.log("=== CAPEX CF項目生成終了 ===");
 
   // 4. CF項目専用の計算処理（通常科目とは別に処理）
   console.log("=== CF項目値計算開始 ===");
