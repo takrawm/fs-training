@@ -16,16 +16,8 @@ const ParameterSettingTable = ({ data, onChange }) => {
     console.log("1. Input data:", data);
 
     const mappedData = data.map((account) => {
-      // デバッグログを追加
-      console.log("Account details:", {
-        accountName: account.accountName,
-        stockAttributes: account.stockAttributes,
-        flowAttributes: account.flowAttributes,
-      });
-
       // ParameterUtilsを使用してパラメータタイプを取得
       const paramType = ParameterUtils.getParameterType(account);
-      console.log(`Parameter type for ${account.accountName}: ${paramType}`);
 
       // cfAdjustment.typeを取得
       const cfAdjustmentType = account.flowAttributes?.cfAdjustment?.type || "";

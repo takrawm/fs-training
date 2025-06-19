@@ -2,8 +2,6 @@ import {
   SUMMARY_ACCOUNTS,
   DEFAULT_SHEET_TYPES,
   SHEET_TYPES,
-  PARAMETER_TYPES,
-  OPERATIONS,
 } from "../utils/constants";
 import { AccountUtils } from "../utils/accountUtils";
 
@@ -26,180 +24,43 @@ export const createInitialMappingData = (flattenedRows) => {
 };
 
 /**
- * パラメータ参照を新しい構造に変換する
- * @param {Array} oldReferences 旧形式の参照配列
- * @returns {Array} 新形式の参照配列
- */
-const convertParameterReferences = (oldReferences) => {
-  if (!oldReferences || !Array.isArray(oldReferences)) {
-    return [];
-  }
-
-  return oldReferences.map((ref) => ({
-    accountId: ref.id,
-    operation: ref.operation || OPERATIONS.ADD,
-    lag: ref.lag || 0,
-  }));
-};
-
-/**
- * 集計マップを生成する（改善版構造）
+ * 集計マップを生成する（改善版）
  * @param {Array} flattenedRows フラット化されたデータ行
  * @param {Array} mappingData マッピングデータ
  * @returns {Object} 集計マップ
  */
 export const createAggregatedMap = (flattenedRows, mappingData) => {
   const newAggregatedMap = {};
+  let accountCounter = 0;
 
   flattenedRows.forEach((row, idx) => {
+    // 1. マッピング変換
     const key = mappingData[idx]?.modelAccount || row[0];
     if (!key) return;
 
+    // 2. 数値変換
     const values = row.slice(1).map((v) => Number(v) || 0);
 
     if (!newAggregatedMap[key]) {
-      // デフォルト設定を取得
-      const defaultConfig = DEFAULT_SHEET_TYPES[key] || {};
+      // 3. constants.jsからテンプレートを取得
+      const template = DEFAULT_SHEET_TYPES[key];
 
-      // 新しいアカウント構造で作成
-      const accountId = `account-${Object.keys(newAggregatedMap).length}`;
-
-      // 基本情報
-      const baseAccount = {
-        id: accountId,
-        accountName: key,
-        parentAccountId: defaultConfig.parentAccountId || null,
-      };
-
-      // シート情報
-      const sheet = defaultConfig.sheet || {
-        sheetType: SHEET_TYPES.FLOW,
-        name: "pl",
-      };
-
-      // パラメータタイプから適切な構造を作成
-      let account;
-
-      if (sheet.sheetType === SHEET_TYPES.STOCK) {
-        // ストック科目の場合
-        account = {
-          ...baseAccount,
-          sheet,
-          stockAttributes: defaultConfig.stockAttributes || {
-            bsType: "ASSET",
-            isParameterBased:
-              defaultConfig.parameterType !== PARAMETER_TYPES.NONE,
-            parameter: null,
-          },
-          flowAttributes: null,
-          displayOrder: {
-            order: null,
-            prefix: null,
-          },
-        };
-
-        // パラメータ設定（修正版：stockAttributesの中にparameterを配置）
-        if (account.stockAttributes.isParameterBased) {
-          const parameter = {
-            paramType: defaultConfig.parameterType,
-            paramValue: null,
-            paramReferences: [],
-          };
-
-          if (defaultConfig.parameterType === PARAMETER_TYPES.PROPORTIONATE) {
-            // PROPORTIONATEの場合
-            if (defaultConfig.defaultReferences) {
-              parameter.paramReferences = convertParameterReferences(
-                defaultConfig.defaultReferences
-              );
-            }
-          } else if (
-            defaultConfig.parameterType === PARAMETER_TYPES.GROWTH_RATE
-          ) {
-            // GROWTH_RATEの場合
-            parameter.paramValue = defaultConfig.defaultParamValue || 0.05;
-          } else if (
-            defaultConfig.parameterType === PARAMETER_TYPES.BALANCE_AND_CHANGE
-          ) {
-            // BALANCE_AND_CHANGEの場合
-            if (defaultConfig.defaultReferences) {
-              parameter.paramReferences = convertParameterReferences(
-                defaultConfig.defaultReferences
-              );
-            }
-          }
-
-          account.stockAttributes.parameter = parameter;
-        }
-      } else {
-        // フロー科目の場合
-        account = {
-          ...baseAccount,
-          sheet,
-          stockAttributes: null,
-          flowAttributes: {
-            parameter: null, // 後で設定
-            cfAdjustment: defaultConfig.flowAttributes?.cfAdjustment || null,
-          },
-          displayOrder: {
-            order: null,
-            prefix: null,
-          },
-        };
-
-        // パラメータ設定（修正版：必ずflowAttributesの中に配置）
-        if (defaultConfig.flowAttributes?.parameter) {
-          // 新構造で既に定義されている場合はそのまま使用
-          account.flowAttributes.parameter =
-            defaultConfig.flowAttributes.parameter;
-        } else if (
-          defaultConfig.parameterType &&
-          defaultConfig.parameterType !== PARAMETER_TYPES.NONE
-        ) {
-          // 旧構造からの変換
-          const parameter = {
-            paramType: defaultConfig.parameterType,
-            paramValue: null,
-            paramReferences: null,
-          };
-
-          // パラメータタイプ別の設定
-          if (
-            [PARAMETER_TYPES.GROWTH_RATE, PARAMETER_TYPES.PERCENTAGE].includes(
-              defaultConfig.parameterType
-            )
-          ) {
-            parameter.paramValue = defaultConfig.defaultParamValue || 0;
-          }
-
-          if (
-            [
-              PARAMETER_TYPES.PERCENTAGE,
-              PARAMETER_TYPES.PROPORTIONATE,
-              PARAMETER_TYPES.CALCULATION,
-            ].includes(defaultConfig.parameterType)
-          ) {
-            if (defaultConfig.defaultReferences) {
-              parameter.paramReferences = convertParameterReferences(
-                defaultConfig.defaultReferences
-              );
-            } else if (defaultConfig.parameterReferenceAccounts) {
-              parameter.paramReferences = convertParameterReferences(
-                defaultConfig.parameterReferenceAccounts
-              );
-            }
-          }
-
-          account.flowAttributes.parameter = parameter;
-        }
+      if (!template) {
+        console.warn(`未定義の勘定科目: ${key}`);
+        return;
       }
 
-      // 値を追加
-      account.values = [...values];
+      // 4. テンプレートから実際のアカウントを作成（最小限の変更のみ）
+      const account = {
+        ...template, // constants.jsの構造をそのまま使用
+        id: `account-${accountCounter++}`, // 動的IDのみ追加
+        accountName: key, // 実際の科目名
+        values: [...values], // 実際の値
+      };
 
       newAggregatedMap[key] = account;
     } else {
-      // 既存のアカウントに値を加算
+      // 5. 重複時の集計処理
       newAggregatedMap[key].values = newAggregatedMap[key].values.map(
         (sum, i) => sum + (values[i] || 0)
       );
@@ -210,52 +71,13 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
 };
 
 /**
- * アカウントが正しい構造かチェックする
- * @param {Object} account アカウント
- * @returns {Object} バリデーション結果
- */
-export const validateAccount = (account) => {
-  const errors = [];
-
-  // 基本的なバリデーション
-  if (!account.id) errors.push("ID is required");
-  if (!account.accountName) errors.push("Account name is required");
-  if (!account.sheet?.sheetType) errors.push("Sheet type is required");
-
-  // シートタイプ別のバリデーション
-  if (account.sheet?.sheetType === SHEET_TYPES.FLOW) {
-    if (account.stockAttributes !== null) {
-      errors.push("Flow account should have null stockAttributes");
-    }
-    if (!account.flowAttributes) {
-      errors.push("Flow account must have flowAttributes");
-    }
-  } else if (account.sheet?.sheetType === SHEET_TYPES.STOCK) {
-    if (account.flowAttributes !== null) {
-      errors.push("Stock account should have null flowAttributes");
-    }
-    if (!account.stockAttributes) {
-      errors.push("Stock account must have stockAttributes");
-    }
-    if (!account.stockAttributes?.bsType) {
-      errors.push("Stock account must have bsType");
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
-};
-
-/**
  * ソートされたアカウントリストを生成する（改善版）
  * @param {Array} accounts アカウント配列
  * @returns {Array} ソートされたアカウント配列
  */
 export const createSortedAccounts = (accounts) => {
   const filteredAccounts = accounts
-    .filter((account) => account.parentAccountId !== "集約科目")
+    .filter((account) => account.parentAccountId !== null)
     .map((account) => ({
       ...account,
     }));
