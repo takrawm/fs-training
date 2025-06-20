@@ -31,18 +31,11 @@ export const createParentChildMap = (accounts) => {
   const parentChildMap = {};
   accounts.forEach((account) => {
     if (account.parentAccountId) {
-      // parentChildMap = {
-      // "rev-total": [] or ["account-0"]
-      // ←parentChildMap[account.parentAccountId]があるときは["account-0"]が返り、ないときは空配列
-      // "cogs-total": []
-      // ...
-      // }
       parentChildMap[account.parentAccountId] =
         parentChildMap[account.parentAccountId] || [];
       parentChildMap[account.parentAccountId].push(account.id);
     }
   });
-  console.log("=== 親子関係マップ ===", parentChildMap);
   return parentChildMap;
 };
 
@@ -64,25 +57,16 @@ export const calculateSummaryAccountValue = (
   // summaryAccountを親科目に持つ科目のIdが入っている配列
   const childAccounts = parentChildMap[summaryAccount.id] || [];
 
-  console.log(
-    `=== 合計値計算: ${summaryAccount.accountName} (${summaryAccount.id}) ===`
-  );
-  console.log(`子科目数: ${childAccounts.length}`);
-
   childAccounts.forEach((childId) => {
     // 子科目のidからaccountValuesを特定し、そのvalueを抽出する
     const childValue = accountValues.find(
       (v) => v.accountId === childId && v.periodId === period.id
     );
     if (childValue) {
-      console.log(`  子科目 ${childId}: ${childValue.value}`);
       sumValue += childValue.value;
-    } else {
-      console.log(`  子科目 ${childId}: 値が見つかりません`);
     }
   });
 
-  console.log(`合計値: ${sumValue}`);
   return sumValue;
 };
 
@@ -272,8 +256,6 @@ export const addNewPeriodToModel = (model) => {
         value: newValue,
         isCalculated,
       });
-
-      console.log(`計算完了: ${account.accountName} = ${newValue}`);
     } catch (error) {
       console.error(`計算エラー: ${account.accountName}`, error);
       // エラーの場合は前期値を使用
@@ -291,16 +273,12 @@ export const addNewPeriodToModel = (model) => {
     }
   });
 
-  console.log("=== デバッグ終了 ===");
-
   // キャッシュフロー計算書の構築（統合版）
-  console.log("=== CF項目自動生成開始 ===");
 
   // A. CF調整項目の生成と値計算（統合処理）
   const cfAdjustmentAccounts = updatedModel.accounts
     .getRegularItems()
     .filter((acc) => AccountUtils.getCFAdjustment(acc) !== null);
-  console.log("CF調整対象アカウント:", cfAdjustmentAccounts);
 
   let cfOrderCounter = 1;
 
@@ -322,7 +300,6 @@ export const addNewPeriodToModel = (model) => {
       if (!exists) {
         // アカウントと値を追加
         updatedModel.accounts.addCFItem(result.account);
-        console.log("CF調整項目を追加:", result.account.accountName);
 
         updatedModel.addValue({
           accountId: result.account.id,
@@ -330,10 +307,6 @@ export const addNewPeriodToModel = (model) => {
           value: result.value,
           isCalculated: true,
         });
-
-        console.log(
-          `CF調整項目値: ${result.account.accountName} = ${result.value}`
-        );
       }
     } catch (error) {
       console.warn(`CF調整項目生成エラー: ${account.accountName}`, error);
@@ -341,7 +314,6 @@ export const addNewPeriodToModel = (model) => {
   });
 
   // B. BS変動項目の生成と値計算（統合処理）
-  console.log("=== BS変動項目生成開始 ===");
 
   // パラメータベースのBS科目を抽出
   const parameterBasedBSAccounts = updatedModel.accounts
@@ -352,8 +324,6 @@ export const addNewPeriodToModel = (model) => {
         account.stockAttributes?.isParameterBased === true
       );
     });
-
-  console.log("パラメータベースBS科目:", parameterBasedBSAccounts);
 
   let bsChangeOrderCounter = 1;
 
@@ -375,7 +345,6 @@ export const addNewPeriodToModel = (model) => {
       if (!exists) {
         // アカウントと値を追加
         updatedModel.accounts.addCFItem(result.account);
-        console.log("BS変動項目を追加:", result.account.accountName);
 
         updatedModel.addValue({
           accountId: result.account.id,
@@ -383,30 +352,20 @@ export const addNewPeriodToModel = (model) => {
           value: result.value,
           isCalculated: true,
         });
-
-        console.log(
-          `BS変動項目値: ${result.account.accountName} = ${result.value}`
-        );
       }
     } catch (error) {
       console.error(`BS変動項目生成エラー: ${bsAccount.accountName}`, error);
     }
   });
 
-  console.log("=== BS変動項目生成終了 ===");
-
   // CAPEX項目のCF項目生成は既存のロジックを維持
   // （この部分は現在のコードをそのまま残してください）
-
-  console.log("=== CF項目自動生成終了 ===");
 
   // CF項目の構造検証
   const validation = updatedModel.validate();
   if (!validation.isValid) {
     console.warn("CF項目構造検証エラー:", validation.errors);
     validation.warnings.forEach((warning) => console.warn("警告:", warning));
-  } else {
-    console.log("CF項目構造検証成功:", validation.stats);
   }
 
   return updatedModel;

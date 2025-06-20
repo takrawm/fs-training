@@ -61,15 +61,6 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
           })),
         };
       });
-
-      console.log("期間ごとの値の詳細:", periodValueCounts);
-      console.log("アカウント構造:", {
-        type: financialModel.accounts?.getAllAccounts
-          ? "新構造(AccountManager)"
-          : "古い構造(配列)",
-        count: getAccounts().length,
-      });
-      console.log("=== デバッグ情報終了 ===");
     }
   }, [financialModel, getAccounts]);
 
@@ -193,7 +184,6 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
   // タブ切り替え処理
   const handleTabChange = useCallback(
     (tabName) => {
-      console.log(`タブを ${tabName} に切り替えます`);
       setActiveTab(tabName);
 
       if (!financialModel) {
@@ -206,8 +196,6 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
       console.log("=== フィルタリングされたデータ ===");
       console.log("タブ:", tabName);
       console.log("フィルターされたデータ:", filtered);
-      console.log("現在のモデル:", financialModel);
-      console.log("=== フィルタリングデータのログ終了 ===");
 
       if (filtered.length === 0) {
         console.warn(`${tabName}タブのデータが空です`);

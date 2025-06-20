@@ -106,8 +106,6 @@ const CFAdjustmentTable = ({ data, onChange }) => {
   const createHandleChange = (accounts, adjustmentType) => {
     return (changes) => {
       if (!changes) return;
-      console.log("=== CFAdjustmentTable - Cell Change ===");
-      console.log("1. Changes:", changes);
 
       const updated = [...data];
       changes.forEach(([rowIdx, colIdx, _old, newVal]) => {
@@ -158,8 +156,6 @@ const CFAdjustmentTable = ({ data, onChange }) => {
         updated[accountIndex] = acc;
       });
 
-      console.log("2. Updated data:", updated);
-      console.log("=== End Cell Change ===");
       onChange(updated);
     };
   };

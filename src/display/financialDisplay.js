@@ -10,17 +10,21 @@ import { ParameterUtils } from "../utils/parameterUtils";
 export const getFilteredDataByTab = (tabName, financialModel) => {
   const { periods, values } = financialModel;
 
-  // 新構造と古い構造の両方に対応
+  // 新構造のFinancialModelのみをサポート
+  if (!financialModel.accounts?.getAllAccounts) {
+    throw new Error(
+      "FinancialModel must use the new structure with AccountManager"
+    );
+  }
+
   let accounts;
-  if (financialModel.accounts?.getAllAccounts) {
-    // 新構造: AccountManagerインスタンス
-    accounts = financialModel.accounts.getAllAccounts();
-  } else if (Array.isArray(financialModel.accounts)) {
-    // 古い構造: 配列
-    accounts = financialModel.accounts;
+
+  if (tabName === "CF") {
+    // CF項目は構造的に分離されているので直接取得
+    accounts = financialModel.accounts.getCFItems();
   } else {
-    console.warn("Unknown accounts structure:", financialModel.accounts);
-    return [];
+    // 他のタブは通常項目のみ
+    accounts = financialModel.accounts.getRegularItems();
   }
 
   // ParameterUtilsを使用してヘルパー関数を統一
@@ -31,50 +35,54 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
 
   // 親科目名を取得するヘルパー関数
   const getParentAccountName = (account) => {
-    // 新しい構造での親科目ID
     if (account.parentAccountId) {
-      const parentAccount = accounts.find(
+      // CF項目の場合は、regularItemsとcfItemsの両方から検索
+      const allAccounts = financialModel.accounts.getAllAccounts();
+      const parentAccount = allAccounts.find(
         (acc) => acc.id === account.parentAccountId
       );
       if (parentAccount) {
         return parentAccount.accountName;
       }
     }
-    return account.parentAccount || ""; // 旧形式との互換性
+    return ""; // 親科目が見つからない場合
   };
 
   // タブに応じたデータをフィルタリング
-  const filteredAccounts = accounts.filter((account) => {
-    switch (tabName) {
-      case "PL":
-        return (
-          account.sheet?.name === FLOW_SHEETS.PL ||
-          account.sheetType?.sheet === "PL"
-        );
-      case "BS":
-        return (
-          account.sheet?.name === STOCK_SHEETS.BS ||
-          account.sheetType?.sheet === "BS"
-        );
-      case "CAPEX":
-        return (
-          account.sheet?.name === FLOW_SHEETS.PPE ||
-          account.sheetType?.sheet === "CAPEX"
-        );
-      case "CF":
-        return (
-          account.sheet?.name === FLOW_SHEETS.CF ||
-          account.sheetType?.sheet === "CF"
-        );
-      case "パラメータ":
-        return true;
-      case "リレーション":
-        const paramReferences = getParameterReferences(account);
-        return Array.isArray(paramReferences) && paramReferences.length > 0;
-      default:
-        return false;
-    }
-  });
+  let filteredAccounts;
+
+  if (tabName === "CF") {
+    // CF項目は既に取得済みなのでそのまま使用
+    filteredAccounts = accounts;
+  } else {
+    // 通常項目のフィルタリング
+    filteredAccounts = accounts.filter((account) => {
+      switch (tabName) {
+        case "PL":
+          return (
+            account.sheet?.name === FLOW_SHEETS.PL ||
+            account.sheetType?.sheet === "PL"
+          );
+        case "BS":
+          return (
+            account.sheet?.name === STOCK_SHEETS.BS ||
+            account.sheetType?.sheet === "BS"
+          );
+        case "CAPEX":
+          return (
+            account.sheet?.name === FLOW_SHEETS.PPE ||
+            account.sheetType?.sheet === "CAPEX"
+          );
+        case "パラメータ":
+          return true; // 通常項目は全て対象
+        case "リレーション":
+          const paramReferences = getParameterReferences(account);
+          return Array.isArray(paramReferences) && paramReferences.length > 0;
+        default:
+          return false;
+      }
+    });
+  }
 
   // データを整形
   return filteredAccounts.map((account) => {

@@ -142,7 +142,6 @@ export const buildFormula = (account, period, accounts) => {
         ],
       });
 
-      console.log("=== PROPORTIONATE AST構築完了 ===");
       return proportionateNode;
 
     case PARAMETER_TYPES.CALCULATION:
@@ -305,15 +304,11 @@ const buildCashCalculationFormula = (account, accounts) => {
  * @returns {ASTNode} CF調整を適用したAST
  */
 const buildCFAdjustedFormula = (account, accounts) => {
-  console.log(`=== CF調整AST構築: ${account.accountName} ===`);
-
   // 前期末残高
   const args = [createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 })];
 
   // CF調整を適用
   const cfAdjustments = getCFAdjustmentAccounts(account, accounts);
-
-  console.log(`CF調整科目数: ${cfAdjustments.length}`);
 
   cfAdjustments.forEach((cfAccount) => {
     const cfAdj = AccountUtils.getCFAdjustment(cfAccount);
@@ -321,10 +316,6 @@ const buildCFAdjustedFormula = (account, accounts) => {
       id: cfAccount.id,
       lag: 0,
     });
-
-    console.log(
-      `CF調整科目: ${cfAccount.accountName}, 演算: ${cfAdj.operation}`
-    );
 
     const operation = cfAdj.operation;
     if (operation === OPERATIONS.SUB) {
@@ -339,8 +330,6 @@ const buildCFAdjustedFormula = (account, accounts) => {
       args.push(cfNode);
     }
   });
-
-  console.log(`=== CF調整AST構築完了 ===`);
 
   return createNode(AST_OPERATIONS.ADD, { args });
 };

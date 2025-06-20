@@ -27,16 +27,11 @@ export const calculateStockAccountWithCFAdjustment = (
       (v) => v.accountId === account.id && v.periodId === lastPeriod.id
     )?.value || 0;
 
-  console.log(`=== CF調整計算: ${account.accountName} ===`);
-  console.log(`前期末残高: ${lastPeriodValue}`);
-
   // このstock科目を対象としているCF調整科目を探す
   const cfAdjustmentAccounts = accounts.filter((acc) => {
     const cfAdj = AccountUtils.getCFAdjustment(acc);
     return cfAdj?.targetAccountId === account.id;
   });
-
-  console.log(`CF調整対象科目数: ${cfAdjustmentAccounts}`);
 
   // CF調整を適用
   let adjustedValue = lastPeriodValue;
@@ -49,19 +44,12 @@ export const calculateStockAccountWithCFAdjustment = (
     const cfAdj = AccountUtils.getCFAdjustment(cfAccount);
     const operation = cfAdj.operation;
 
-    console.log(
-      `CF調整科目: ${cfAccount.accountName}, 値: ${cfValue}, 演算: ${operation}`
-    );
-
     if (operation === OPERATIONS.ADD) {
       adjustedValue += cfValue;
     } else if (operation === OPERATIONS.SUB) {
       adjustedValue -= cfValue;
     }
   });
-
-  console.log(`調整後残高: ${adjustedValue}`);
-  console.log(`=== CF調整計算終了 ===`);
 
   return adjustedValue;
 };
