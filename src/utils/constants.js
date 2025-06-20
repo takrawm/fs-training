@@ -211,7 +211,7 @@ export const SUMMARY_ACCOUNTS = {
     stockAttributes: null,
     flowAttributes: {
       reclassification: null,
-      baseProfit: true,
+      baseProfit: true, //利益剰余金を増加させる利益を指定
       cfAdjustment: null,
     },
     displayOrder: {
@@ -387,6 +387,26 @@ export const SUMMARY_ACCOUNTS = {
     displayOrder: {
       order: "K99",
       prefix: "K",
+    },
+  },
+  利益剰余金: {
+    id: "retained-earnings",
+    accountName: "利益剰余金",
+    parentAccountId: "equity-total",
+    isCredit: true, // 純資産科目
+    sheet: {
+      sheetType: SHEET_TYPES.STOCK,
+      name: STOCK_SHEETS.BS,
+    },
+    // パラメータは共通プロパティ
+    parameter: null,
+    stockAttributes: {
+      generatesCFItem: false, // パラメータで独立計算されるBS科目
+    },
+    flowAttributes: null,
+    displayOrder: {
+      order: "M99",
+      prefix: "M",
     },
   },
   純資産合計: {
@@ -1216,15 +1236,9 @@ export const DEFAULT_SHEET_TYPES = {
     parentAccountId: "equity-total",
     isCredit: true, // 純資産科目
     // パラメータは共通プロパティ
-    parameter: {
-      paramType: PARAMETER_TYPES.CALCULATION,
-      paramValue: null,
-      paramReferences: [
-        { accountId: "op-profit", operation: OPERATIONS.ADD, lag: 0 },
-      ],
-    },
+    parameter: null,
     stockAttributes: {
-      generatesCFItem: true, // パラメータで独立計算されるBS科目
+      generatesCFItem: false, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },

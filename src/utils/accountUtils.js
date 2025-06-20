@@ -31,6 +31,17 @@ export const AccountUtils = {
   },
 
   /**
+   * ベース利益を取得（flow固有）
+   * 利益剰余金に加算される利益かどうかを判定
+   */
+  getBaseProfit(account) {
+    if (this.isFlowAccount(account)) {
+      return account.flowAttributes?.baseProfit === true;
+    }
+    return false;
+  },
+
+  /**
    * CF項目を生成すべきかチェック（stock固有）
    * 新しい構造ではstockAttributesのgeneratesCFItemプロパティで判定
    * @param {Object} account 勘定科目
