@@ -225,66 +225,22 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       // 次のステップへ進むだけ
       setStep(4);
     } else if (step === 4) {
-      /***** パラメータ設定確認 (Step 4) *****/
-      // ParameterConfiguration で表示されているデフォルト値や参照設定を
-      // ボタン押下（Next）時に accounts 配列へ確定反映させる
-      if (!financialModel) return;
+      // ステップ4：パラメータ設定確認完了
+      //
+      // このステップはParameterConfiguration.jsxによる表示専用の確認画面です。
+      // ユーザーは既に前のステップで設定したパラメータ内容を確認するだけで、
+      // 新たなデータ変更は行いません。
+      //
+      // したがって、既存のfinancialModelをそのまま次のステップに渡すだけで
+      // 十分であり、データの再構築や初期化処理は不要です。
 
-      const allAccounts = financialModel.accounts.getAllAccounts();
-      const updatedAccounts = allAccounts.map((account) => {
-        const newAccount = { ...account };
+      if (!financialModel) {
+        console.error("財務モデルが存在しません");
+        return;
+      }
 
-        // 1. 単一値パラメータ型（成長率 / 他科目割合）
-        //    画面遷移時に表示したデフォルト値がまだ保存されていないケースを補完
-        const singleValueTypes = [
-          PARAMETER_TYPES.GROWTH_RATE,
-          PARAMETER_TYPES.PERCENTAGE,
-        ];
-
-        if (
-          singleValueTypes.includes(newAccount.parameterType) &&
-          newAccount.parameterValue == null
-        ) {
-          const paramKey = Object.keys(PARAMETER_TYPES).find(
-            (k) => PARAMETER_TYPES[k] === newAccount.parameterType
-          );
-          newAccount.parameterValue = DEFAULT_PARAMETER_VALUES[paramKey] ?? 0;
-        }
-
-        // 2. 参照型／期末残高+/-変動型／他科目連動型
-        //    デフォルトで定義済みの parameterReferenceAccounts が onChange 未発火で
-        //    undefined のままの場合は空配列を入れて後段エラーを防ぐ
-        if (
-          [
-            PARAMETER_TYPES.CALCULATION,
-            PARAMETER_TYPES.BALANCE_AND_CHANGE,
-            PARAMETER_TYPES.PROPORTIONATE,
-          ].includes(newAccount.parameterType) &&
-          !Array.isArray(newAccount.parameterReferenceAccounts)
-        ) {
-          newAccount.parameterReferenceAccounts = [];
-        }
-
-        return newAccount;
-      });
-
-      // 既存のFinancialModelにパラメータ設定を反映
-      const updatedModel = new FinancialModel();
-      updatedModel.periods = [...financialModel.periods];
-      updatedModel.values = [...financialModel.values];
-
-      // アカウントリストを更新
-      updatedAccounts.forEach((account) => {
-        if (AccountUtils.isCFItem(account)) {
-          updatedModel.accounts.addCFItem(account);
-        } else {
-          updatedModel.accounts.addRegularItem(account);
-        }
-      });
-
-      setFinancialModel(updatedModel);
-
-      console.log("ステップ4完了時のmodel:", updatedModel);
+      console.log("ステップ4完了時のmodel:", financialModel);
+      console.log("確認画面から次のステップへ遷移します");
 
       // 次のステップへ遷移（step5: 集計結果確認へ）
       setStep(5);

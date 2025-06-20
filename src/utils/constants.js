@@ -240,6 +240,10 @@ export const SUMMARY_ACCOUNTS = {
       generatesCFItem: false, // 現預金はCF項目生成対象外（CASH_CALCULATION）
     },
     flowAttributes: null,
+    displayOrder: {
+      order: "F01",
+      prefix: "F",
+    },
   },
   流動資産合計: {
     id: "current-asset-total",
@@ -819,7 +823,7 @@ export const DEFAULT_SHEET_TYPES = {
     // パラメータは共通プロパティ
     parameter: {
       paramType: PARAMETER_TYPES.PERCENTAGE,
-      paramValue: 0.05,
+      paramValue: 0.025,
       paramReferences: {
         accountId: "rev-total",
         operation: OPERATIONS.MUL,
@@ -848,7 +852,7 @@ export const DEFAULT_SHEET_TYPES = {
     // パラメータは共通プロパティ
     parameter: {
       paramType: PARAMETER_TYPES.PERCENTAGE,
-      paramValue: 0.05,
+      paramValue: 0.04,
       paramReferences: {
         accountId: "rev-total",
         operation: OPERATIONS.MUL,

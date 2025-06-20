@@ -76,8 +76,14 @@ export const createAggregatedMap = (flattenedRows, mappingData) => {
  * @returns {Array} ソートされたアカウント配列
  */
 export const createSortedAccounts = (accounts) => {
+  // SUMMARY_ACCOUNTSの科目名セットを作成
+  const summaryAccountNames = new Set(
+    Object.values(SUMMARY_ACCOUNTS).map((acc) => acc.accountName)
+  );
+
   const filteredAccounts = accounts
     .filter((account) => account.parentAccountId !== null)
+    .filter((account) => !summaryAccountNames.has(account.accountName))
     .map((account) => ({
       ...account,
     }));
