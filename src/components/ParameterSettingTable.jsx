@@ -1,11 +1,12 @@
 import React, { useMemo } from "react";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.min.css";
-import { PARAMETER_TYPES, CF_ADJUSTMENT_TYPE } from "../utils/constants";
+import { PARAMETER_TYPES } from "../utils/constants";
 import { ParameterUtils } from "../utils/parameterUtils";
 
 /**
  * パラメータ設定テーブルコンポーネント
+ * 新しい構造（parameterがトップレベルプロパティ）に対応
  * @param {Object} props
  * @param {Array} props.data - アカウント配列
  * @param {Function} props.onChange - 変更時のコールバック
@@ -16,20 +17,27 @@ const ParameterSettingTable = ({ data, onChange }) => {
     console.log("1. Input data:", data);
 
     const mappedData = data.map((account) => {
-      // ParameterUtilsを使用してパラメータタイプを取得
+      // 新しい構造に対応：parameterはトップレベルプロパティ
       const paramType = ParameterUtils.getParameterType(account);
+      const paramValue = ParameterUtils.getParameterValue(account);
+      const paramReferences = ParameterUtils.getParameterReferences(account);
 
-      // cfAdjustment.typeを取得
-      const cfAdjustmentType = account.flowAttributes?.cfAdjustment?.type || "";
+      // paramReferencesの表示用文字列
+      const paramReferencesText = paramReferences ? "あり" : "";
 
-      return [account.accountName, paramType, cfAdjustmentType];
+      return [account.accountName, paramType, paramValue, paramReferencesText];
     });
 
     console.log("2. Mapped data for table:", mappedData);
 
     const settings = {
       data: mappedData,
-      colHeaders: ["勘定科目", "パラメータタイプ", "CF調整タイプ"],
+      colHeaders: [
+        "勘定科目",
+        "パラメータタイプ",
+        "パラメータ値",
+        "パラメータ参照",
+      ],
       columns: [
         { type: "text", readOnly: true },
         {
@@ -37,8 +45,12 @@ const ParameterSettingTable = ({ data, onChange }) => {
           source: Object.values(PARAMETER_TYPES),
         },
         {
-          type: "dropdown",
-          source: Object.values(CF_ADJUSTMENT_TYPE),
+          type: "numeric",
+          allowInvalid: false,
+        },
+        {
+          type: "text",
+          readOnly: true,
         },
       ],
       width: "100%",
@@ -59,37 +71,40 @@ const ParameterSettingTable = ({ data, onChange }) => {
 
     const updated = [...data];
     changes.forEach(([rowIdx, colIdx, _old, newVal]) => {
-      if (colIdx === 0 || newVal === undefined) return;
+      if (colIdx === 0 || colIdx === 3 || newVal === undefined) return; // 勘定科目とパラメータ参照は編集不可
+
       const acc = { ...updated[rowIdx] };
 
       switch (colIdx) {
         case 1: // パラメータタイプ
-          if (acc.stockAttributes?.parameter) {
-            acc.stockAttributes = {
-              ...acc.stockAttributes,
-              parameter: {
-                ...acc.stockAttributes.parameter,
-                paramType: newVal,
-              },
+          // 新しい構造：parameterはトップレベルプロパティ
+          if (acc.parameter) {
+            acc.parameter = {
+              ...acc.parameter,
+              paramType: newVal,
             };
-          } else if (acc.flowAttributes?.parameter) {
-            acc.flowAttributes = {
-              ...acc.flowAttributes,
-              parameter: {
-                ...acc.flowAttributes.parameter,
-                paramType: newVal,
-              },
+          } else {
+            // parameterが存在しない場合は新規作成
+            acc.parameter = {
+              paramType: newVal,
+              paramValue: null,
+              paramReferences: null,
             };
           }
           break;
-        case 2: // CF調整タイプ
-          if (acc.flowAttributes) {
-            acc.flowAttributes = {
-              ...acc.flowAttributes,
-              cfAdjustment: {
-                ...acc.flowAttributes.cfAdjustment,
-                type: newVal,
-              },
+        case 2: // パラメータ値
+          // 新しい構造：parameterはトップレベルプロパティ
+          if (acc.parameter) {
+            acc.parameter = {
+              ...acc.parameter,
+              paramValue: newVal,
+            };
+          } else {
+            // parameterが存在しない場合は新規作成
+            acc.parameter = {
+              paramType: PARAMETER_TYPES.NONE,
+              paramValue: newVal,
+              paramReferences: null,
             };
           }
           break;

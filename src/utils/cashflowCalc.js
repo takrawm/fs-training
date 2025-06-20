@@ -20,13 +20,11 @@ export const calculateBSDifference = (model, newPeriod, lastPeriod) => {
   const { accounts, values } = model;
 
   // 対象となるBS科目を抽出
-  // 1. isParameterBasedがtrue
+  // 1. CF項目を生成すべきBS科目
   // 2. isCreditがnullでない（現預金以外のBS科目）
   const targetBSAccounts = accounts.filter((account) => {
     return (
-      AccountUtils.isStockAccount(account) &&
-      account.stockAttributes?.isParameterBased === true &&
-      account.isCredit !== null // 現預金以外のBS科目
+      AccountUtils.shouldGenerateCFItem(account) && account.isCredit !== null // 現預金以外のBS科目
     );
   });
 

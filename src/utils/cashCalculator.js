@@ -80,12 +80,9 @@ const calculateCFAdjustments = (accounts, values, period) => {
 const calculateBSChanges = (accounts, values, newPeriod, lastPeriod) => {
   let bsImpact = 0;
 
-  // isParameterBasedがtrueのBS科目を抽出（現預金自身は除外）
+  // CF項目を生成すべきBS科目を抽出（現預金自身は除外）
   const bsAccounts = accounts.filter(
-    (acc) =>
-      AccountUtils.isStockAccount(acc) &&
-      acc.stockAttributes?.isParameterBased === true &&
-      acc.id !== "cash-total"
+    (acc) => AccountUtils.shouldGenerateCFItem(acc) && acc.id !== "cash-total"
   );
 
   bsAccounts.forEach((account) => {

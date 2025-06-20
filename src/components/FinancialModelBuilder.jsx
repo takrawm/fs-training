@@ -6,7 +6,6 @@ import AccountMappingTable from "./AccountMappingTable";
 import ParentAccountSettingTable from "./ParentAccountSettingTable";
 import ParameterSettingTable from "./ParameterSettingTable";
 import ParameterConfiguration from "./ParameterConfiguration";
-import CFAdjustmentTable from "./CFAdjustmentTable";
 import ResultTableWithTabs from "./ResultTableWithTabs";
 import SortedAccountsTable from "./SortedAccountsTable";
 import { PARAMETER_TYPES, DEFAULT_PARAMETER_VALUES } from "../utils/constants";
@@ -151,12 +150,10 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       case 2:
         return `Step ${step}: ソート済みアカウント確認`;
       case 3:
-        return `Step ${step}: パラメータ分類設定`;
+        return `Step ${step}: パラメータ設定`;
       case 4:
-        return `Step ${step}: パラメータ設定確認`;
+        return `Step ${step}: キャッシュフロー調整確認`;
       case 5:
-        return `Step ${step}: CF調整設定`;
-      case 6:
         return `Step ${step}: 集計結果確認`;
       default:
         return "";
@@ -289,15 +286,10 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
 
       console.log("ステップ4完了時のmodel:", updatedModel);
 
-      // 次のステップへ遷移（step5: CF調整設定へ）
+      // 次のステップへ遷移（step5: 集計結果確認へ）
       setStep(5);
     } else if (step === 5) {
-      // ステップ5：CF調整設定完了 → 集計結果確認へ
-      console.log("ステップ5完了時のmodel:", financialModel);
-      // 次のステップへ進むだけ
-      setStep(6);
-    } else if (step === 6) {
-      // ステップ6：集計結果確認（最後のステップなので何もしない）
+      // ステップ5：集計結果確認（最後のステップなので何もしない）
       console.log("集計結果確認完了");
     }
   };
@@ -384,13 +376,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
             onChange={handleParamChange}
           />
         ) : step === 5 ? (
-          // ステップ5：CF調整設定
-          <CFAdjustmentTable
-            data={financialModel?.accounts.getAllAccounts() || []}
-            onChange={handleParamChange}
-          />
-        ) : step === 6 ? (
-          // ステップ6：集計結果確認
+          // ステップ5：集計結果確認
           <ResultTableWithTabs
             financialModel={financialModel}
             onAddPeriod={handleAddPeriod}
@@ -401,7 +387,7 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
       {/* ボタンエリア */}
       <div className="table-button-area">
         <button onClick={handleSave} className="btn-primary">
-          {step === 6 ? "完了" : "次へ"}
+          {step === 5 ? "完了" : "次へ"}
         </button>
         <button
           onClick={() => {

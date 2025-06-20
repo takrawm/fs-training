@@ -12,13 +12,17 @@ export const AccountUtils = {
     return account.sheet?.sheetType === SHEET_TYPES.FLOW;
   },
 
+  /**
+   * パラメータを持っているかチェック
+   * （ParameterUtilsに委譲）
+   */
   hasParameter(account) {
-    if (this.isStockAccount(account)) {
-      return account.stockAttributes?.isParameterBased === true;
-    }
-    return account.flowAttributes?.parameter != null;
+    return account.parameter != null;
   },
 
+  /**
+   * CF調整を取得（flow固有）
+   */
   getCFAdjustment(account) {
     if (this.isFlowAccount(account)) {
       return account.flowAttributes?.cfAdjustment;
@@ -26,20 +30,24 @@ export const AccountUtils = {
     return null;
   },
 
+  /**
+   * CF項目を生成すべきかチェック（stock固有）
+   * 新しい構造ではstockAttributesのgeneratesCFItemプロパティで判定
+   * @param {Object} account 勘定科目
+   * @returns {boolean} CF項目を生成すべき場合true
+   */
+  shouldGenerateCFItem(account) {
+    if (!this.isStockAccount(account)) return false;
+    return account.stockAttributes?.generatesCFItem === true;
+  },
+
+  /**
+   * パラメータ参照を取得（新しい構造に対応）
+   * @param {Object} account 勘定科目
+   * @returns {Object|Array} パラメータ参照
+   */
   getParameterReferences(account) {
-    if (
-      this.isStockAccount(account) &&
-      account.stockAttributes?.parameter?.paramReferences
-    ) {
-      return account.stockAttributes.parameter.paramReferences;
-    }
-    if (
-      this.isFlowAccount(account) &&
-      account.flowAttributes?.parameter?.paramReferences
-    ) {
-      return account.flowAttributes.parameter.paramReferences;
-    }
-    return [];
+    return account.parameter?.paramReferences || [];
   },
 
   /**
@@ -97,7 +105,7 @@ export const AccountUtils = {
   },
 
   /**
-   * CF項目かどうかを判定
+   * CF項目かどうかを判定（従来の構造）
    * @param {Object} account 勘定科目
    * @returns {boolean} CF項目の場合true
    */

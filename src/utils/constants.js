@@ -80,7 +80,7 @@ export const DEFAULT_PARAMETER_VALUES = {
   PERCENTAGE: 0.02,
 };
 
-// 集計用勘定科目の定義（構造を改善）
+// 集計用勘定科目の定義（新しい構造に更新）
 export const SUMMARY_ACCOUNTS = {
   // PLアカウント
   売上高合計: {
@@ -92,13 +92,16 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.PL,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -115,13 +118,16 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.PL,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -138,16 +144,19 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.PL,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CALCULATION,
+      paramValue: null,
+      paramReferences: [
+        { accountId: "rev-total", operation: OPERATIONS.ADD, lag: 0 },
+        { accountId: "cogs-total", operation: OPERATIONS.SUB, lag: 0 },
+      ],
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CALCULATION,
-        paramValue: null,
-        paramReferences: [
-          { accountId: "rev-total", operation: OPERATIONS.ADD, lag: 0 },
-          { accountId: "cogs-total", operation: OPERATIONS.SUB, lag: 0 },
-        ],
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -164,13 +173,16 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.PL,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -187,16 +199,19 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.PL,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CALCULATION,
+      paramValue: null,
+      paramReferences: [
+        { accountId: "gross-profit", operation: OPERATIONS.ADD, lag: 0 },
+        { accountId: "sga-total", operation: OPERATIONS.SUB, lag: 0 },
+      ],
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CALCULATION,
-        paramValue: null,
-        paramReferences: [
-          { accountId: "gross-profit", operation: OPERATIONS.ADD, lag: 0 },
-          { accountId: "sga-total", operation: OPERATIONS.SUB, lag: 0 },
-        ],
-      },
+      reclassification: null,
+      baseProfit: true,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -205,7 +220,7 @@ export const SUMMARY_ACCOUNTS = {
     },
   },
 
-  // BSアカウント
+  // BSアカウント（新しい構造に更新）
   現預金合計: {
     id: "cash-total",
     accountName: "現預金合計",
@@ -215,13 +230,14 @@ export const SUMMARY_ACCOUNTS = {
     },
     parentAccountId: "current-asset-total",
     isCredit: false, // 資産科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CASH_CALCULATION,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.CASH_CALCULATION,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 現預金はCF項目生成対象外（CASH_CALCULATION）
     },
     flowAttributes: null,
   },
@@ -234,13 +250,14 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: false,
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 集計科目（CHILDREN_SUM）はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -257,13 +274,14 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: false,
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 集計科目（CHILDREN_SUM）はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -280,13 +298,14 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: false,
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 集計科目（CHILDREN_SUM）はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -303,13 +322,14 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: false,
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 集計科目（CHILDREN_SUM）はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -326,13 +346,14 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: false,
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 集計科目（CHILDREN_SUM）はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -349,13 +370,14 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: false,
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 集計科目（CHILDREN_SUM）はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -372,13 +394,14 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: false,
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 集計科目（CHILDREN_SUM）はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -395,13 +418,14 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.STOCK,
       name: STOCK_SHEETS.BS,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: false,
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 集計科目（CHILDREN_SUM）はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -420,13 +444,16 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.PPE,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -445,13 +472,16 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.CF,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -468,13 +498,16 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.CF,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -491,13 +524,16 @@ export const SUMMARY_ACCOUNTS = {
       sheetType: SHEET_TYPES.FLOW,
       name: FLOW_SHEETS.CF,
     },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
     displayOrder: {
@@ -521,8 +557,9 @@ export const CF_ITEMS = {
     },
     stockAttributes: null,
     flowAttributes: {
-      // parameterは使用しない（CF項目は派生的存在のため）
-      parameter: null,
+      // 基本的なflowAttributes構造
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
 
       // CF項目専用の属性
@@ -546,7 +583,7 @@ export const CF_ITEMS = {
   },
 };
 
-// 勘定科目デフォルトシートタイプマッピング（構造を改善）
+// 勘定科目デフォルトシートタイプマッピング（新しい構造に更新）
 export const DEFAULT_SHEET_TYPES = {
   商品売上: {
     sheet: {
@@ -555,13 +592,16 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "rev-total",
     isCredit: true, // 収益科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.GROWTH_RATE,
+      paramValue: 0.05,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.GROWTH_RATE,
-        paramValue: 0.05,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
@@ -572,13 +612,16 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "rev-total",
     isCredit: true, // 収益科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.GROWTH_RATE,
+      paramValue: 0.05,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.GROWTH_RATE,
-        paramValue: 0.05,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
@@ -589,13 +632,16 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "rev-total",
     isCredit: true, // 収益科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.GROWTH_RATE,
+      paramValue: 0.05,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.GROWTH_RATE,
-        paramValue: 0.05,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
@@ -606,13 +652,16 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: null,
     isCredit: true, // 収益科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
@@ -623,20 +672,24 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "cogs-total",
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.4,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.PROPORTIONATE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "rev-total",
-          operation: OPERATIONS.MUL,
-          lag: 0,
-        },
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
+
   労務費: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -644,13 +697,20 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "cogs-total",
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.3,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.FIXED_VALUE,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
@@ -661,16 +721,20 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: null,
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
+
   売上総利益: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -678,19 +742,23 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: null,
     isCredit: true, // 利益科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CALCULATION,
+      paramValue: null,
+      paramReferences: [
+        { accountId: "rev-total", operation: OPERATIONS.ADD, lag: 0 },
+        { accountId: "cogs-total", operation: OPERATIONS.SUB, lag: 0 },
+      ],
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CALCULATION,
-        paramValue: null,
-        paramReferences: [
-          { accountId: "rev-total", operation: OPERATIONS.ADD, lag: 0 },
-          { accountId: "cogs-total", operation: OPERATIONS.SUB, lag: 0 },
-        ],
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
+
   人件費: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -698,16 +766,24 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "sga-total",
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.2,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.FIXED_VALUE,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
+
   物流費: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -715,20 +791,24 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "sga-total",
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.1,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.PROPORTIONATE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "rev-total",
-          operation: OPERATIONS.MUL,
-          lag: 0,
-        },
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
+
   減価償却費: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -736,21 +816,28 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "sga-total",
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.05,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 1,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.FIXED_VALUE,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: {
-        type: CF_ADJUSTMENT_TYPE.BS_MAPPING,
-        targetAccountId: "account-19", //有形固定資産
         operation: OPERATIONS.SUB,
+        targetAccountId: "account-19",
         cfCategory: CF_CATEGORIES.OPERATING,
       },
     },
   },
+
   無形固定資産償却費: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -758,14 +845,25 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "sga-total",
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.05,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 1,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.FIXED_VALUE,
-        paramValue: null,
-        paramReferences: null,
+      reclassification: null,
+      baseProfit: false,
+      cfAdjustment: {
+        operation: OPERATIONS.SUB,
+        targetAccountId: "account-20",
+        cfCategory: CF_CATEGORIES.OPERATING,
       },
-      cfAdjustment: null,
     },
   },
   その他販管費: {
@@ -775,20 +873,24 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "sga-total",
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.05,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.PERCENTAGE,
-        paramValue: 0.02,
-        paramReferences: {
-          accountId: "rev-total",
-          operation: OPERATIONS.MUL,
-          lag: 0,
-        },
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
+
   販管費合計: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -796,16 +898,20 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: null,
     isCredit: false, // 費用科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },
+
   営業利益: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -813,19 +919,23 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: null,
     isCredit: true, // 利益科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CALCULATION,
+      paramValue: null,
+      paramReferences: [
+        { accountId: "gross-profit", operation: OPERATIONS.ADD, lag: 0 },
+        { accountId: "sga-total", operation: OPERATIONS.SUB, lag: 0 },
+      ],
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CALCULATION,
-        paramValue: null,
-        paramReferences: [
-          { accountId: "gross-profit", operation: OPERATIONS.ADD, lag: 0 },
-          { accountId: "sga-total", operation: OPERATIONS.SUB, lag: 0 },
-        ],
-      },
+      reclassification: null,
+      baseProfit: true,
       cfAdjustment: null,
     },
   },
+  // BS項目（新しい構造に更新）
   現預金合計: {
     sheet: {
       sheetType: SHEET_TYPES.STOCK,
@@ -833,13 +943,14 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "current-asset-total",
     isCredit: false, // 資産科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CASH_CALCULATION,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.CASH_CALCULATION,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: false, // 現預金はCF項目生成対象外（CASH_CALCULATION）
     },
     flowAttributes: null,
   },
@@ -850,17 +961,18 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "current-asset-total",
     isCredit: false, // 資産科目
-    stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.PROPORTIONATE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "rev-total",
-          operation: OPERATIONS.MUL,
-          lag: 0,
-        },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PROPORTIONATE,
+      paramValue: null,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
       },
+    },
+    stockAttributes: {
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -871,13 +983,14 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "current-asset-total",
     isCredit: false, // 資産科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.GROWTH_RATE,
+      paramValue: 0.03,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.GROWTH_RATE,
-        paramValue: 0.03,
-        paramReferences: null,
-      },
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -888,9 +1001,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "asset-total",
     isCredit: false, // 資産科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // 集計科目はCF項目生成対象外
     },
     flowAttributes: null,
   },
@@ -901,9 +1015,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "fixed-asset-total",
     isCredit: false, // 資産科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // CF調整対象科目（減価償却費で処理）
     },
     flowAttributes: null,
   },
@@ -914,9 +1029,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "fixed-asset-total",
     isCredit: false, // 資産科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: true,
-      parameter: null,
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -927,9 +1043,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "asset-total",
     isCredit: false, // 資産科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // 集計科目はCF項目生成対象外
     },
     flowAttributes: null,
   },
@@ -940,9 +1057,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: null,
     isCredit: false, // 資産科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // 集計科目はCF項目生成対象外
     },
     flowAttributes: null,
   },
@@ -953,17 +1071,18 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "current-liability-total",
     isCredit: true, // 負債科目
-    stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.PROPORTIONATE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "rev-total",
-          operation: OPERATIONS.MUL,
-          lag: 0,
-        },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PROPORTIONATE,
+      paramValue: null,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
       },
+    },
+    stockAttributes: {
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -974,17 +1093,18 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "current-liability-total",
     isCredit: true, // 負債科目
-    stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.PROPORTIONATE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "rev-total",
-          operation: OPERATIONS.MUL,
-          lag: 0,
-        },
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PROPORTIONATE,
+      paramValue: null,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
       },
+    },
+    stockAttributes: {
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -995,9 +1115,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "liability-total",
     isCredit: true, // 負債科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // 集計科目はCF項目生成対象外
     },
     flowAttributes: null,
   },
@@ -1008,13 +1129,14 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "fixed-liability-total",
     isCredit: true, // 負債科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.GROWTH_RATE,
+      paramValue: 0.02,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.GROWTH_RATE,
-        paramValue: 0.02,
-        paramReferences: null,
-      },
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -1025,13 +1147,14 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "fixed-liability-total",
     isCredit: true, // 負債科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.FIXED_VALUE,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.FIXED_VALUE,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -1042,9 +1165,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "liability-total",
     isCredit: true, // 負債科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // 集計科目はCF項目生成対象外
     },
     flowAttributes: null,
   },
@@ -1055,9 +1179,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "li-eq-total",
     isCredit: true, // 負債科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // 集計科目はCF項目生成対象外
     },
     flowAttributes: null,
   },
@@ -1068,13 +1193,14 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "equity-total",
     isCredit: true, // 純資産科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.FIXED_VALUE,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: {
-      isParameterBased: true,
-      parameter: {
-        paramType: PARAMETER_TYPES.FIXED_VALUE,
-        paramValue: null,
-        paramReferences: null,
-      },
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -1085,9 +1211,16 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "equity-total",
     isCredit: true, // 純資産科目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CALCULATION,
+      paramValue: null,
+      paramReferences: [
+        { accountId: "op-profit", operation: OPERATIONS.ADD, lag: 0 },
+      ],
+    },
     stockAttributes: {
-      isParameterBased: true,
-      parameter: null,
+      generatesCFItem: true, // パラメータで独立計算されるBS科目
     },
     flowAttributes: null,
   },
@@ -1098,9 +1231,10 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "li-eq-total",
     isCredit: true, // 純資産科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // 集計科目はCF項目生成対象外
     },
     flowAttributes: null,
   },
@@ -1111,12 +1245,14 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: null,
     isCredit: true, // 負債・純資産科目
+    // パラメータは共通プロパティ
+    parameter: null,
     stockAttributes: {
-      isParameterBased: false,
-      parameter: null,
+      generatesCFItem: false, // 集計科目はCF項目生成対象外
     },
     flowAttributes: null,
   },
+  // CAPEX項目
   有形資産投資: {
     sheet: {
       sheetType: SHEET_TYPES.FLOW,
@@ -1124,17 +1260,23 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "capex-total",
     isCredit: null, // PPE項目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.05,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.FIXED_VALUE,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: {
-        type: CF_ADJUSTMENT_TYPE.BS_MAPPING,
-        targetAccountId: "account-19", //有形固定資産
         operation: OPERATIONS.ADD,
+        targetAccountId: "account-19",
         cfCategory: CF_CATEGORIES.INVESTING,
       },
     },
@@ -1146,18 +1288,25 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: "capex-total",
     isCredit: null, // PPE項目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.PERCENTAGE,
+      paramValue: 0.02,
+      paramReferences: {
+        accountId: "rev-total",
+        operation: OPERATIONS.MUL,
+        lag: 0,
+      },
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.PROPORTIONATE,
-        paramValue: null,
-        paramReferences: {
-          accountId: "rev-total",
-          operation: OPERATIONS.MUL,
-          lag: 0,
-        },
+      reclassification: null,
+      baseProfit: false,
+      cfAdjustment: {
+        operation: OPERATIONS.ADD,
+        targetAccountId: "account-20",
+        cfCategory: CF_CATEGORIES.INVESTING,
       },
-      cfAdjustment: null,
     },
   },
   設備投資合計: {
@@ -1167,13 +1316,16 @@ export const DEFAULT_SHEET_TYPES = {
     },
     parentAccountId: null,
     isCredit: null, // PPE項目
+    // パラメータは共通プロパティ
+    parameter: {
+      paramType: PARAMETER_TYPES.CHILDREN_SUM,
+      paramValue: null,
+      paramReferences: null,
+    },
     stockAttributes: null,
     flowAttributes: {
-      parameter: {
-        paramType: PARAMETER_TYPES.CHILDREN_SUM,
-        paramValue: null,
-        paramReferences: null,
-      },
+      reclassification: null,
+      baseProfit: false,
       cfAdjustment: null,
     },
   },

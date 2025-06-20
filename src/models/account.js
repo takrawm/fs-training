@@ -128,10 +128,9 @@ export const createSortedAccounts = (accounts) => {
       return;
     }
 
+    // 最新のデータ構造に合わせて集計科目を追加
     sortedAccounts.push({
-      ...summaryAccount,
-      sheetType: { sheet: summaryAccount.sheet.name, attribute: null },
-      parentAccount: "SUMMARY_ACCOUNTS",
+      ...summaryAccount, // 最新構造（sheet、parameter、stockAttributes、flowAttributes）をそのまま使用
     });
   });
 

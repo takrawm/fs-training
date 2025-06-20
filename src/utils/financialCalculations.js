@@ -315,20 +315,15 @@ export const addNewPeriodToModel = (model) => {
 
   // B. BS変動項目の生成と値計算（統合処理）
 
-  // パラメータベースのBS科目を抽出
-  const parameterBasedBSAccounts = updatedModel.accounts
+  // CF項目を生成すべきBS科目を抽出
+  const cfGeneratingBSAccounts = updatedModel.accounts
     .getRegularItems()
-    .filter((account) => {
-      return (
-        AccountUtils.isStockAccount(account) &&
-        account.stockAttributes?.isParameterBased === true
-      );
-    });
+    .filter((account) => AccountUtils.shouldGenerateCFItem(account));
 
   let bsChangeOrderCounter = 1;
 
   // BS変動項目を作成し、同時に値も計算
-  parameterBasedBSAccounts.forEach((bsAccount) => {
+  cfGeneratingBSAccounts.forEach((bsAccount) => {
     try {
       // アカウント作成と値計算を同時実行
       const result = createBSChangeAccountWithValue(

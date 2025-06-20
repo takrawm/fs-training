@@ -59,10 +59,10 @@ export function loadModelToHyperFormula(hfInstance, model) {
   accountsWithParameters.forEach((account) => {
     paramsSheet.push([
       account.id,
-      account.name,
-      account.parameter.type,
-      account.parameter.value,
-      account.parameter.referenceAccountId || "",
+      account.accountName || account.name,
+      account.parameter.paramType,
+      account.parameter.paramValue,
+      account.parameter.paramReferences?.accountId || "",
     ]);
   });
 

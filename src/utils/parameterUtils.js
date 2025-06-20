@@ -2,7 +2,7 @@ import { PARAMETER_TYPES } from "./constants";
 
 /**
  * パラメータ取得の統一化ユーティリティ
- * stock科目とflow科目でパラメータの格納場所が異なるため、統一的にアクセスするためのヘルパー関数群
+ * parameterがトップレベルプロパティになったことでシンプル化
  */
 export const ParameterUtils = {
   /**
@@ -11,13 +11,7 @@ export const ParameterUtils = {
    * @returns {Object|null} パラメータオブジェクト
    */
   getParameter(account) {
-    if (account.stockAttributes?.parameter) {
-      return account.stockAttributes.parameter;
-    }
-    if (account.flowAttributes?.parameter) {
-      return account.flowAttributes.parameter;
-    }
-    return null;
+    return account.parameter || null;
   },
 
   /**
@@ -26,8 +20,7 @@ export const ParameterUtils = {
    * @returns {string} パラメータタイプ
    */
   getParameterType(account) {
-    const param = this.getParameter(account);
-    return param?.paramType || PARAMETER_TYPES.NONE;
+    return account.parameter?.paramType || PARAMETER_TYPES.NONE;
   },
 
   /**
@@ -36,23 +29,21 @@ export const ParameterUtils = {
    * @returns {number|null} パラメータ値
    */
   getParameterValue(account) {
-    const param = this.getParameter(account);
-    return param?.paramValue;
+    return account.parameter?.paramValue;
   },
 
   /**
-   * パラメータ参照を取得（新構造のみ対応）
-   * 旧構造の場合はエラーを投げる
+   * パラメータ参照を取得
    * @param {Object} account アカウント
    * @returns {Object|Array|null} パラメータ参照
    */
   getParameterReferences(account) {
-    const param = this.getParameter(account);
+    const param = account.parameter;
     if (!param) return null;
 
     const paramType = param.paramType;
 
-    // 新構造：単一参照（PROPORTIONATE, PERCENTAGE, REFERENCE）
+    // 単一参照タイプ
     if (
       [
         PARAMETER_TYPES.PROPORTIONATE,
@@ -71,7 +62,6 @@ export const ParameterUtils = {
       if (Array.isArray(param.paramReferences)) {
         throw new Error(
           `旧構造が検出されました。${paramType}タイプで配列形式の'paramReferences'が使用されています。` +
-            `単一オブジェクト形式を使用するように修正してください。` +
             `アカウント: ${account.accountName || account.id}`
         );
       }
@@ -79,7 +69,7 @@ export const ParameterUtils = {
       return param.paramReferences;
     }
 
-    // 新構造：複数参照（CALCULATION）
+    // 複数参照タイプ
     if (paramType === PARAMETER_TYPES.CALCULATION) {
       if (!Array.isArray(param.paramReferences)) {
         throw new Error(
@@ -91,6 +81,7 @@ export const ParameterUtils = {
       return param.paramReferences;
     }
 
+    // 特殊タイプ（CHILDREN_SUM、CASH_CALCULATION等）
     return null;
   },
 
@@ -101,7 +92,7 @@ export const ParameterUtils = {
    */
   hasParameter(account) {
     const paramType = this.getParameterType(account);
-    return paramType !== PARAMETER_TYPES.NONE;
+    return paramType !== PARAMETER_TYPES.NONE && paramType !== null;
   },
 
   /**
@@ -109,32 +100,18 @@ export const ParameterUtils = {
    * @param {Object} account アカウント
    * @param {string} paramType パラメータタイプ
    * @param {number|null} paramValue パラメータ値
-   * @param {Array} paramReferences パラメータ参照配列
+   * @param {Object|Array} paramReferences パラメータ参照
    * @returns {Object} 更新されたアカウント
    */
-  setParameter(account, paramType, paramValue = null, paramReferences = []) {
-    const updatedAccount = { ...account };
-
-    const parameter = {
-      paramType,
-      paramValue,
-      paramReferences,
+  setParameter(account, paramType, paramValue = null, paramReferences = null) {
+    return {
+      ...account,
+      parameter: {
+        paramType,
+        paramValue,
+        paramReferences,
+      },
     };
-
-    if (updatedAccount.stockAttributes) {
-      updatedAccount.stockAttributes = {
-        ...updatedAccount.stockAttributes,
-        parameter,
-        isParameterBased: paramType !== PARAMETER_TYPES.NONE,
-      };
-    } else if (updatedAccount.flowAttributes) {
-      updatedAccount.flowAttributes = {
-        ...updatedAccount.flowAttributes,
-        parameter,
-      };
-    }
-
-    return updatedAccount;
   },
 
   /**
