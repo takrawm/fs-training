@@ -1,5 +1,6 @@
 import { FLOW_SHEETS, STOCK_SHEETS, PARAMETER_TYPES } from "../utils/constants";
 import { ParameterUtils } from "../utils/parameterUtils";
+import { AccountUtils } from "../utils/accountUtils";
 
 /**
  * タブに基づいてフィルタリングされたデータを生成する
@@ -22,6 +23,11 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
   if (tabName === "CF") {
     // CF項目は構造的に分離されているので直接取得
     accounts = financialModel.accounts.getCFItems();
+  } else if (tabName === "CASH_CALC") {
+    // 現預金計算科目のみを取得
+    accounts = financialModel.accounts
+      .getRegularItems()
+      .filter((account) => AccountUtils.isCashCalcAccount(account));
   } else {
     // 他のタブは通常項目のみ
     accounts = financialModel.accounts.getRegularItems();
@@ -52,8 +58,18 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
   let filteredAccounts;
 
   if (tabName === "CF") {
-    // CF項目は既に取得済みなのでそのまま使用
-    filteredAccounts = accounts;
+    // CF項目は既に取得済みなのでそのまま使用（現預金計算科目は除外）
+    filteredAccounts = accounts.filter(
+      (account) => !AccountUtils.isCashCalcAccount(account)
+    );
+  } else if (tabName === "CASH_CALC") {
+    // 現預金計算科目は既にフィルタリング済みなのでそのまま使用
+    // 表示順序でソート
+    filteredAccounts = accounts.sort((a, b) => {
+      const orderA = a.displayOrder?.order || "";
+      const orderB = b.displayOrder?.order || "";
+      return orderA.localeCompare(orderB);
+    });
   } else {
     // 通常項目のフィルタリング
     filteredAccounts = accounts.filter((account) => {
@@ -116,4 +132,9 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
 
     return row;
   });
+};
+
+// 現預金計算データを取得するためのヘルパー関数
+export const getCashCalculationData = (financialModel) => {
+  return getFilteredDataByTab("CASH_CALC", financialModel);
 };

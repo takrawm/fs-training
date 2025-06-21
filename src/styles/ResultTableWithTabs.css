@@ -12,3 +12,33 @@
   margin-bottom: 10px;
   justify-content: center;
 }
+
+/* 現預金計算表示用のスタイル */
+.cf-tables-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cf-main-table {
+  flex: 1;
+  min-height: 400px;
+}
+
+.cash-calc-table {
+  flex: 0 0 auto;
+  height: 250px;
+}
+
+.cash-calc-cell {
+  background-color: #f8f9fa !important;
+  font-weight: bold !important;
+  border: 1px solid #dee2e6 !important;
+}
+
+/* 現預金計算セクションのヘッダースタイル */
+.cash-calc-table h3 {
+  color: #495057;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 5px;
+}

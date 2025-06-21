@@ -167,6 +167,29 @@ export function buildDependencyGraph(accounts) {
         }
       });
     }
+
+    // 6. 現預金計算による依存関係（新規追加）
+    // CASH_FLOW_TOTALは全てのCF項目に依存する
+    if (parameterType === PARAMETER_TYPES.CASH_FLOW_TOTAL) {
+      const cfAccounts = accounts.filter((acc) =>
+        AccountUtils.shouldIncludeInCashFlowTotal(acc)
+      );
+      cfAccounts.forEach((cfAccount) => {
+        if (!graph[account.id].includes(cfAccount.id)) {
+          graph[account.id].push(cfAccount.id);
+          console.log(
+            `現預金計算依存関係追加: ${account.accountName} → ${cfAccount.accountName}`
+          );
+        }
+      });
+    }
+
+    // CASH_BEGINNING_BALANCEは前期の現預金合計に依存
+    // ただし、これは前期の値なので実際の依存関係ではない
+    // （トポロジカルソートには影響しない）
+
+    // CASH_ENDING_BALANCEは通常のparameterReferencesで処理される
+    // （既存のロジックで対応済み）
   });
 
   return graph;
@@ -224,6 +247,21 @@ export function topologicalSort(graph) {
  * @returns {Array} 計算順序でソートされたアカウントIDの配列
  */
 export function getCalculationOrder(accounts) {
+  console.log("=== 依存関係計算開始 ===");
+  console.log("対象アカウント数:", accounts.length);
+
+  // 現預金計算科目が含まれているかチェック
+  const cashCalcAccounts = accounts.filter(
+    (acc) =>
+      acc.id === "cash-beginning-balance" ||
+      acc.id === "cash-flow-change" ||
+      acc.id === "cash-ending-balance"
+  );
+  console.log("現預金計算科目の数:", cashCalcAccounts.length);
+  cashCalcAccounts.forEach((acc) => {
+    console.log(`- ${acc.accountName} (ID: ${acc.id})`);
+  });
+
   const graph = buildDependencyGraph(accounts);
   const order = topologicalSort(graph);
 

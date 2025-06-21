@@ -2,7 +2,10 @@ import React, { useRef, useEffect, useState, useCallback } from "react";
 import { HotTable } from "@handsontable/react";
 import { registerAllModules } from "handsontable/registry";
 import "handsontable/dist/handsontable.full.min.css";
-import { getFilteredDataByTab } from "../display/financialDisplay";
+import {
+  getFilteredDataByTab,
+  getCashCalculationData,
+} from "../display/financialDisplay";
 import TabTableForRelations from "./TabTableForRelations";
 import { PARAMETER_TYPES } from "../utils/constants";
 import { ParameterUtils } from "../utils/parameterUtils";
@@ -20,6 +23,7 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
   const { periods, values } = financialModel || {};
   const [activeTab, setActiveTab] = useState("PL");
   const [filteredData, setFilteredData] = useState([]);
+  const [cashCalcData, setCashCalcData] = useState([]);
 
   // アカウント取得のヘルパー関数（新構造と古い構造の両方に対応）
   const getAccounts = useCallback(() => {
@@ -193,6 +197,13 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
 
       // フィルタリングされたデータを設定
       const filtered = getFilteredDataByTab(tabName, financialModel);
+
+      // CFタブの場合は、現預金計算データも取得
+      if (tabName === "CF") {
+        const cashCalcFiltered = getCashCalculationData(financialModel);
+        setCashCalcData(cashCalcFiltered);
+      }
+
       console.log("=== フィルタリングされたデータ ===");
       console.log("タブ:", tabName);
       console.log("フィルターされたデータ:", filtered);
@@ -271,7 +282,69 @@ const ResultTableWithTabs = ({ financialModel, onAddPeriod }) => {
       </div>
       {activeTab === "リレーション" ? (
         <TabTableForRelations data={filteredData} />
+      ) : activeTab === "CF" ? (
+        // CFタブでは2つのテーブルを表示
+        <div className="cf-tables-container">
+          {/* 通常のCF項目テーブル */}
+          <div className="cf-main-table">
+            <h3
+              style={{ margin: "10px 0", fontSize: "16px", fontWeight: "bold" }}
+            >
+              キャッシュフロー計算書
+            </h3>
+            <div className="hot-table-container">
+              <HotTable
+                ref={hotTableRef}
+                data={filteredData}
+                columns={getResultColumns()}
+                rowHeaders={true}
+                colHeaders={true}
+                width="100%"
+                height="400px"
+                manualColumnResize
+                autoColumnSize
+                stretchH="all"
+                licenseKey="non-commercial-and-evaluation"
+                readOnly={true}
+                cells={(row, col, prop) => ({
+                  className: "my-cell",
+                  ...getSummaryRowClass(row),
+                })}
+              />
+            </div>
+          </div>
+
+          {/* 現預金計算テーブル */}
+          <div className="cash-calc-table" style={{ marginTop: "20px" }}>
+            <h3
+              style={{ margin: "10px 0", fontSize: "16px", fontWeight: "bold" }}
+            >
+              現預金計算
+            </h3>
+            <div className="hot-table-container">
+              <HotTable
+                data={cashCalcData}
+                columns={getResultColumns()}
+                rowHeaders={true}
+                colHeaders={true}
+                width="100%"
+                height="200px"
+                manualColumnResize
+                autoColumnSize
+                stretchH="all"
+                licenseKey="non-commercial-and-evaluation"
+                readOnly={true}
+                cells={(row, col, prop) => ({
+                  className: "cash-calc-cell",
+                  backgroundColor: "#f8f9fa", // 現預金計算セルの背景色
+                  fontWeight: "bold",
+                })}
+              />
+            </div>
+          </div>
+        </div>
       ) : (
+        // 他のタブでは従来通り単一テーブル表示
         <div className="hot-table-container">
           <HotTable
             ref={hotTableRef}

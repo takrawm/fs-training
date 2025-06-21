@@ -1,4 +1,4 @@
-import { SHEET_TYPES } from "./constants";
+import { SHEET_TYPES, SUMMARY_ACCOUNTS } from "./constants";
 
 /**
  * アカウントタイプ判定ユーティリティ
@@ -185,5 +185,66 @@ export const AccountUtils = {
     // baseProfit: true の科目を抽出
     // 複数の利益項目が存在する場合にも対応
     return accounts.filter((acc) => this.getBaseProfit(acc));
+  },
+
+  /**
+   * 現預金計算科目かどうかを判定
+   *
+   * 現預金計算科目は、現預金の期首残高、増減、期末残高を計算する
+   * 特別な科目群で、通常のstock/flow科目とは独立して管理されます。
+   *
+   * @param {Object} account - 判定対象のアカウント
+   * @returns {boolean} 現預金計算科目の場合true
+   */
+  isCashCalcAccount(account) {
+    return account.sheet?.sheetType === SHEET_TYPES.CASH_CALC;
+  },
+
+  /**
+   * 現預金計算科目のパラメータタイプを取得
+   *
+   * 現預金計算科目の処理では、特別なロジックが必要な場合があるため、
+   * パラメータタイプを簡単に取得できるヘルパー関数を提供します。
+   *
+   * @param {Object} account - 現預金計算アカウント
+   * @returns {string} パラメータタイプ
+   */
+  getCashCalcParameterType(account) {
+    if (!this.isCashCalcAccount(account)) {
+      return null;
+    }
+    return account.parameter?.paramType || null;
+  },
+
+  /**
+   * CF項目の合計対象かどうかを判定
+   *
+   * CASH_FLOW_TOTAL の計算で、この科目を集計対象に含めるかを判定します。
+   * SUMMARY_ACCOUNTSや現預金計算科目自体は除外されます。
+   *
+   * @param {Object} account - 判定対象のアカウント
+   * @returns {boolean} CF項目合計の対象に含める場合true
+   */
+  shouldIncludeInCashFlowTotal(account) {
+    // CF項目でない場合は除外
+    if (!this.isCFItem(account)) {
+      return false;
+    }
+
+    // 現預金計算科目は除外（自己参照を避けるため）
+    if (this.isCashCalcAccount(account)) {
+      return false;
+    }
+
+    // SUMMARY_ACCOUNTSに含まれる科目は除外
+    // （営業CF合計、投資CF合計、財務CF合計などの集計科目）
+    const summaryAccountIds = Object.values(SUMMARY_ACCOUNTS).map(
+      (acc) => acc.id
+    );
+    if (summaryAccountIds.includes(account.id)) {
+      return false;
+    }
+
+    return true;
   },
 };

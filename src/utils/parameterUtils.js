@@ -81,7 +81,23 @@ export const ParameterUtils = {
       return param.paramReferences;
     }
 
-    // 特殊タイプ（CHILDREN_SUM、CASH_CALCULATION等）
+    // 現預金計算科目の特殊処理
+    if (paramType === PARAMETER_TYPES.CASH_BEGINNING_BALANCE) {
+      // 単一参照形式
+      return param.paramReferences;
+    }
+
+    if (paramType === PARAMETER_TYPES.CASH_ENDING_BALANCE) {
+      // 複数参照（配列）形式
+      return param.paramReferences;
+    }
+
+    if (paramType === PARAMETER_TYPES.CASH_FLOW_TOTAL) {
+      // 動的計算のため、paramReferencesはnull
+      return null;
+    }
+
+    // その他の特殊タイプ（CHILDREN_SUM等）
     return null;
   },
 
@@ -125,6 +141,7 @@ export const ParameterUtils = {
       PARAMETER_TYPES.PROPORTIONATE,
       PARAMETER_TYPES.PERCENTAGE,
       PARAMETER_TYPES.REFERENCE,
+      PARAMETER_TYPES.CASH_BEGINNING_BALANCE,
     ].includes(paramType);
   },
 
@@ -135,6 +152,23 @@ export const ParameterUtils = {
    */
   isMultipleReferences(account) {
     const paramType = this.getParameterType(account);
-    return paramType === PARAMETER_TYPES.CALCULATION;
+    return (
+      paramType === PARAMETER_TYPES.CALCULATION ||
+      paramType === PARAMETER_TYPES.CASH_ENDING_BALANCE
+    );
+  },
+
+  /**
+   * 現預金計算科目かどうかを判定
+   * @param {Object} account アカウント
+   * @returns {boolean} 現預金計算科目の場合true
+   */
+  isCashCalculationAccount(account) {
+    const paramType = this.getParameterType(account);
+    return [
+      PARAMETER_TYPES.CASH_BEGINNING_BALANCE,
+      PARAMETER_TYPES.CASH_FLOW_TOTAL,
+      PARAMETER_TYPES.CASH_ENDING_BALANCE,
+    ].includes(paramType);
   },
 };

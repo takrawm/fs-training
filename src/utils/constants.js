@@ -5,6 +5,7 @@ export const TARGET_SHEETS = ["PL", "BS", "CAPEX"];
 export const SHEET_TYPES = {
   STOCK: "stock",
   FLOW: "flow",
+  CASH_CALC: "cashCalc", // 新規追加：現預金計算専用シート
 };
 
 export const FLOW_SHEETS = {
@@ -15,6 +16,10 @@ export const FLOW_SHEETS = {
 
 export const STOCK_SHEETS = {
   BS: "bs",
+};
+
+export const CASH_CALC_SHEETS = {
+  CASH_CALC: "cashCalc",
 };
 
 export const CF_ADJUSTMENT_TYPE = {
@@ -64,6 +69,9 @@ export const PARAMETER_TYPES = {
   CASH_CALCULATION: "現預金計算",
   BS_CHANGE: "BS変動",
   CF_ADJUSTMENT_CALC: "CF調整計算",
+  CASH_BEGINNING_BALANCE: "現預金期首残高",
+  CASH_FLOW_TOTAL: "現預金フロー合計",
+  CASH_ENDING_BALANCE: "現預金期末残高",
 };
 
 // パラメータタイプの選択肢
@@ -230,14 +238,18 @@ export const SUMMARY_ACCOUNTS = {
     },
     parentAccountId: "current-asset-total",
     isCredit: false, // 資産科目
-    // パラメータは共通プロパティ
+    // 変更箇所: 専用の現預金計算ロジックから、当期末現預金への参照に変更
     parameter: {
-      paramType: PARAMETER_TYPES.CASH_CALCULATION,
+      paramType: PARAMETER_TYPES.REFERENCE,
       paramValue: null,
-      paramReferences: null,
+      paramReferences: {
+        accountId: "cash-ending-balance", // 当期末現預金を参照
+        operation: OPERATIONS.ADD,
+        lag: 0,
+      },
     },
     stockAttributes: {
-      generatesCFItem: false, // 現預金はCF項目生成対象外（CASH_CALCULATION）
+      generatesCFItem: false, // 現預金はCF項目生成対象外
     },
     flowAttributes: null,
     displayOrder: {
@@ -401,7 +413,7 @@ export const SUMMARY_ACCOUNTS = {
     // パラメータは共通プロパティ
     parameter: null,
     stockAttributes: {
-      generatesCFItem: false, // パラメータで独立計算されるBS科目
+      generatesCFItem: false,
     },
     flowAttributes: null,
     displayOrder: {
@@ -567,6 +579,86 @@ export const SUMMARY_ACCOUNTS = {
   },
 };
 
+// 現預金計算科目の定義（SUMMARY_ACCOUNTSの後に追加）
+export const CASH_CALCULATION_ACCOUNTS = {
+  前期末現預金: {
+    id: "cash-beginning-balance",
+    accountName: "前期末現預金",
+    parentAccountId: null,
+    isCredit: null, // 現預金計算科目は符号を持たない
+    sheet: {
+      sheetType: SHEET_TYPES.CASH_CALC,
+      name: CASH_CALC_SHEETS.CASH_CALC,
+    },
+    parameter: {
+      paramType: PARAMETER_TYPES.CASH_BEGINNING_BALANCE,
+      paramValue: null,
+      paramReferences: {
+        accountId: "cash-total", // BSの現預金合計を参照
+        operation: OPERATIONS.ADD,
+        lag: 1, // 前期の値を取得
+      },
+    },
+    stockAttributes: null,
+    flowAttributes: null,
+    displayOrder: {
+      order: "CASH01",
+      prefix: "CASH",
+    },
+  },
+
+  当期現預金の増減: {
+    id: "cash-flow-change",
+    accountName: "当期現預金の増減",
+    parentAccountId: null,
+    isCredit: null,
+    sheet: {
+      sheetType: SHEET_TYPES.CASH_CALC,
+      name: CASH_CALC_SHEETS.CASH_CALC,
+    },
+    parameter: {
+      paramType: PARAMETER_TYPES.CASH_FLOW_TOTAL,
+      paramValue: null,
+      paramReferences: null, // CF項目を動的に集計するため、静的な参照はなし
+    },
+    stockAttributes: null,
+    flowAttributes: null,
+    displayOrder: {
+      order: "CASH02",
+      prefix: "CASH",
+    },
+  },
+
+  当期末現預金: {
+    id: "cash-ending-balance",
+    accountName: "当期末現預金",
+    parentAccountId: null,
+    isCredit: null,
+    sheet: {
+      sheetType: SHEET_TYPES.CASH_CALC,
+      name: CASH_CALC_SHEETS.CASH_CALC,
+    },
+    parameter: {
+      paramType: PARAMETER_TYPES.CASH_ENDING_BALANCE,
+      paramValue: null,
+      paramReferences: [
+        {
+          accountId: "cash-beginning-balance",
+          operation: OPERATIONS.ADD,
+          lag: 0,
+        },
+        { accountId: "cash-flow-change", operation: OPERATIONS.ADD, lag: 0 },
+      ],
+    },
+    stockAttributes: null,
+    flowAttributes: null,
+    displayOrder: {
+      order: "CASH03",
+      prefix: "CASH",
+    },
+  },
+};
+
 // CF項目の定義
 // CF項目の定義（新しい cfItemAttributes 構造を使用）
 export const CF_ITEMS = {
@@ -585,20 +677,6 @@ export const CF_ITEMS = {
       reclassification: null,
       baseProfit: false,
       cfAdjustment: null,
-
-      // CF項目専用の属性
-      cfItemAttributes: {
-        cfItemType: "PL_ADJUSTMENT",
-        sourceAccount: {
-          accountId: "op-profit",
-          accountName: "営業利益",
-        },
-        calculationMethod: "DERIVED",
-        cfImpact: {
-          multiplier: 1, // PLの値をそのまま使用
-          description: "PL項目をCFに転記",
-        },
-      },
     },
     displayOrder: {
       order: "CF01",
@@ -1056,7 +1134,7 @@ export const DEFAULT_SHEET_TYPES = {
     // パラメータは共通プロパティ
     parameter: null,
     stockAttributes: {
-      generatesCFItem: true, // パラメータで独立計算されるBS科目
+      generatesCFItem: false,
     },
     flowAttributes: null,
   },
@@ -1277,7 +1355,7 @@ export const DEFAULT_SHEET_TYPES = {
       name: FLOW_SHEETS.PPE,
     },
     parentAccountId: "capex-total",
-    isCredit: null, // PPE項目
+    isCredit: true,
     // パラメータは共通プロパティ
     parameter: {
       paramType: PARAMETER_TYPES.PERCENTAGE,
@@ -1305,7 +1383,7 @@ export const DEFAULT_SHEET_TYPES = {
       name: FLOW_SHEETS.PPE,
     },
     parentAccountId: "capex-total",
-    isCredit: null, // PPE項目
+    isCredit: true,
     // パラメータは共通プロパティ
     parameter: {
       paramType: PARAMETER_TYPES.PERCENTAGE,

@@ -282,6 +282,47 @@ export const buildFormula = (account, period, accounts) => {
       }
       return cfRefNode;
 
+    case PARAMETER_TYPES.CASH_BEGINNING_BALANCE:
+      // 前期の現預金合計（BS）を参照
+      // 計算式: 前期末現預金 = 現預金合計[t-1]
+      if (!parameterReferenceAccounts?.accountId) {
+        throw new Error(
+          `CASH_BEGINNING_BALANCE requires reference account for: ${account.accountName}`
+        );
+      }
+
+      return createNode(AST_OPERATIONS.REF, {
+        id: parameterReferenceAccounts.accountId,
+        lag: parameterReferenceAccounts.lag || 1, // デフォルトで前期
+      });
+
+    case PARAMETER_TYPES.CASH_FLOW_TOTAL:
+      // 全CF項目の合計（SUMMARY_ACCOUNTS除く）
+      // この計算は動的に行われるため、専用の関数を呼び出す
+      return buildCashFlowTotalFormula(account, accounts);
+
+    case PARAMETER_TYPES.CASH_ENDING_BALANCE:
+      // 前期末現預金 + 当期現預金の増減
+      // 計算式: 当期末現預金 = 前期末現預金 + 当期現預金の増減
+      if (
+        !Array.isArray(parameterReferenceAccounts) ||
+        parameterReferenceAccounts.length === 0
+      ) {
+        throw new Error(
+          `CASH_ENDING_BALANCE requires reference accounts array for: ${account.accountName}`
+        );
+      }
+
+      // 複数の参照科目をADD操作で結合
+      const args = parameterReferenceAccounts.map((ref) =>
+        createNode(AST_OPERATIONS.REF, {
+          id: ref.accountId,
+          lag: ref.lag || 0,
+        })
+      );
+
+      return createNode(AST_OPERATIONS.ADD, { args });
+
     default:
       throw new Error(
         `Unknown parameter type: ${parameterType} for account: ${account.accountName}`
@@ -362,6 +403,54 @@ const buildCFAdjustedFormula = (account, accounts) => {
   });
 
   // 全ての調整をADD操作で統合
+  return createNode(AST_OPERATIONS.ADD, { args });
+};
+
+/**
+ * CF項目の合計を計算するAST式を構築
+ *
+ * この関数は、当期現預金の増減を計算するために、
+ * 全てのCF項目（SUMMARY_ACCOUNTSを除く）の合計を求めるAST式を構築します。
+ *
+ * @param {Object} account - 現預金増減計算アカウント
+ * @param {Array} accounts - 全アカウント配列
+ * @returns {ASTNode} CF項目合計のAST
+ */
+const buildCashFlowTotalFormula = (account, accounts) => {
+  // CF項目合計の対象となる科目を抽出
+  const targetCFAccounts = accounts.filter((acc) =>
+    AccountUtils.shouldIncludeInCashFlowTotal(acc)
+  );
+
+  // CF項目が存在しない場合は0を返す
+  if (targetCFAccounts.length === 0) {
+    console.warn("CF項目合計の対象科目が見つかりません");
+    return createNode(AST_OPERATIONS.CONST, { value: 0 });
+  }
+
+  // 単一のCF項目の場合
+  if (targetCFAccounts.length === 1) {
+    return createNode(AST_OPERATIONS.REF, {
+      id: targetCFAccounts[0].id,
+      lag: 0,
+    });
+  }
+
+  // 複数のCF項目がある場合は合計を計算
+  const args = targetCFAccounts.map((cfAccount) =>
+    createNode(AST_OPERATIONS.REF, {
+      id: cfAccount.id,
+      lag: 0,
+    })
+  );
+
+  // デバッグ用ログ（開発時のみ）
+  console.log(
+    `CF項目合計計算対象: ${targetCFAccounts
+      .map((acc) => acc.accountName)
+      .join(", ")}`
+  );
+
   return createNode(AST_OPERATIONS.ADD, { args });
 };
 

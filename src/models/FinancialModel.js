@@ -1,4 +1,5 @@
 import { AccountUtils } from "../utils/accountUtils.js";
+import { CASH_CALCULATION_ACCOUNTS } from "../utils/constants.js";
 
 /**
  * 財務モデルクラス
@@ -158,6 +159,35 @@ export class FinancialModel {
    */
   addValue(value) {
     this.values.push(value);
+  }
+
+  /**
+   * 現預金計算科目を一括追加
+   *
+   * この関数は、CASH_CALCULATION_ACCOUNTSで定義された現預金計算科目を
+   * regularItemsに追加します。これらの科目は、現預金の期首残高、増減、
+   * 期末残高の透明な計算を実現するために必要です。
+   */
+  addCashCalculationAccounts() {
+    console.log("=== 現預金計算科目の追加開始 ===");
+    console.log("追加前のregularItems数:", this.accounts.regularItems.length);
+
+    Object.values(CASH_CALCULATION_ACCOUNTS).forEach((account) => {
+      // 既に存在しない場合のみ追加
+      if (!this.accounts.exists(account.id)) {
+        this.accounts.addRegularItem(account);
+        console.log(
+          `現預金計算科目を追加: ${account.accountName} (ID: ${account.id})`
+        );
+      } else {
+        console.log(
+          `現預金計算科目は既に存在: ${account.accountName} (ID: ${account.id})`
+        );
+      }
+    });
+
+    console.log("追加後のregularItems数:", this.accounts.regularItems.length);
+    console.log("=== 現預金計算科目の追加完了 ===");
   }
 
   /**

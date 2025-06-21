@@ -209,6 +209,9 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
         }
       });
 
+      // 現預金計算科目を追加
+      newFinancialModel.addCashCalculationAccounts();
+
       setFinancialModel(newFinancialModel);
       console.log("ステップ1完了時のmodel:", newFinancialModel);
 
