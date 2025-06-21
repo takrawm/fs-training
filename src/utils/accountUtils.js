@@ -143,4 +143,47 @@ export const AccountUtils = {
       account.isCredit === null
     );
   },
+
+  /**
+   * 指定されたstock科目がbaseProfitのターゲットかどうかを判定
+   *
+   * baseProfitは間接法キャッシュフローの出発点となる利益項目を表し、
+   * これらの利益は利益剰余金に加算される特別な性質を持ちます。
+   * 現在は利益剰余金のみがターゲットですが、将来の拡張も考慮した設計としています。
+   *
+   * @param {Object} account - 判定対象のstock科目
+   * @param {Array} accounts - 全アカウント配列（将来の拡張で使用予定）
+   * @returns {boolean} baseProfitのターゲットの場合true
+   */
+  isBaseProfitTarget(account, accounts) {
+    // ストック科目でない場合は対象外
+    if (!this.isStockAccount(account)) {
+      return false;
+    }
+
+    // 現在は利益剰余金のみがbaseProfitのターゲット
+    // 将来的に他の科目（例：その他の剰余金科目）もターゲットになる可能性を考慮
+    return account.id === "retained-earnings";
+  },
+
+  /**
+   * 指定されたstock科目をターゲットとするbaseProfit科目を取得
+   *
+   * この関数は、利益剰余金のような科目に対して、
+   * どの利益項目（営業利益、経常利益等）が加算されるべきかを特定します。
+   *
+   * @param {Object} targetAccount - ターゲットとなるstock科目
+   * @param {Array} accounts - 全アカウント配列
+   * @returns {Array} baseProfit科目の配列
+   */
+  getBaseProfitAccounts(targetAccount, accounts) {
+    // baseProfitのターゲットでない場合は空配列を返す
+    if (!this.isBaseProfitTarget(targetAccount, accounts)) {
+      return [];
+    }
+
+    // baseProfit: true の科目を抽出
+    // 複数の利益項目が存在する場合にも対応
+    return accounts.filter((acc) => this.getBaseProfit(acc));
+  },
 };

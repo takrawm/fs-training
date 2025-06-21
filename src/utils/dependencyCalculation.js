@@ -8,7 +8,10 @@ import { buildFormula } from "./astBuilder";
 import { extractDependencies } from "./astEvaluator";
 import { ParameterUtils } from "./parameterUtils";
 import { AccountUtils } from "./accountUtils.js";
-import { getCFAdjustmentAccounts } from "./balanceSheetCalculator";
+import {
+  getCFAdjustmentAccounts,
+  isBaseProfitTarget,
+} from "./balanceSheetCalculator";
 import { PARAMETER_TYPES } from "./constants";
 
 /**
@@ -148,6 +151,22 @@ export function buildDependencyGraph(accounts) {
         graph[targetAccount.id].push(account.id);
       }
     }
+
+    // 5. baseProfit調整による依存関係（新規追加）
+    // baseProfitのターゲット（利益剰余金）は、baseProfit科目（営業利益等）に依存する
+    if (isBaseProfitTarget(account, accounts)) {
+      const baseProfitAccounts = accounts.filter((acc) =>
+        AccountUtils.getBaseProfit(acc)
+      );
+      baseProfitAccounts.forEach((profitAccount) => {
+        if (!graph[account.id].includes(profitAccount.id)) {
+          graph[account.id].push(profitAccount.id);
+          console.log(
+            `依存関係追加: ${account.accountName} → ${profitAccount.accountName}`
+          );
+        }
+      });
+    }
   });
 
   return graph;
@@ -207,5 +226,18 @@ export function topologicalSort(graph) {
 export function getCalculationOrder(accounts) {
   const graph = buildDependencyGraph(accounts);
   const order = topologicalSort(graph);
+
+  // デバッグ用：計算順序を表示
+  console.log("=== 計算順序 ===");
+  order.forEach((accountId, index) => {
+    const account = accounts.find((acc) => acc.id === accountId);
+    const dependencies = graph[accountId] || [];
+    console.log(
+      `${index + 1}. ${account?.accountName || accountId} (依存: ${
+        dependencies.join(", ") || "なし"
+      })`
+    );
+  });
+
   return order;
 }

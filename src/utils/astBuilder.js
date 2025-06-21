@@ -6,6 +6,7 @@ import { AccountUtils } from "./accountUtils.js";
 import {
   isCFAdjustmentTarget,
   getCFAdjustmentAccounts,
+  isBaseProfitTarget,
 } from "./balanceSheetCalculator";
 
 /**
@@ -37,11 +38,18 @@ export const buildFormula = (account, period, accounts) => {
     AccountUtils.isStockAccount(account) &&
     !ParameterUtils.hasParameter(account)
   ) {
-    // CF調整による計算式を構築
-    if (isCFAdjustmentTarget(account, accounts)) {
+    // CF調整 または baseProfit調整の対象かチェック
+    // 両方の調整タイプを統一的に処理する
+    const hasCFAdjustment = isCFAdjustmentTarget(account, accounts);
+    const hasBaseProfitAdjustment = isBaseProfitTarget(account, accounts);
+
+    if (hasCFAdjustment || hasBaseProfitAdjustment) {
+      // 統一されたCF調整式を構築
+      // この関数がCF調整とbaseProfit調整の両方を処理する
       return buildCFAdjustedFormula(account, accounts);
     }
-    // CF調整もない場合は前期値をそのまま使用
+
+    // どちらの調整もない場合は前期値をそのまま使用
     return createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 });
   }
 
@@ -298,18 +306,25 @@ const buildCashCalculationFormula = (account, accounts) => {
 };
 
 /**
- * CF調整を適用したAST式を構築する
- * @param {Object} account 対象のstock科目
- * @param {Array} accounts 全アカウント配列
- * @returns {ASTNode} CF調整を適用したAST
+ * CF調整とbaseProfit調整を統合したAST式を構築
+ *
+ * この関数は、ストック科目に対して以下の調整を適用したAST式を構築します：
+ * 1. CF調整：設備投資や減価償却費等の非資金項目の影響
+ * 2. baseProfit調整：利益項目による利益剰余金への影響
+ *
+ * 最終的な式：ストック科目(当期) = ストック科目(前期) + CF調整 + baseProfit調整
+ *
+ * @param {Object} account - 対象のstock科目
+ * @param {Array} accounts - 全アカウント配列
+ * @returns {ASTNode} 統合された調整を適用したAST
  */
 const buildCFAdjustedFormula = (account, accounts) => {
-  // 前期末残高
+  // 前期末残高からスタート
   const args = [createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 })];
 
-  // CF調整を適用
+  // 1. CF調整を適用（既存ロジック）
+  // 設備投資（ADD）や減価償却費（SUB）等の処理
   const cfAdjustments = getCFAdjustmentAccounts(account, accounts);
-
   cfAdjustments.forEach((cfAccount) => {
     const cfAdj = AccountUtils.getCFAdjustment(cfAccount);
     const cfNode = createNode(AST_OPERATIONS.REF, {
@@ -331,6 +346,22 @@ const buildCFAdjustedFormula = (account, accounts) => {
     }
   });
 
+  // 2. baseProfit調整を適用（新規追加）
+  // 利益項目による利益剰余金への影響を処理
+  const baseProfitAccounts = AccountUtils.getBaseProfitAccounts(
+    account,
+    accounts
+  );
+  baseProfitAccounts.forEach((profitAccount) => {
+    const profitNode = createNode(AST_OPERATIONS.REF, {
+      id: profitAccount.id,
+      lag: 0,
+    });
+    // baseProfit は常にADD操作（利益は常に剰余金を増加）
+    args.push(profitNode);
+  });
+
+  // 全ての調整をADD操作で統合
   return createNode(AST_OPERATIONS.ADD, { args });
 };
 

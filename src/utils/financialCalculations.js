@@ -14,6 +14,8 @@ import { AccountUtils } from "./accountUtils.js";
 import {
   calculateStockAccountWithCFAdjustment,
   isCFAdjustmentTarget,
+  isBaseProfitTarget,
+  calculateStockAccountWithBaseProfitAdjustment,
 } from "./balanceSheetCalculator";
 import { calculateCashBalance } from "./cashCalculator";
 import {
@@ -142,7 +144,20 @@ export const calculateParameterAccount = (
           accounts
         );
       }
-      // CF調整もない場合は前期値をそのまま使用
+
+      // baseProfit調整がある場合（利益剰余金など）
+      if (isBaseProfitTarget(account, accounts)) {
+        console.log(`利益剰余金計算開始: ${account.accountName}`);
+        return calculateStockAccountWithBaseProfitAdjustment(
+          account,
+          newPeriod,
+          lastPeriod,
+          values,
+          accounts
+        );
+      }
+
+      // どちらの調整もない場合は前期値をそのまま使用
       const lastPeriodValue = getValue(values, account.id, lastPeriod.id);
       return lastPeriodValue;
     }
@@ -280,57 +295,29 @@ export const addNewPeriodToModel = (model) => {
     }
   });
 
+  // ================================================================
+  // 📊 統一された計算フロー
+  // ================================================================
+  //
+  // 以下の処理順序で全てのstock科目が統一的に計算されます：
+  //
+  // 1. 依存関係の構築：
+  //    - 利益剰余金は baseProfit科目（営業利益等）に依存
+  //    - 有形固定資産は CF調整科目（設備投資、減価償却費等）に依存
+  //
+  // 2. トポロジカルソートによる計算順序の決定：
+  //    - baseProfit科目 → 利益剰余金
+  //    - CF調整科目 → 固定資産
+  //
+  // 3. 統一されたAST評価：
+  //    - buildCFAdjustedFormula が CF調整 と baseProfit調整 の両方を処理
+  //    - 全てのstock科目が同じロジックで計算される
+  //
+  // この統一アプローチにより、特別処理が不要となり、
+  // システムの一貫性と保守性が大幅に向上します。
+  // ================================================================
+
   // キャッシュフロー計算書の構築（統合版）- 既存のロジックを完全に維持
-
-  // 0. 利益剰余金の計算（CF調整の前に実行）
-  const retainedEarningsAccount = updatedModel.accounts
-    .getRegularItems()
-    .find((acc) => acc.id === "retained-earnings");
-
-  if (retainedEarningsAccount) {
-    try {
-      // 前期末の利益剰余金残高を取得
-      const lastRetainedEarnings = getValue(
-        updatedModel.values,
-        retainedEarningsAccount.id,
-        lastPeriod.id
-      );
-
-      // 今期のベース利益を取得
-      const baseProfitAccounts = updatedModel.accounts
-        .getRegularItems()
-        .filter((acc) => AccountUtils.getBaseProfit(acc));
-
-      let totalBaseProfit = 0;
-      baseProfitAccounts.forEach((profitAccount) => {
-        const profitValue = getValue(
-          updatedModel.values,
-          profitAccount.id,
-          newPeriod.id
-        );
-        totalBaseProfit += profitValue;
-      });
-
-      // 利益剰余金の新しい値を計算（前期末残高 + 今期利益）
-      const newRetainedEarnings = lastRetainedEarnings + totalBaseProfit;
-
-      // 利益剰余金の値を更新
-      updatedModel.addValue({
-        accountId: retainedEarningsAccount.id,
-        periodId: newPeriod.id,
-        value: newRetainedEarnings,
-        isCalculated: true,
-      });
-
-      console.log("利益剰余金計算完了:", {
-        前期末残高: lastRetainedEarnings,
-        今期利益: totalBaseProfit,
-        新残高: newRetainedEarnings,
-      });
-    } catch (error) {
-      console.error("利益剰余金計算エラー:", error);
-    }
-  }
 
   // 1. ベース利益のCF項目生成
   const baseProfitAccounts = updatedModel.accounts
