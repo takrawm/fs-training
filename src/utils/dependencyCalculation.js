@@ -184,6 +184,51 @@ export function buildDependencyGraph(accounts) {
       });
     }
 
+    // 7. 現預金増減計算による依存関係（新規追加）
+    // CASH_CHANGE_CALCULATIONは全てのBS・PL科目に依存する（間接法計算のため）
+    if (parameterType === PARAMETER_TYPES.CASH_CHANGE_CALCULATION) {
+      // 営業利益に依存（間接法の起点）
+      const operatingProfitAccount = accounts.find(
+        (acc) => acc.id === "op-profit" || acc.accountName === "営業利益"
+      );
+      if (
+        operatingProfitAccount &&
+        !graph[account.id].includes(operatingProfitAccount.id)
+      ) {
+        graph[account.id].push(operatingProfitAccount.id);
+        console.log(
+          `現預金増減計算依存関係追加: ${account.accountName} → ${operatingProfitAccount.accountName}`
+        );
+      }
+
+      // CF調整を持つ科目に依存
+      const cfAdjustmentAccounts = accounts.filter(
+        (acc) => AccountUtils.getCFAdjustment(acc) !== null
+      );
+      cfAdjustmentAccounts.forEach((cfAdjAccount) => {
+        if (!graph[account.id].includes(cfAdjAccount.id)) {
+          graph[account.id].push(cfAdjAccount.id);
+          console.log(
+            `現預金増減計算依存関係追加: ${account.accountName} → ${cfAdjAccount.accountName}`
+          );
+        }
+      });
+
+      // CF項目を生成すべきBS科目に依存（BS変動の計算のため）
+      const bsAccounts = accounts.filter(
+        (acc) =>
+          AccountUtils.shouldGenerateCFItem(acc) && acc.id !== "cash-total"
+      );
+      bsAccounts.forEach((bsAccount) => {
+        if (!graph[account.id].includes(bsAccount.id)) {
+          graph[account.id].push(bsAccount.id);
+          console.log(
+            `現預金増減計算依存関係追加: ${account.accountName} → ${bsAccount.accountName}`
+          );
+        }
+      });
+    }
+
     // CASH_BEGINNING_BALANCEは前期の現預金合計に依存
     // ただし、これは前期の値なので実際の依存関係ではない
     // （トポロジカルソートには影響しない）

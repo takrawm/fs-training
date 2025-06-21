@@ -25,9 +25,20 @@ export const getFilteredDataByTab = (tabName, financialModel) => {
     accounts = financialModel.accounts.getCFItems();
   } else if (tabName === "CASH_CALC") {
     // 現預金計算科目のみを取得
-    accounts = financialModel.accounts
-      .getRegularItems()
-      .filter((account) => AccountUtils.isCashCalcAccount(account));
+    console.log("=== CASH_CALC フィルタリング開始 ===");
+    console.log("全regularItems:", financialModel.accounts.getRegularItems());
+
+    accounts = financialModel.accounts.getRegularItems().filter((account) => {
+      const isCashCalc = AccountUtils.isCashCalcAccount(account);
+      console.log(
+        `科目: ${account.accountName}, isCashCalc: ${isCashCalc}, sheet:`,
+        account.sheet
+      );
+      return isCashCalc;
+    });
+
+    console.log("フィルタリング後の現預金計算科目:", accounts);
+    console.log("=== CASH_CALC フィルタリング終了 ===");
   } else {
     // 他のタブは通常項目のみ
     accounts = financialModel.accounts.getRegularItems();

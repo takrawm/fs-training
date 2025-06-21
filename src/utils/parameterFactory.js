@@ -239,6 +239,20 @@ export const ParameterFactory = {
       paramReferences: null,
     };
   },
+
+  /**
+   * 現預金増減計算パラメータの作成
+   * 間接法によるキャッシュフロー計算
+   * CASH_CHANGE_CALCULATION: 現預金増減の間接法計算
+   * @returns {Object} 現預金増減計算パラメータ
+   */
+  createCashChangeCalculation() {
+    return {
+      paramType: PARAMETER_TYPES.CASH_CHANGE_CALCULATION,
+      paramValue: null,
+      paramReferences: null,
+    };
+  },
 };
 
 // ========================================
@@ -306,6 +320,12 @@ export const PARAMETER_TYPE_CHARACTERISTICS = {
     hasValue: false,
     hasReferences: false,
     description: "現預金の特殊計算",
+  },
+
+  [PARAMETER_TYPES.CASH_CHANGE_CALCULATION]: {
+    hasValue: false,
+    hasReferences: false,
+    description: "現預金増減の間接法計算",
   },
 
   [PARAMETER_TYPES.BS_CHANGE]: {
@@ -481,6 +501,9 @@ export const createParameterFromData = (parameterData) => {
 
     case PARAMETER_TYPES.CF_ADJUSTMENT_CALC:
       return ParameterFactory.createCFAdjustmentCalc();
+
+    case PARAMETER_TYPES.CASH_CHANGE_CALCULATION:
+      return ParameterFactory.createCashChangeCalculation();
 
     default:
       throw new Error(`未対応のパラメータタイプ: ${parameterData.paramType}`);

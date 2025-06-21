@@ -168,6 +168,7 @@ export const ParameterUtils = {
     return [
       PARAMETER_TYPES.CASH_BEGINNING_BALANCE,
       PARAMETER_TYPES.CASH_FLOW_TOTAL,
+      PARAMETER_TYPES.CASH_CHANGE_CALCULATION,
       PARAMETER_TYPES.CASH_ENDING_BALANCE,
     ].includes(paramType);
   },

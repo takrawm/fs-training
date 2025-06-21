@@ -301,6 +301,14 @@ export const buildFormula = (account, period, accounts) => {
       // この計算は動的に行われるため、専用の関数を呼び出す
       return buildCashFlowTotalFormula(account, accounts);
 
+    case PARAMETER_TYPES.CASH_CHANGE_CALCULATION:
+      // 間接法による現預金増減計算
+      // 複雑な計算のため、特別な処理フラグとして機能
+      return {
+        op: "CASH_CHANGE_CALC",
+        accountId: account.id,
+      };
+
     case PARAMETER_TYPES.CASH_ENDING_BALANCE:
       // 前期末現預金 + 当期現預金の増減
       // 計算式: 当期末現預金 = 前期末現預金 + 当期現預金の増減

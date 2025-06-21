@@ -16,7 +16,10 @@ import {
 } from "../models/account";
 import { createAccountValues } from "../models/accountValue";
 import { createPeriods } from "../models/period";
-import { addNewPeriodToModel } from "../utils/financialCalculations";
+import {
+  addNewPeriodToModel,
+  calculateParameterAccount,
+} from "../utils/financialCalculations";
 import { FinancialModel } from "../models/FinancialModel";
 import { AccountUtils } from "../utils/accountUtils";
 import "../styles/FinancialModelBuilder.css";
@@ -211,6 +214,60 @@ const FinancialModelBuilder = ({ model, flattenedData }) => {
 
       // 現預金計算科目を追加
       newFinancialModel.addCashCalculationAccounts();
+
+      // 現預金計算科目の初期値を設定
+      console.log("=== 現預金計算科目の初期値設定開始 ===");
+      const cashCalcAccounts = newFinancialModel.accounts
+        .getRegularItems()
+        .filter((account) => account.sheet?.sheetType === "CASH_CALC");
+
+      // 適切な順序で現預金計算科目の値を設定
+      const orderedCashCalcIds = [
+        "cash-beginning-balance",
+        "cash-flow-change",
+        "cash-ending-balance",
+      ];
+
+      newPeriods.forEach((period) => {
+        orderedCashCalcIds.forEach((accountId) => {
+          const account = cashCalcAccounts.find((acc) => acc.id === accountId);
+          if (!account) return;
+
+          let initialValue = 0;
+
+          // 科目ごとに適切な初期値を設定
+          if (account.id === "cash-beginning-balance") {
+            // 前期末現預金: BSの現預金合計から取得を試みる
+            const cashTotalValue = newFinancialModel.values.find(
+              (v) => v.accountId === "cash-total" && v.periodId === period.id
+            );
+            initialValue = cashTotalValue?.value || 0;
+          } else if (account.id === "cash-flow-change") {
+            // 当期現預金の増減: 初期期間では0
+            initialValue = 0;
+          } else if (account.id === "cash-ending-balance") {
+            // 当期末現預金: 前期末現預金と同じ値（増減が0のため）
+            const beginningValue = newFinancialModel.values.find(
+              (v) =>
+                v.accountId === "cash-beginning-balance" &&
+                v.periodId === period.id
+            );
+            initialValue = beginningValue?.value || 0;
+          }
+
+          newFinancialModel.addValue({
+            accountId: account.id,
+            periodId: period.id,
+            value: initialValue,
+            isCalculated: true,
+          });
+
+          console.log(
+            `現預金計算科目の初期値: ${account.accountName} (${period.year}) = ${initialValue}`
+          );
+        });
+      });
+      console.log("=== 現預金計算科目の初期値設定完了 ===");
 
       setFinancialModel(newFinancialModel);
       console.log("ステップ1完了時のmodel:", newFinancialModel);

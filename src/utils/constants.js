@@ -60,17 +60,18 @@ export const SHEET_ATTRIBUTES = {
 export const PARAMETER_TYPES = {
   NONE: "なし",
   GROWTH_RATE: "成長率",
-  PERCENTAGE: "他科目割合",
+  PERCENTAGE: "比率",
   PROPORTIONATE: "他科目連動",
   FIXED_VALUE: "横置き",
-  CHILDREN_SUM: "合計値",
-  CALCULATION: "個別計算",
+  CHILDREN_SUM: "子科目合計",
+  CALCULATION: "計算",
   REFERENCE: "参照",
   CASH_CALCULATION: "現預金計算",
   BS_CHANGE: "BS変動",
   CF_ADJUSTMENT_CALC: "CF調整計算",
   CASH_BEGINNING_BALANCE: "現預金期首残高",
   CASH_FLOW_TOTAL: "現預金フロー合計",
+  CASH_CHANGE_CALCULATION: "現預金増減計算",
   CASH_ENDING_BALANCE: "現預金期末残高",
 };
 
@@ -617,9 +618,9 @@ export const CASH_CALCULATION_ACCOUNTS = {
       name: CASH_CALC_SHEETS.CASH_CALC,
     },
     parameter: {
-      paramType: PARAMETER_TYPES.CASH_FLOW_TOTAL,
+      paramType: PARAMETER_TYPES.CASH_CHANGE_CALCULATION,
       paramValue: null,
-      paramReferences: null, // CF項目を動的に集計するため、静的な参照はなし
+      paramReferences: null, // 間接法による現預金増減計算のため、静的な参照はなし
     },
     stockAttributes: null,
     flowAttributes: null,

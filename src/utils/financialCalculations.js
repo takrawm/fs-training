@@ -17,7 +17,7 @@ import {
   isBaseProfitTarget,
   calculateStockAccountWithBaseProfitAdjustment,
 } from "./balanceSheetCalculator";
-import { calculateCashBalance } from "./cashCalculator";
+import { calculateCashBalance, calculateCashChange } from "./cashCalculator";
 import {
   createCFAdjustmentAccountWithValue,
   createBSChangeAccountWithValue,
@@ -127,6 +127,11 @@ export const calculateParameterAccount = (
         values,
         accounts
       );
+    }
+
+    // 現預金増減計算の特別処理
+    if (parameterType === PARAMETER_TYPES.CASH_CHANGE_CALCULATION) {
+      return calculateCashChange(accounts, newPeriod, lastPeriod, values);
     }
 
     // stock科目でパラメータがない場合の特別処理
@@ -298,28 +303,6 @@ export const addNewPeriodToModel = (model) => {
       });
     }
   });
-
-  // ================================================================
-  // 📊 統一された計算フロー
-  // ================================================================
-  //
-  // 以下の処理順序で全てのstock科目が統一的に計算されます：
-  //
-  // 1. 依存関係の構築：
-  //    - 利益剰余金は baseProfit科目（営業利益等）に依存
-  //    - 有形固定資産は CF調整科目（設備投資、減価償却費等）に依存
-  //
-  // 2. トポロジカルソートによる計算順序の決定：
-  //    - baseProfit科目 → 利益剰余金
-  //    - CF調整科目 → 固定資産
-  //
-  // 3. 統一されたAST評価：
-  //    - buildCFAdjustedFormula が CF調整 と baseProfit調整 の両方を処理
-  //    - 全てのstock科目が同じロジックで計算される
-  //
-  // この統一アプローチにより、特別処理が不要となり、
-  // システムの一貫性と保守性が大幅に向上します。
-  // ================================================================
 
   // キャッシュフロー計算書の構築（統合版）- 既存のロジックを完全に維持
 
