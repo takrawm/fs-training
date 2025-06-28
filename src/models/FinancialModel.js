@@ -1,5 +1,6 @@
 import { AccountUtils } from "../utils/accountUtils.js";
 import { CASH_CALCULATION_ACCOUNTS } from "../utils/constants.js";
+import { CashFlowCalculator } from "./CashFlowCalculator.js";
 
 /**
  * 財務モデルクラス
@@ -163,15 +164,8 @@ export class FinancialModel {
 
   /**
    * 現預金計算科目を一括追加
-   *
-   * この関数は、CASH_CALCULATION_ACCOUNTSで定義された現預金計算科目を
-   * regularItemsに追加します。これらの科目は、現預金の期首残高、増減、
-   * 期末残高の透明な計算を実現するために必要です。
    */
   addCashCalculationAccounts() {
-    console.log("=== 現預金計算科目の追加開始 ===");
-    console.log("追加前のregularItems数:", this.accounts.regularItems.length);
-
     Object.values(CASH_CALCULATION_ACCOUNTS).forEach((account) => {
       // 既に存在しない場合のみ追加
       if (!this.accounts.exists(account.id)) {
@@ -185,9 +179,6 @@ export class FinancialModel {
         );
       }
     });
-
-    console.log("追加後のregularItems数:", this.accounts.regularItems.length);
-    console.log("=== 現預金計算科目の追加完了 ===");
   }
 
   /**
@@ -296,6 +287,17 @@ export class FinancialModel {
       periods: this.periods,
       values: this.values,
     };
+  }
+
+  /**
+   * 現預金計算を実行
+   * 期首残高取得・増減計算・期末算出まで一括処理
+   * @param {Object} period - 対象期間
+   * @returns {Object} 計算結果 { beginningBalance, change, endingBalance }
+   */
+  calculateCashFlow(period) {
+    const calculator = new CashFlowCalculator(this);
+    return calculator.calculateCashFlow(period);
   }
 
   /**
