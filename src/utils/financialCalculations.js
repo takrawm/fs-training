@@ -7,17 +7,9 @@ import {
   FLOW_SHEETS,
   OPERATIONS,
 } from "./constants";
-import { calculateBSDifference } from "./cashflowCalc.js";
 
 import { ParameterUtils } from "./parameterUtils";
 import { AccountUtils } from "./accountUtils.js";
-import {
-  calculateStockAccountWithCFAdjustment,
-  isCFAdjustmentTarget,
-  isBaseProfitTarget,
-  calculateStockAccountWithBaseProfitAdjustment,
-} from "./balanceSheetCalculator";
-import { calculateCashBalance } from "./cashCalculator";
 import {
   createCFAdjustmentAccountWithValue,
   createBSChangeAccountWithValue,
@@ -116,53 +108,7 @@ export const calculateParameterAccount = (
   accounts
 ) => {
   try {
-    const parameterType = ParameterUtils.getParameterType(account);
-
-    // 現預金計算の特別処理
-    if (parameterType === PARAMETER_TYPES._CALCULATIOCASHN) {
-      return calculateCashBalance(
-        account,
-        newPeriod,
-        lastPeriod,
-        values,
-        accounts
-      );
-    }
-
-    // stock科目でパラメータがない場合の特別処理
-    if (
-      AccountUtils.isStockAccount(account) &&
-      !ParameterUtils.hasParameter(account)
-    ) {
-      // CF調整がある場合
-      if (isCFAdjustmentTarget(account, accounts)) {
-        return calculateStockAccountWithCFAdjustment(
-          account,
-          newPeriod,
-          lastPeriod,
-          values,
-          accounts
-        );
-      }
-
-      // baseProfit調整がある場合（利益剰余金など）
-      if (isBaseProfitTarget(account, accounts)) {
-        console.log(`利益剰余金計算開始: ${account.accountName}`);
-        return calculateStockAccountWithBaseProfitAdjustment(
-          account,
-          newPeriod,
-          lastPeriod,
-          values,
-          accounts
-        );
-      }
-
-      // どちらの調整もない場合は前期値をそのまま使用
-      const lastPeriodValue = getValue(values, account.id, lastPeriod.id);
-      return lastPeriodValue;
-    }
-
-    // AST構築（GROWTH_RATEなどはここで処理）
+    // AST構築
     const periodYear = parseInt(newPeriod.year, 10);
     const ast = buildFormula(account, periodYear, accounts);
 

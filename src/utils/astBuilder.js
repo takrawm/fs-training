@@ -3,11 +3,6 @@ import { PARAMETER_TYPES, OPERATIONS } from "./constants.js";
 import { evalNode } from "./astEvaluator.js";
 import { ParameterUtils } from "./parameterUtils.js";
 import { AccountUtils } from "./accountUtils.js";
-import {
-  isCFAdjustmentTarget,
-  getCFAdjustmentAccounts,
-  isBaseProfitTarget,
-} from "./balanceSheetCalculator.js";
 
 /**
  * 勘定科目からASTを構築する
@@ -40,8 +35,13 @@ export const buildFormula = (account, period, accounts) => {
   ) {
     // CF調整 または baseProfit調整の対象かチェック
     // 両方の調整タイプを統一的に処理する
-    const hasCFAdjustment = isCFAdjustmentTarget(account, accounts);
-    const hasBaseProfitAdjustment = isBaseProfitTarget(account, accounts);
+    const hasCFAdjustment = accounts.some(
+      (acc) => AccountUtils.getCFAdjustment(acc)?.targetAccountId === account.id
+    );
+    const hasBaseProfitAdjustment = AccountUtils.isBaseProfitTarget(
+      account,
+      accounts
+    );
 
     if (hasCFAdjustment || hasBaseProfitAdjustment) {
       // 統一されたCF調整式を構築

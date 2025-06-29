@@ -8,10 +8,6 @@ import { buildFormula } from "./astBuilder";
 import { extractDependencies } from "./astEvaluator";
 import { ParameterUtils } from "./parameterUtils";
 import { AccountUtils } from "./accountUtils.js";
-import {
-  getCFAdjustmentAccounts,
-  isBaseProfitTarget,
-} from "./balanceSheetCalculator";
 import { PARAMETER_TYPES } from "./constants";
 
 /**
@@ -154,7 +150,7 @@ export function buildDependencyGraph(accounts) {
 
     // 5. baseProfit調整による依存関係（新規追加）
     // baseProfitのターゲット（利益剰余金）は、baseProfit科目（営業利益等）に依存する
-    if (isBaseProfitTarget(account, accounts)) {
+    if (AccountUtils.isBaseProfitTarget(account, accounts)) {
       const baseProfitAccounts = accounts.filter((acc) =>
         AccountUtils.getBaseProfit(acc)
       );
