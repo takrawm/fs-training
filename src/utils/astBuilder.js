@@ -1,13 +1,13 @@
-import { AST_OPERATIONS, createNode } from "./astTypes";
-import { PARAMETER_TYPES, OPERATIONS } from "./constants";
-import { evalNode } from "./astEvaluator";
-import { ParameterUtils } from "./parameterUtils";
+import { AST_OPERATIONS, createNode } from "./astTypes.js";
+import { PARAMETER_TYPES, OPERATIONS } from "./constants.js";
+import { evalNode } from "./astEvaluator.js";
+import { ParameterUtils } from "./parameterUtils.js";
 import { AccountUtils } from "./accountUtils.js";
 import {
   isCFAdjustmentTarget,
   getCFAdjustmentAccounts,
   isBaseProfitTarget,
-} from "./balanceSheetCalculator";
+} from "./balanceSheetCalculator.js";
 
 /**
  * 勘定科目からASTを構築する
@@ -303,11 +303,118 @@ export const buildFormula = (account, period, accounts) => {
 
     case PARAMETER_TYPES.CASH_CHANGE_CALCULATION:
       // 間接法による現預金増減計算
-      // 複雑な計算のため、特別な処理フラグとして機能
-      return {
-        op: "CASH_CHANGE_CALC",
-        accountId: account.id,
-      };
+      // 以下の3要素を合計するASTを構築
+      const cashChangeArgs = [];
+
+      console.log(`=== 現預金増減AST構築 ===`);
+
+      // 1. baseProfit項目の処理
+      const baseProfitAccounts = accounts.filter((acc) =>
+        AccountUtils.getBaseProfit(acc)
+      );
+      baseProfitAccounts.forEach((profitAccount) => {
+        cashChangeArgs.push(
+          createNode(AST_OPERATIONS.REF, { id: profitAccount.id, lag: 0 })
+        );
+      });
+
+      // 2. CF調整項目の処理
+      const cfAdjustmentAccounts = accounts.filter(
+        (acc) => AccountUtils.getCFAdjustment(acc) !== null
+      );
+      cfAdjustmentAccounts.forEach((cfAccount) => {
+        const cfAdj = AccountUtils.getCFAdjustment(cfAccount);
+        const targetAccount = accounts.find(
+          (acc) => acc.id === cfAdj.targetAccountId
+        );
+
+        if (!targetAccount) {
+          console.warn(
+            `CF調整の対象科目が見つかりません: ${cfAdj.targetAccountId}`
+          );
+          return;
+        }
+
+        // 符号決定ロジック：
+        // - 対象科目のisCredit === true: cfAdj.operationと同じ
+        // - 対象科目のisCredit === false: cfAdj.operationと逆
+        const shouldReverse = !targetAccount.isCredit;
+        const effectiveOperation = shouldReverse
+          ? cfAdj.operation === OPERATIONS.ADD
+            ? OPERATIONS.SUB
+            : OPERATIONS.ADD
+          : cfAdj.operation;
+
+        const cfNode = createNode(AST_OPERATIONS.REF, {
+          id: cfAccount.id,
+          lag: 0,
+        });
+
+        // SUBの場合は-1を掛けてADDに変換
+        if (effectiveOperation === OPERATIONS.SUB) {
+          cashChangeArgs.push(
+            createNode(AST_OPERATIONS.MUL, {
+              args: [createNode(AST_OPERATIONS.CONST, { value: -1 }), cfNode],
+            })
+          );
+        } else {
+          cashChangeArgs.push(cfNode);
+        }
+      });
+
+      // 3. BS変動項目の処理
+      const bsChangeAccounts = accounts.filter(
+        (acc) =>
+          AccountUtils.shouldGenerateCFItem(acc) && acc.id !== "cash-total"
+      );
+      bsChangeAccounts.forEach((bsAccount) => {
+        // 当期値 - 前期値
+        const changeNode = createNode(AST_OPERATIONS.SUB, {
+          args: [
+            createNode(AST_OPERATIONS.REF, { id: bsAccount.id, lag: 0 }),
+            createNode(AST_OPERATIONS.REF, { id: bsAccount.id, lag: 1 }),
+          ],
+        });
+
+        // 符号調整：
+        // - isCredit === false（資産）: 増加は現預金減少なので符号反転
+        // - isCredit === true（負債・純資産）: 増加は現預金増加なのでそのまま
+        if (!bsAccount.isCredit) {
+          cashChangeArgs.push(
+            createNode(AST_OPERATIONS.MUL, {
+              args: [
+                createNode(AST_OPERATIONS.CONST, { value: -1 }),
+                changeNode,
+              ],
+            })
+          );
+        } else {
+          cashChangeArgs.push(changeNode);
+        }
+      });
+
+      // デバッグログの追加
+      console.log(`baseProfit項目数: ${baseProfitAccounts.length}`);
+      console.log(`CF調整項目数: ${cfAdjustmentAccounts.length}`);
+      console.log(`BS変動項目数: ${bsChangeAccounts.length}`);
+
+      // エッジケース処理
+      if (cashChangeArgs.length === 0) {
+        console.warn("現預金増減計算: 要素が見つかりません");
+        return createNode(AST_OPERATIONS.CONST, { value: 0 });
+      }
+
+      // 要素が1つの場合はそのまま返す（ADD不要）
+      if (cashChangeArgs.length === 1) {
+        return cashChangeArgs[0];
+      }
+
+      const resultAST = createNode(AST_OPERATIONS.ADD, {
+        args: cashChangeArgs,
+      });
+      console.log(`構築されたAST:`, JSON.stringify(resultAST, null, 2));
+
+      return resultAST;
 
     case PARAMETER_TYPES.CASH_ENDING_BALANCE:
       // 前期末現預金 + 当期現預金の増減

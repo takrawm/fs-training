@@ -17,7 +17,7 @@ import {
   isBaseProfitTarget,
   calculateStockAccountWithBaseProfitAdjustment,
 } from "./balanceSheetCalculator";
-import { calculateCashBalance, calculateCashChange } from "./cashCalculator";
+import { calculateCashBalance } from "./cashCalculator";
 import {
   createCFAdjustmentAccountWithValue,
   createBSChangeAccountWithValue,
@@ -119,7 +119,7 @@ export const calculateParameterAccount = (
     const parameterType = ParameterUtils.getParameterType(account);
 
     // 現預金計算の特別処理
-    if (parameterType === PARAMETER_TYPES.CASH_CALCULATION) {
+    if (parameterType === PARAMETER_TYPES._CALCULATIOCASHN) {
       return calculateCashBalance(
         account,
         newPeriod,
@@ -127,11 +127,6 @@ export const calculateParameterAccount = (
         values,
         accounts
       );
-    }
-
-    // 現預金増減計算の特別処理
-    if (parameterType === PARAMETER_TYPES.CASH_CHANGE_CALCULATION) {
-      return calculateCashChange(accounts, newPeriod, lastPeriod, values);
     }
 
     // stock科目でパラメータがない場合の特別処理
