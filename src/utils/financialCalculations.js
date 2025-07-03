@@ -84,7 +84,11 @@ export const getValue = (values, accountId, periodId) => {
  * @param {number} targetPeriod 対象期間の年
  * @returns {Function} getValue関数
  */
-export const createGetValueFunction = (values, targetPeriod) => {
+// getValueFunction = (accountId, period) => {
+//   const periodId = `p-${period}`;
+//   return getValue(values, accountId, periodId);
+// };
+export const createGetValueFunction = (values) => {
   return (accountId, period) => {
     const periodId = `p-${period}`;
     return getValue(values, accountId, periodId);
@@ -118,8 +122,16 @@ export const calculateParameterAccount = (
       return lastPeriodValue;
     }
 
-    // AST評価
-    const getValueFunction = createGetValueFunction(values, periodYear);
+    // まだ何も値は取得していない（「accountIdとperiodを受け取って値を返す関数」ができただけ）
+    const getValueFunction = createGetValueFunction(values);
+    // この関数はASTノード（数式の木構造）を再帰的に評価する（evalNodeの中でgetValueFunctionが呼び出される）
+    // evalNodeの中で
+    // evalNode = (node, period, getValue) => {
+    // ...
+    // case AST_OPERATIONS.REF:
+    //   return getValue(node.id, period - (node.lag ?? 0));
+    // ...
+    // }
     const result = evalNode(ast, periodYear, getValueFunction);
 
     if (result === undefined || result === null) {
@@ -218,7 +230,7 @@ export const addNewPeriodToModel = (model) => {
           updatedModel.values,
           updatedModel.accounts.getAllAccounts()
         );
-        isCalculated = false;
+        isCalculated = true;
       }
 
       // 新しい値を追加（既存のaddValueメソッドを使用）

@@ -112,9 +112,12 @@ export function buildDependencyGraph(accounts) {
     // 2. parameterReferencesによる依存関係（新構造対応）
     // 単一参照の場合
     if (ParameterUtils.isSingleReference(account) && parameterReferences) {
-      const refId = parameterReferences.accountId;
-      if (refId && !graph[account.id].includes(refId)) {
-        graph[account.id].push(refId);
+      const ref = parameterReferences;
+      // lag > 0 の場合は前期の値への参照であり、当期の計算順序の依存関係には含めない
+      if (ref.accountId && (!ref.lag || ref.lag === 0)) {
+        if (!graph[account.id].includes(ref.accountId)) {
+          graph[account.id].push(ref.accountId);
+        }
       }
     }
     // 複数参照の場合
@@ -123,9 +126,11 @@ export function buildDependencyGraph(accounts) {
       parameterReferences
     ) {
       parameterReferences.forEach((ref) => {
-        const refId = ref.accountId;
-        if (refId && !graph[account.id].includes(refId)) {
-          graph[account.id].push(refId);
+        // lag > 0 の場合は前期の値への参照であり、当期の計算順序の依存関係には含めない
+        if (ref.accountId && (!ref.lag || ref.lag === 0)) {
+          if (!graph[account.id].includes(ref.accountId)) {
+            graph[account.id].push(ref.accountId);
+          }
         }
       });
     }

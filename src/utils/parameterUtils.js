@@ -112,25 +112,6 @@ export const ParameterUtils = {
   },
 
   /**
-   * パラメータを設定
-   * @param {Object} account アカウント
-   * @param {string} paramType パラメータタイプ
-   * @param {number|null} paramValue パラメータ値
-   * @param {Object|Array} paramReferences パラメータ参照
-   * @returns {Object} 更新されたアカウント
-   */
-  setParameter(account, paramType, paramValue = null, paramReferences = null) {
-    return {
-      ...account,
-      parameter: {
-        paramType,
-        paramValue,
-        paramReferences,
-      },
-    };
-  },
-
-  /**
    * 参照が単一か複数かを判定
    * @param {Object} account アカウント
    * @returns {boolean} 単一参照の場合true
@@ -156,20 +137,5 @@ export const ParameterUtils = {
       paramType === PARAMETER_TYPES.CALCULATION ||
       paramType === PARAMETER_TYPES.CASH_ENDING_BALANCE
     );
-  },
-
-  /**
-   * 現預金計算科目かどうかを判定
-   * @param {Object} account アカウント
-   * @returns {boolean} 現預金計算科目の場合true
-   */
-  isCashCalculationAccount(account) {
-    const paramType = this.getParameterType(account);
-    return [
-      PARAMETER_TYPES.CASH_BEGINNING_BALANCE,
-      PARAMETER_TYPES.CASH_FLOW_TOTAL,
-      PARAMETER_TYPES.CASH_CHANGE_CALCULATION,
-      PARAMETER_TYPES.CASH_ENDING_BALANCE,
-    ].includes(paramType);
   },
 };

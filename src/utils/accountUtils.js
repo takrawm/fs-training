@@ -8,23 +8,11 @@ export const AccountUtils = {
     return account.sheet?.sheetType === SHEET_TYPES.STOCK;
   },
 
-  isFlowAccount(account) {
-    return account.sheet?.sheetType === SHEET_TYPES.FLOW;
-  },
-
-  /**
-   * パラメータを持っているかチェック
-   * （ParameterUtilsに委譲）
-   */
-  hasParameter(account) {
-    return account.parameter != null;
-  },
-
   /**
    * CF調整を取得（flow固有）
    */
   getCFAdjustment(account) {
-    if (this.isFlowAccount(account)) {
+    if (account.sheet?.sheetType === SHEET_TYPES.FLOW) {
       return account.flowAttributes?.cfAdjustment;
     }
     return null;
@@ -35,7 +23,7 @@ export const AccountUtils = {
    * 利益剰余金に加算される利益かどうかを判定
    */
   getBaseProfit(account) {
-    if (this.isFlowAccount(account)) {
+    if (account.sheet?.sheetType === SHEET_TYPES.FLOW) {
       return account.flowAttributes?.baseProfit === true;
     }
     return false;
@@ -50,82 +38,6 @@ export const AccountUtils = {
   shouldGenerateCFItem(account) {
     if (!this.isStockAccount(account)) return false;
     return account.stockAttributes?.generatesCFItem === true;
-  },
-
-  /**
-   * パラメータ参照を取得（新しい構造に対応）
-   * @param {Object} account 勘定科目
-   * @returns {Object|Array} パラメータ参照
-   */
-  getParameterReferences(account) {
-    return account.parameter?.paramReferences || [];
-  },
-
-  /**
-   * 資産科目かどうかを判定
-   * @param {Object} account 勘定科目
-   * @returns {boolean} 資産科目の場合true
-   */
-  isAssetAccount(account) {
-    return account.isCredit === false && this.isStockAccount(account);
-  },
-
-  /**
-   * 負債科目かどうかを判定
-   * @param {Object} account 勘定科目
-   * @returns {boolean} 負債科目の場合true
-   */
-  isLiabilityAccount(account) {
-    return account.isCredit === true && this.isStockAccount(account);
-  },
-
-  /**
-   * 純資産科目かどうかを判定
-   * @param {Object} account 勘定科目
-   * @returns {boolean} 純資産科目の場合true
-   */
-  isEquityAccount(account) {
-    return account.isCredit === true && this.isStockAccount(account);
-  },
-
-  /**
-   * 収益科目かどうかを判定
-   * @param {Object} account 勘定科目
-   * @returns {boolean} 収益科目の場合true
-   */
-  isRevenueAccount(account) {
-    return account.isCredit === true && this.isFlowAccount(account);
-  },
-
-  /**
-   * 費用科目かどうかを判定
-   * @param {Object} account 勘定科目
-   * @returns {boolean} 費用科目の場合true
-   */
-  isExpenseAccount(account) {
-    return account.isCredit === false && this.isFlowAccount(account);
-  },
-
-  /**
-   * CAPEX科目かどうかを判定
-   * @param {Object} account 勘定科目
-   * @returns {boolean} CAPEX科目の場合true
-   */
-  isCAPEXAccount(account) {
-    return account.isCredit === null && this.isFlowAccount(account);
-  },
-
-  /**
-   * CF項目かどうかを判定（従来の構造）
-   * @param {Object} account 勘定科目
-   * @returns {boolean} CF項目の場合true
-   */
-  isCFAccount(account) {
-    return (
-      account.isCredit === null &&
-      this.isFlowAccount(account) &&
-      account.sheet?.name === "cf"
-    );
   },
 
   /**
@@ -198,22 +110,6 @@ export const AccountUtils = {
    */
   isCashCalcAccount(account) {
     return account.sheet?.sheetType === SHEET_TYPES.CASH_CALC;
-  },
-
-  /**
-   * 現預金計算科目のパラメータタイプを取得
-   *
-   * 現預金計算科目の処理では、特別なロジックが必要な場合があるため、
-   * パラメータタイプを簡単に取得できるヘルパー関数を提供します。
-   *
-   * @param {Object} account - 現預金計算アカウント
-   * @returns {string} パラメータタイプ
-   */
-  getCashCalcParameterType(account) {
-    if (!this.isCashCalcAccount(account)) {
-      return null;
-    }
-    return account.parameter?.paramType || null;
   },
 
   /**

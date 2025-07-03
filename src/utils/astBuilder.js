@@ -478,9 +478,12 @@ const buildCFAdjustedFormula = (account, accounts) => {
   // 前期末残高からスタート
   const args = [createNode(AST_OPERATIONS.REF, { id: account.id, lag: 1 })];
 
-  // 1. CF調整を適用（既存ロジック）
-  // 設備投資（ADD）や減価償却費（SUB）等の処理
-  const cfAdjustments = getCFAdjustmentAccounts(account, accounts);
+  // 1. CF調整を適用（修正版）
+  // このstock科目を対象とするCF調整科目を取得
+  const cfAdjustments = accounts.filter(
+    (acc) => AccountUtils.getCFAdjustment(acc)?.targetAccountId === account.id
+  );
+
   cfAdjustments.forEach((cfAccount) => {
     const cfAdj = AccountUtils.getCFAdjustment(cfAccount);
     const cfNode = createNode(AST_OPERATIONS.REF, {
