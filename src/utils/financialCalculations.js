@@ -192,10 +192,6 @@ export const addNewPeriodToModel = (model) => {
   // 新しい期間を追加（既存のミュータブル操作）
   updatedModel.addPeriod(newPeriod);
 
-  // 現預金計算科目の存在を確認し、必要に応じて追加
-  console.log("期間追加時の現預金計算科目チェック");
-  updatedModel.addCashCalculationAccounts();
-
   // 通常科目の値を計算（既存のロジックを完全に維持）
   // 依存関係を考慮した計算順序を取得
   const regularAccounts = updatedModel.accounts.getRegularItems();

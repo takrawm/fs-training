@@ -23,11 +23,6 @@ export const buildFormula = (account, period, accounts) => {
   const parameterReferenceAccounts =
     ParameterUtils.getParameterReferences(account);
 
-  // 現預金計算の特別処理
-  if (parameterType === PARAMETER_TYPES.CASH_CALCULATION) {
-    return buildCashCalculationFormula(account, accounts);
-  }
-
   // stock科目でパラメータがない場合の特別処理
   if (
     AccountUtils.isStockAccount(account) &&
@@ -443,22 +438,6 @@ export const buildFormula = (account, period, accounts) => {
         `Unknown parameter type: ${parameterType} for account: ${account.accountName}`
       );
   }
-};
-
-/**
- * 現預金計算用のAST構築
- * 複雑な計算のため、専用の構造を作成
- * @param {Object} account - 現預金アカウント
- * @param {Array} accounts - 全アカウント配列
- * @returns {ASTNode} 構築されたAST
- */
-const buildCashCalculationFormula = (account, accounts) => {
-  // この関数は概念的なもので、実際の計算はcalculateCashBalanceで行う
-  // ASTでは表現が複雑すぎるため、特別な処理フラグとして機能
-  return {
-    op: "CASH_CALC",
-    accountId: account.id,
-  };
 };
 
 /**

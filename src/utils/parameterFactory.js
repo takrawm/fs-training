@@ -201,22 +201,6 @@ export const ParameterFactory = {
   },
 
   /**
-   * CASH_CALCULATION: 現預金計算
-   * 使用例：現預金残高の特殊計算
-   *
-   * 現預金は複雑な計算を伴うため、
-   * パラメータは計算方法の指定のみ
-   */
-  createCashCalculation() {
-    return {
-      paramType: PARAMETER_TYPES.CASH_CALCULATION,
-      paramValue: null,
-      paramReferences: null,
-      // 実際の計算ロジックは別途実装
-    };
-  },
-
-  /**
    * BS_CHANGE: BS変動
    * 使用例：BSの変動を反映する計算
    */
@@ -314,12 +298,6 @@ export const PARAMETER_TYPE_CHARACTERISTICS = {
     hasReferences: true,
     referenceCount: "single",
     description: "他科目の値を参照",
-  },
-
-  [PARAMETER_TYPES.CASH_CALCULATION]: {
-    hasValue: false,
-    hasReferences: false,
-    description: "現預金の特殊計算",
   },
 
   [PARAMETER_TYPES.CASH_CHANGE_CALCULATION]: {
@@ -492,9 +470,6 @@ export const createParameterFromData = (parameterData) => {
       return ParameterFactory.createReference(
         parameterData.paramReferences?.accountId
       );
-
-    case PARAMETER_TYPES.CASH_CALCULATION:
-      return ParameterFactory.createCashCalculation();
 
     case PARAMETER_TYPES.BS_CHANGE:
       return ParameterFactory.createBSChange();

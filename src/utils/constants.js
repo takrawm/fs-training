@@ -66,7 +66,7 @@ export const PARAMETER_TYPES = {
   CHILDREN_SUM: "子科目合計",
   CALCULATION: "計算",
   REFERENCE: "参照",
-  CASH_CALCULATION: "現預金計算",
+
   BS_CHANGE: "BS変動",
   CF_ADJUSTMENT_CALC: "CF調整計算",
   CASH_BEGINNING_BALANCE: "現預金期首残高",
@@ -226,6 +226,84 @@ export const SUMMARY_ACCOUNTS = {
     displayOrder: {
       order: "E99",
       prefix: "E",
+    },
+  },
+
+  // 現預金計算科目
+  前期末現預金: {
+    id: "cash-beginning-balance",
+    accountName: "前期末現預金",
+    parentAccountId: null,
+    isCredit: null, // 現預金計算科目は符号を持たない
+    sheet: {
+      sheetType: SHEET_TYPES.CASH_CALC,
+      name: CASH_CALC_SHEETS.CASH_CALC,
+    },
+    parameter: {
+      paramType: PARAMETER_TYPES.CASH_BEGINNING_BALANCE,
+      paramValue: null,
+      paramReferences: {
+        accountId: "cash-total", // BSの現預金合計を参照
+        operation: OPERATIONS.ADD,
+        lag: 1, // 前期の値を取得
+      },
+    },
+    stockAttributes: null,
+    flowAttributes: null,
+    displayOrder: {
+      order: "CASH01",
+      prefix: "CASH",
+    },
+  },
+
+  当期現預金の増減: {
+    id: "cash-flow-change",
+    accountName: "当期現預金の増減",
+    parentAccountId: null,
+    isCredit: null,
+    sheet: {
+      sheetType: SHEET_TYPES.CASH_CALC,
+      name: CASH_CALC_SHEETS.CASH_CALC,
+    },
+    parameter: {
+      paramType: PARAMETER_TYPES.CASH_CHANGE_CALCULATION,
+      paramValue: null,
+      paramReferences: null, // 間接法による現預金増減計算のため、静的な参照はなし
+    },
+    stockAttributes: null,
+    flowAttributes: null,
+    displayOrder: {
+      order: "CASH02",
+      prefix: "CASH",
+    },
+  },
+
+  当期末現預金: {
+    id: "cash-ending-balance",
+    accountName: "当期末現預金",
+    parentAccountId: null,
+    isCredit: null,
+    sheet: {
+      sheetType: SHEET_TYPES.CASH_CALC,
+      name: CASH_CALC_SHEETS.CASH_CALC,
+    },
+    parameter: {
+      paramType: PARAMETER_TYPES.CASH_ENDING_BALANCE,
+      paramValue: null,
+      paramReferences: [
+        {
+          accountId: "cash-beginning-balance",
+          operation: OPERATIONS.ADD,
+          lag: 0,
+        },
+        { accountId: "cash-flow-change", operation: OPERATIONS.ADD, lag: 0 },
+      ],
+    },
+    stockAttributes: null,
+    flowAttributes: null,
+    displayOrder: {
+      order: "CASH03",
+      prefix: "CASH",
     },
   },
 
@@ -576,86 +654,6 @@ export const SUMMARY_ACCOUNTS = {
     displayOrder: {
       order: "T99",
       prefix: "T",
-    },
-  },
-};
-
-// 現預金計算科目の定義（SUMMARY_ACCOUNTSの後に追加）
-export const CASH_CALCULATION_ACCOUNTS = {
-  前期末現預金: {
-    id: "cash-beginning-balance",
-    accountName: "前期末現預金",
-    parentAccountId: null,
-    isCredit: null, // 現預金計算科目は符号を持たない
-    sheet: {
-      sheetType: SHEET_TYPES.CASH_CALC,
-      name: CASH_CALC_SHEETS.CASH_CALC,
-    },
-    parameter: {
-      paramType: PARAMETER_TYPES.CASH_BEGINNING_BALANCE,
-      paramValue: null,
-      paramReferences: {
-        accountId: "cash-total", // BSの現預金合計を参照
-        operation: OPERATIONS.ADD,
-        lag: 1, // 前期の値を取得
-      },
-    },
-    stockAttributes: null,
-    flowAttributes: null,
-    displayOrder: {
-      order: "CASH01",
-      prefix: "CASH",
-    },
-  },
-
-  当期現預金の増減: {
-    id: "cash-flow-change",
-    accountName: "当期現預金の増減",
-    parentAccountId: null,
-    isCredit: null,
-    sheet: {
-      sheetType: SHEET_TYPES.CASH_CALC,
-      name: CASH_CALC_SHEETS.CASH_CALC,
-    },
-    parameter: {
-      paramType: PARAMETER_TYPES.CASH_CHANGE_CALCULATION,
-      paramValue: null,
-      paramReferences: null, // 間接法による現預金増減計算のため、静的な参照はなし
-    },
-    stockAttributes: null,
-    flowAttributes: null,
-    displayOrder: {
-      order: "CASH02",
-      prefix: "CASH",
-    },
-  },
-
-  当期末現預金: {
-    id: "cash-ending-balance",
-    accountName: "当期末現預金",
-    parentAccountId: null,
-    isCredit: null,
-    sheet: {
-      sheetType: SHEET_TYPES.CASH_CALC,
-      name: CASH_CALC_SHEETS.CASH_CALC,
-    },
-    parameter: {
-      paramType: PARAMETER_TYPES.CASH_ENDING_BALANCE,
-      paramValue: null,
-      paramReferences: [
-        {
-          accountId: "cash-beginning-balance",
-          operation: OPERATIONS.ADD,
-          lag: 0,
-        },
-        { accountId: "cash-flow-change", operation: OPERATIONS.ADD, lag: 0 },
-      ],
-    },
-    stockAttributes: null,
-    flowAttributes: null,
-    displayOrder: {
-      order: "CASH03",
-      prefix: "CASH",
     },
   },
 };
@@ -1048,12 +1046,16 @@ export const DEFAULT_SHEET_TYPES = {
     isCredit: false, // 資産科目
     // パラメータは共通プロパティ
     parameter: {
-      paramType: PARAMETER_TYPES.CASH_CALCULATION,
+      paramType: PARAMETER_TYPES.REFERENCE,
       paramValue: null,
-      paramReferences: null,
+      paramReferences: {
+        accountId: "cash-ending-balance", // 当期末現預金を参照
+        operation: OPERATIONS.ADD,
+        lag: 0,
+      },
     },
     stockAttributes: {
-      generatesCFItem: false, // 現預金はCF項目生成対象外（CASH_CALCULATION）
+      generatesCFItem: false, // 現預金はCF項目生成対象外
     },
     flowAttributes: null,
   },
