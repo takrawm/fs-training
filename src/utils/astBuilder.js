@@ -12,9 +12,9 @@ import { AccountUtils } from "./accountUtils.js";
  * @returns {ASTNode|null} 構築されたAST（計算不要の場合はnull）
  */
 export const buildFormula = (account, period, accounts) => {
-  // CF項目は専用の処理に委譲（ASTではなく専用の計算ロジックを使用）
+  // CF項目は作成時に値が計算済みのため、AST評価は不要
   if (AccountUtils.isCFItem(account)) {
-    return null; // CF項目は calculateCFItemValue で処理される
+    return null; // CF項目は既に値が計算済み
   }
 
   // 新しいParameterUtilsを使用してパラメータを取得

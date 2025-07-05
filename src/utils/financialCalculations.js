@@ -280,29 +280,26 @@ export const addNewPeriodToModel = (model) => {
         },
       };
 
-      // 既存チェック
-      const exists = updatedModel.accounts.exists(cfItem.id);
-
-      if (!exists) {
-        // CF項目を追加
+      // 勘定科目が存在しない場合は追加
+      if (!updatedModel.accounts.exists(cfItem.id)) {
         updatedModel.accounts.addCFItem(cfItem);
-
-        // 値を取得して追加
-        const profitValue = getValue(
-          updatedModel.values,
-          profitAccount.id,
-          newPeriod.id
-        );
-
-        updatedModel.addValue({
-          accountId: cfItem.id,
-          periodId: newPeriod.id,
-          value: profitValue,
-          isCalculated: true,
-        });
-
-        baseProfitOrderCounter++;
       }
+
+      // 値は毎回計算して追加
+      const profitValue = getValue(
+        updatedModel.values,
+        profitAccount.id,
+        newPeriod.id
+      );
+
+      updatedModel.addValue({
+        accountId: cfItem.id,
+        periodId: newPeriod.id,
+        value: profitValue,
+        isCalculated: true,
+      });
+
+      baseProfitOrderCounter++;
     } catch (error) {
       console.warn(
         `ベース利益CF項目生成エラー: ${profitAccount.accountName}`,
@@ -330,20 +327,18 @@ export const addNewPeriodToModel = (model) => {
         updatedModel.values
       );
 
-      // 既存チェック
-      const exists = updatedModel.accounts.exists(result.account.id);
-
-      if (!exists) {
-        // アカウントと値を追加
+      // 勘定科目が存在しない場合は追加
+      if (!updatedModel.accounts.exists(result.account.id)) {
         updatedModel.accounts.addCFItem(result.account);
-
-        updatedModel.addValue({
-          accountId: result.account.id,
-          periodId: newPeriod.id,
-          value: result.value,
-          isCalculated: true,
-        });
       }
+
+      // 値は毎回計算して追加
+      updatedModel.addValue({
+        accountId: result.account.id,
+        periodId: newPeriod.id,
+        value: result.value,
+        isCalculated: true,
+      });
     } catch (error) {
       console.warn(`CF調整項目生成エラー: ${account.accountName}`, error);
     }
@@ -370,20 +365,18 @@ export const addNewPeriodToModel = (model) => {
         updatedModel.values
       );
 
-      // 既存チェック
-      const exists = updatedModel.accounts.exists(result.account.id);
-
-      if (!exists) {
-        // アカウントと値を追加
+      // 勘定科目が存在しない場合は追加
+      if (!updatedModel.accounts.exists(result.account.id)) {
         updatedModel.accounts.addCFItem(result.account);
-
-        updatedModel.addValue({
-          accountId: result.account.id,
-          periodId: newPeriod.id,
-          value: result.value,
-          isCalculated: true,
-        });
       }
+
+      // 値は毎回計算して追加
+      updatedModel.addValue({
+        accountId: result.account.id,
+        periodId: newPeriod.id,
+        value: result.value,
+        isCalculated: true,
+      });
     } catch (error) {
       console.error(`BS変動項目生成エラー: ${bsAccount.accountName}`, error);
     }
